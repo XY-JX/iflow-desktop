@@ -6,16 +6,23 @@
         <div class="warning-icon">⚠️</div>
         <div class="warning-text">
           <h3>iFlow CLI 未就绪</h3>
-          <p v-if="!iflowInstalled">
-            请先安装 iFlow CLI：<br>
-            <code>npm install -g @iflow-ai/iflow-cli@latest</code>
+          
+          <p v-if="!iflowInstalled" class="install-step">
+            <strong>第 1 步：安装 iFlow CLI</strong><br>
+            打开命令提示符（CMD）或 PowerShell，运行：<br>
+            <code>npm install -g @iflow-ai/iflow-cli@latest</code><br>
+            <span class="hint">提示：需要先安装 Node.js (https://nodejs.org)</span>
           </p>
-          <p v-else>
-            iFlow CLI 已安装，但需要先完成认证登录。<br>
-            请在终端运行 <code>iflow</code> 并完成登录授权。
+          
+          <p v-else class="install-step">
+            <strong>第 2 步：登录 iFlow</strong><br>
+            在命令提示符中运行：<br>
+            <code>iflow</code><br>
+            按照提示完成登录授权
           </p>
+          
           <p class="warning-note">
-            💡 推荐使用 "Login with iFlow" 方式登录，享受完整功能
+            💡 安装完成后，点击"重新检查"按钮继续使用应用
           </p>
           <button class="check-btn" @click="checkIflowStatus">重新检查</button>
         </div>
@@ -109,13 +116,16 @@ async function checkIflowStatus() {
     // 如果已安装，尝试调用一次以检查是否已登录
     if (installed) {
       try {
+        // 使用简单的命令测试 iflow 是否可用
         await invoke<string>('call_iflow', {
           message: '/help',
           model: null
         });
         iflowReady.value = true;
       } catch (error) {
+        // iflow 已安装但未登录或不工作
         iflowReady.value = false;
+        console.log('iflow 检查失败，可能未登录:', error);
       }
     }
   } catch (error) {
@@ -285,6 +295,28 @@ function handleFileSaved() {
   color: var(--text-secondary, #666);
   line-height: 1.6;
   font-size: 14px;
+}
+
+.warning-text .install-step {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-tertiary, #f0f0f0);
+  border-left: 4px solid var(--primary-color, #4a90e2);
+  border-radius: 4px;
+}
+
+.warning-text .install-step strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary, #333);
+  font-size: 15px;
+}
+
+.warning-text .hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #999);
 }
 
 .warning-text code {
