@@ -1,6 +1,6 @@
-# iFlow Desktop
+# 我的一个梦
 
-一个基于 Tauri + Vue 3 开发的 Windows 11 桌面应用，集成了 iFlow CLI，提供 AI 辅助编程和文件管理功能。
+一个基于 Tauri + Vue 3 开发的 AI 助手桌面应用，提供智能对话和文件管理功能。
 
 ## 功能特性
 

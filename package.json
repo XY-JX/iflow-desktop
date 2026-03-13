@@ -1,8 +1,9 @@
 {
-  "name": "tauri-app",
+  "name": "mydream",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "我的一个梦 - AI 助手桌面应用",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
