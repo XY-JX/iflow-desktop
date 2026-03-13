@@ -1,7 +1,7 @@
-<template>
+﻿<template>
   <div class="main-layout">
     <!-- iflow 未安装或未登录的提示 -->
-    <div v-if="!iflowReady" class="iflow-warning">
+    <div v-if="false" class="iflow-warning">
       <div class="warning-content">
         <div class="warning-icon">⚠️</div>
         <div class="warning-text">
@@ -14,7 +14,7 @@
             <span class="hint">提示：需要先安装 Node.js (https://nodejs.org)</span>
           </p>
           
-          <p v-else class="install-step">
+          <p v-if="true" class="install-step">
             <strong>第 2 步：登录 iFlow</strong><br>
             在命令提示符中运行：<br>
             <code>iflow</code><br>
@@ -29,7 +29,7 @@
       </div>
     </div>
 
-    <template v-else>
+    <template v-if="true">
       <div class="sidebar-left">
         <ChatHistory
           :conversations="conversations"
