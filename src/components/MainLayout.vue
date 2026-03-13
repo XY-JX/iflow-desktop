@@ -1,70 +1,55 @@
-﻿<template>
+<template>
   <div class="main-layout">
-    <!-- iflow 未安装或未登录的提示 -->
-    <div v-if="false" class="iflow-warning">
-      <div class="warning-content">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-text">
-          <h3>iFlow CLI 未就绪</h3>
-          
-          <p v-if="!iflowInstalled" class="install-step">
-            <strong>第 1 步：安装 iFlow CLI</strong><br>
-            打开命令提示符（CMD）或 PowerShell，运行：<br>
-            <code>npm install -g @iflow-ai/iflow-cli@latest</code><br>
-            <span class="hint">提示：需要先安装 Node.js (https://nodejs.org)</span>
-          </p>
-          
-          <p v-if="true" class="install-step">
-            <strong>第 2 步：登录 iFlow</strong><br>
-            在命令提示符中运行：<br>
-            <code>iflow</code><br>
-            按照提示完成登录授权
-          </p>
-          
-          <p class="warning-note">
-            💡 安装完成后，点击"重新检查"按钮继续使用应用
-          </p>
-          <button class="check-btn" @click="checkIflowStatus">重新检查</button>
-        </div>
-      </div>
+    <!-- 主界面 - 总是显示 -->
+    <div class="sidebar-left">
+      <ChatHistory
+        :conversations="conversations"
+        :active-conversation-id="activeConversationId"
+        @new-chat="handleNewChat"
+        @select-conversation="selectConversation"
+        @delete-conversation="deleteConversation"
+      />
     </div>
 
-    <template v-if="true">
-      <div class="sidebar-left">
-        <ChatHistory
-          :conversations="conversations"
-          :active-conversation-id="activeConversationId"
-          @new-chat="createNewConversation"
-          @select-conversation="selectConversation"
-          @delete-conversation="deleteConversation"
-        />
+    <div class="main-content">
+      <!-- iflow 状态提示横幅 -->
+      <div v-if="!iflowReady" class="iflow-status-banner">
+        <div class="banner-content">
+          <span class="banner-icon">⚠️</span>
+          <span class="banner-text" v-if="!iflowInstalled">
+            需要安装 iFlow CLI 才能使用 AI 对话功能。
+            <code>npm install -g @iflow-ai/iflow-cli@latest</code>
+          </span>
+          <span class="banner-text" v-else>
+            iFlow CLI 需要登录。运行 <code>iflow</code> 完成授权。
+          </span>
+          <button class="banner-btn" @click="checkIflowStatus">重新检查</button>
+        </div>
       </div>
 
-      <div class="main-content">
-        <ChatInterface
-          :messages="currentMessages"
-          :is-generating="isGenerating"
-          :available-models="availableModels"
-          :current-model="currentModel"
-          @send-message="handleSendMessage"
-          @model-change="handleModelChange"
-        />
-      </div>
+      <ChatInterface
+        :messages="currentMessages"
+        :is-generating="isGenerating"
+        :available-models="availableModels"
+        :current-model="currentModel"
+        @send-message="handleSendMessage"
+        @model-change="handleModelChange"
+      />
+    </div>
 
-      <div class="sidebar-right">
-        <FileExplorer
-          @file-selected="handleFileSelected"
-        />
-      </div>
+    <div class="sidebar-right">
+      <FileExplorer
+        @file-selected="handleFileSelected"
+      />
+    </div>
 
-      <div v-if="selectedFile" class="editor-panel">
-        <FileEditor
-          :file="selectedFile"
-          @close="selectedFile = null"
-          @saved="handleFileSaved"
-        />
-      </div>
-    </template>
+    <div v-if="selectedFile" class="editor-panel">
+      <FileEditor
+        :file="selectedFile"
+        @close="selectedFile = null"
+        @saved="handleFileSaved"
+      />
+    </div>
   </div>
 </template>
 
@@ -106,7 +91,7 @@ const currentMessages = computed(() => {
   return conversation?.messages || [];
 });
 
-// 检查 iflow 状态
+// 检查 iflow 状态（不阻塞界面）
 async function checkIflowStatus() {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
@@ -116,14 +101,12 @@ async function checkIflowStatus() {
     // 如果已安装，尝试调用一次以检查是否已登录
     if (installed) {
       try {
-        // 使用简单的命令测试 iflow 是否可用
         await invoke<string>('call_iflow', {
           message: '/help',
           model: null
         });
         iflowReady.value = true;
       } catch (error) {
-        // iflow 已安装但未登录或不工作
         iflowReady.value = false;
         console.log('iflow 检查失败，可能未登录:', error);
       }
@@ -135,13 +118,13 @@ async function checkIflowStatus() {
   }
 }
 
-// 组件挂载时检查 iflow
+// 组件挂载时异步检查 iflow
 onMounted(() => {
   checkIflowStatus();
 });
 
 // 创建新对话
-function createNewConversation() {
+function handleNewChat() {
   const newConversation: Conversation = {
     id: Date.now().toString(),
     title: '新对话',
@@ -173,9 +156,47 @@ function deleteConversation(id: string) {
 
 // 发送消息
 async function handleSendMessage(content: string) {
-  // 如果没有活动对话，创建一个
+  // 检查 iflow 是否可用
+  if (!iflowReady.value) {
+    // 如果没有活动对话，创建一个
+    if (!activeConversationId.value) {
+      handleNewChat();
+    }
+    const conversation = conversations.value.find(c => c.id === activeConversationId.value);
+    if (conversation) {
+      // 添加用户消息
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content,
+        timestamp: Date.now(),
+      };
+      conversation.messages.push(userMessage);
+      
+      // 更新对话标题
+      if (conversation.messages.length === 1) {
+        conversation.title = content.slice(0, 30) + (content.length > 30 ? '...' : '');
+      }
+      conversation.updatedAt = Date.now();
+
+      // 添加错误提示消息
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: !iflowInstalled.value 
+          ? '⚠️ iFlow CLI 未安装\n\n请按照以下步骤安装：\n1. 打开命令提示符或 PowerShell\n2. 运行：npm install -g @iflow-ai/iflow-cli@latest\n3. 然后在命令行运行 iflow 完成登录\n\n安装完成后点击顶部的"重新检查"按钮。'
+          : '⚠️ iFlow CLI 需要登录\n\n请在命令提示符中运行 iflow 完成登录授权，然后点击顶部的"重新检查"按钮。',
+        timestamp: Date.now(),
+      };
+      conversation.messages.push(errorMessage);
+      conversation.updatedAt = Date.now();
+    }
+    return;
+  }
+
+  // iflow 可用，正常处理
   if (!activeConversationId.value) {
-    createNewConversation();
+    handleNewChat();
   }
 
   const conversation = conversations.value.find(c => c.id === activeConversationId.value);
@@ -201,8 +222,6 @@ async function handleSendMessage(content: string) {
   isGenerating.value = true;
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-
-    // 调用 Tauri 命令来执行 iflow
     const response = await invoke<string>('call_iflow', {
       message: content,
       model: currentModel.value
@@ -221,12 +240,10 @@ async function handleSendMessage(content: string) {
     const errorMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
-      content: `抱歉，调用 iflow 失败: ${error}`,
+      content: `调用 iflow 失败: ${error}\n\n请检查 iflow 是否正常运行。`,
       timestamp: Date.now(),
     };
     conversation.messages.push(errorMessage);
-
-    // 重新检查 iflow 状态
     checkIflowStatus();
   } finally {
     isGenerating.value = false;
@@ -265,96 +282,54 @@ function handleFileSaved() {
   overflow: hidden;
 }
 
-.iflow-warning {
+.iflow-status-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.banner-content {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background: var(--bg-primary, white);
-  padding: 20px;
+  gap: 12px;
+  max-width: 100%;
 }
 
-.warning-content {
-  max-width: 600px;
-  text-align: center;
+.banner-icon {
+  font-size: 20px;
 }
 
-.warning-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
+.banner-text {
+  flex: 1;
+  color: white;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.warning-text h3 {
-  margin-bottom: 16px;
-  color: var(--text-primary, #333);
-  font-size: 24px;
-}
-
-.warning-text p {
-  margin-bottom: 12px;
-  color: var(--text-secondary, #666);
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.warning-text .install-step {
-  margin-bottom: 20px;
-  padding: 16px;
-  background: var(--bg-tertiary, #f0f0f0);
-  border-left: 4px solid var(--primary-color, #4a90e2);
-  border-radius: 4px;
-}
-
-.warning-text .install-step strong {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--text-primary, #333);
-  font-size: 15px;
-}
-
-.warning-text .hint {
-  display: block;
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--text-secondary, #999);
-}
-
-.warning-text code {
-  display: inline-block;
-  padding: 4px 8px;
-  background: var(--bg-tertiary, #f0f0f0);
+.banner-text code {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
   border-radius: 4px;
   font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 13px;
-  color: var(--primary-color, #4a90e2);
-  margin: 4px 0;
-}
-
-.warning-note {
-  margin-top: 20px;
-  padding: 12px 16px;
-  background: var(--primary-light, #e8f4ff);
-  border-left: 4px solid var(--primary-color, #4a90e2);
-  border-radius: 4px;
-  color: var(--primary-color, #4a90e2);
-  font-size: 13px;
-}
-
-.check-btn {
-  margin-top: 20px;
-  padding: 10px 24px;
-  background: var(--primary-color, #4a90e2);
+  font-size: 12px;
   color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
 }
 
-.check-btn:hover {
-  background: var(--primary-hover, #357abd);
+.banner-btn {
+  padding: 6px 16px;
+  background: white;
+  color: #667eea;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.banner-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-left {
@@ -382,26 +357,10 @@ function handleFileSaved() {
 }
 
 @media (prefers-color-scheme: dark) {
-  .iflow-warning {
-    background: var(--bg-primary, #1a1a1a);
+  .iflow-status-banner {
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
   }
-
-  .warning-text h3 {
-    color: var(--text-primary, #f0f0f0);
-  }
-
-  .warning-text p {
-    color: var(--text-secondary, #aaa);
-  }
-
-  .warning-text code {
-    background: var(--bg-tertiary, #2d2d2d);
-  }
-
-  .warning-note {
-    background: var(--primary-dark, #1a4d7a);
-  }
-
+  
   .sidebar-left {
     border-right-color: var(--border-color, #404040);
   }
