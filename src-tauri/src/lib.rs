@@ -1,4 +1,4 @@
-mod logging;
+pub mod logging;
 
 use std::process::Command;
 use tracing::{info, warn, error, debug, instrument};
