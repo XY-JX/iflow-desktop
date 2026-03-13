@@ -3,7 +3,7 @@
 
 fn main() {
     // 初始化日志系统
-    iflow_desktop::logging::init_logging();
+    tauri_app_lib::logging::init_logging();
 
     // 启动 Tauri 应用
     tauri_app_lib::run()
