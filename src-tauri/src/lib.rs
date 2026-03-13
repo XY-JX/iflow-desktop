@@ -1,3 +1,5 @@
+mod logging;
+
 use std::process::Command;
 use tracing::{info, warn, error, debug, instrument};
 
@@ -90,7 +92,7 @@ async fn get_log_file_path() -> Result<Option<String>, String> {
 
     match crate::logging::get_log_file_path() {
         Some(path) => {
-            let path_str = path.to_string_lossy().to_string();
+            let path_str = path.as_ref().to_string_lossy().to_string();
             info!("日志文件路径: {}", path_str);
             Ok(Some(path_str))
         },
