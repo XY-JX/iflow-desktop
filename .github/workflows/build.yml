@@ -26,21 +26,14 @@ jobs:
       - name: Build app
         run: npm run tauri build
         
-      - name: List bundle directory
-        run: |
-          Write-Output "Listing bundle directory..."
-          Get-ChildItem -Path src-tauri/target/x86_64-pc-windows-msvc/release/bundle -Recurse -File | Select-Object FullName
-          Write-Output "Listing release directory..."
-          Get-ChildItem -Path src-tauri/target/x86_64-pc-windows-msvc/release -Recurse -File | Select-Object FullName
-        
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-bundle
           path: |
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*
-            src-tauri/target/x86_64-pc-windows-msvc/release/**/*.exe
-            src-tauri/target/x86_64-pc-windows-msvc/release/**/*.msi
+            src-tauri/target/release/bundle/**/*
+            src-tauri/target/release/**/*.exe
+            src-tauri/target/release/**/*.msi
 
   build-macos:
     runs-on: macos-latest
