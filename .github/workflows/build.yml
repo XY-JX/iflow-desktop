@@ -56,17 +56,10 @@ jobs:
       - name: Build app
         run: npm run tauri build
         
-      - name: List bundle directory
-        run: |
-          echo "Listing bundle directory..."
-          find src-tauri/target/x86_64-apple-darwin/release/bundle -type f
-          echo "Listing release directory..."
-          find src-tauri/target/x86_64-apple-darwin/release -type f -name "*.dmg" -o -name "*.app"
-        
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-bundle
           path: |
-            src-tauri/target/x86_64-apple-darwin/release/bundle/**/*
-            src-tauri/target/x86_64-apple-darwin/release/**/*.dmg
+            src-tauri/target/release/bundle/**/*
+            src-tauri/target/release/**/*.dmg
