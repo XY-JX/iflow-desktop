@@ -49,6 +49,9 @@
         </div>
         <div class="thinking-display">
           <div v-if="latestThinking" class="thinking-content">
+            <div class="thinking-note">
+              ℹ️ 注意：以下显示的是 AI 的思考和回答过程
+            </div>
             {{ latestThinking }}
           </div>
           <div v-else class="thinking-placeholder">
@@ -294,16 +297,21 @@ function handleFileSaved() {
   grid-template-rows: 100vh;
   height: 100vh;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .sidebar-left {
   border-right: 1px solid var(--border-color, #e0e0e0);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-content {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .toolbar {
@@ -313,6 +321,7 @@ function handleFileSaved() {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   background: var(--bg-color, #ffffff);
+  flex-shrink: 0;
 }
 
 .status-indicator {
@@ -438,6 +447,7 @@ function handleFileSaved() {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  min-height: 0;
 }
 
 .sidebar-right-top {
@@ -446,6 +456,7 @@ function handleFileSaved() {
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .sidebar-right-bottom {
@@ -453,6 +464,7 @@ function handleFileSaved() {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .panel-header {
@@ -462,6 +474,7 @@ function handleFileSaved() {
   font-weight: 500;
   font-size: 14px;
   color: var(--text-primary, #333);
+  flex-shrink: 0;
 }
 
 .panel-title {
@@ -473,7 +486,9 @@ function handleFileSaved() {
 .thinking-display {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   padding: 16px;
+  min-height: 0;
 }
 
 .thinking-content {
@@ -482,6 +497,17 @@ function handleFileSaved() {
   color: var(--text-primary, #333);
   white-space: pre-wrap;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.thinking-note {
+  background: var(--thinking-bg, #fff7e6);
+  border-left: 3px solid var(--thinking-border, #ffd591);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--thinking-text, #d46b08);
+  font-style: italic;
 }
 
 .thinking-placeholder {

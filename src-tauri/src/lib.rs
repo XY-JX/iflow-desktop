@@ -290,7 +290,7 @@ async fn send_message_to_iflow(message: String) -> Result<serde_json::Value, Str
     cmd.arg("-p")
         .arg(&message)
         .arg("--stream")
-        .arg("--thinking");
+        .arg("--thinking");  // 使用 thinking 模式显示思考过程
 
     // Windows 上隐藏命令行窗口
     #[cfg(target_os = "windows")]
