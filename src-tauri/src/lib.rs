@@ -271,7 +271,7 @@ async fn stop_iflow() -> Result<String, String> {
 // 向 iFlow CLI 发送消息（支持流式传输和思考模式）
 #[tauri::command]
 #[instrument(skip(message))]
-async fn send_message_to_iflow(message: String) -> Result<String, String> {
+async fn send_message_to_iflow(message: String) -> Result<serde_json::Value, String> {
     info!("向 iFlow CLI 发送消息: {}", message);
 
     #[cfg(target_os = "windows")]
@@ -297,25 +297,24 @@ async fn send_message_to_iflow(message: String) -> Result<String, String> {
                 // 解析执行信息
                 let execution_info = parse_execution_info(&stderr);
 
-                // 组合响应内容
-                let response = if let Some(info) = execution_info {
-                    format!("{}\n\n[执行信息]\n轮次: {}\n耗时: {}ms\nToken: 输入 {} / 输出 {} / 总计 {}",
-                        stdout,
-                        info.assistant_rounds,
-                        info.execution_time_ms,
-                        info.token_usage.input,
-                        info.token_usage.output,
-                        info.token_usage.total)
-                } else {
-                    stdout
-                };
+                // 创建结构化响应
+                let mut response = serde_json::json!({
+                    "content": stdout,
+                    "execution_info": execution_info
+                });
 
                 Ok(response)
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 error!("iFlow CLI 命令执行失败: {}", stderr);
-                Ok(format!("错误: {}\n输出: {}", stderr, stdout))
+                
+                let error_response = serde_json::json!({
+                    "content": format!("错误: {}\n输出: {}", stderr, stdout),
+                    "execution_info": null
+                });
+                
+                Ok(error_response)
             }
         },
         Err(e) => {

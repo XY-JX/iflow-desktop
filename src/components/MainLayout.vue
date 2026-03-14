@@ -35,9 +35,28 @@
     </div>
 
     <div class="sidebar-right">
-      <FileExplorer
-        @file-selected="handleFileSelected"
-      />
+      <div class="sidebar-right-top">
+        <div class="panel-header">
+          <span class="panel-title">📁 文件浏览器</span>
+        </div>
+        <FileExplorer
+          @file-selected="handleFileSelected"
+        />
+      </div>
+      <div class="sidebar-right-bottom">
+        <div class="panel-header">
+          <span class="panel-title">🧠 思考过程</span>
+        </div>
+        <div class="thinking-display">
+          <div v-if="latestThinking" class="thinking-content">
+            {{ latestThinking }}
+          </div>
+          <div v-else class="thinking-placeholder">
+            <span class="placeholder-icon">💭</span>
+            <span class="placeholder-text">思考过程将显示在这里</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-if="selectedFile" class="editor-panel">
@@ -81,6 +100,9 @@ const selectedFile = ref<FileItem | null>(null);
 // iFlow 启动状态
 const iflowStatus = ref<string>('');
 const iflowRunning = ref(false);
+
+// 思考过程显示
+const latestThinking = ref<string>('');
 
 // 检查 iFlow 运行状态
 async function checkIflowStatus() {
@@ -200,19 +222,28 @@ async function handleSendMessage(content: string) {
 
   // 设置生成状态
   isGenerating.value = true;
+  latestThinking.value = '正在思考...';
 
   try {
     // 调用 iFlow CLI 获取回复
-    const response = await invoke<string>('send_message_to_iflow', {
+    const response = await invoke<Record<string, any>>('send_message_to_iflow', {
       message: content
     });
 
-    // 解析响应，提取思考过程和执行信息
+    // 提取内容
+    const assistantContent = response.content || '';
+    const executionInfo = response.execution_info;
+
+    // 更新思考过程显示
+    latestThinking.value = assistantContent;
+
+    // 创建助手消息
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
-      content: response,
+      content: assistantContent,
       timestamp: Date.now(),
+      executionInfo: executionInfo
     };
 
     conversation.messages.push(assistantMessage);
@@ -227,6 +258,7 @@ async function handleSendMessage(content: string) {
     };
     conversation.messages.push(errorMessage);
     conversation.updatedAt = Date.now();
+    latestThinking.value = '获取回复失败';
   } finally {
     isGenerating.value = false;
   }
@@ -402,6 +434,74 @@ function handleFileSaved() {
 
 .sidebar-right {
   border-left: 1px solid var(--border-color, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar-right-top {
+  flex: 1;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-right-bottom {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: 12px 16px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-primary, #333);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.thinking-display {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.thinking-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary, #333);
+  white-space: pre-wrap;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.thinking-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary, #999);
+  gap: 12px;
+}
+
+.placeholder-icon {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.placeholder-text {
+  font-size: 13px;
+  opacity: 0.7;
 }
 
 .editor-panel {
