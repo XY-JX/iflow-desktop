@@ -174,7 +174,7 @@ function deleteConversation(id: string) {
 }
 
 // 发送消息
-async function handleSendMessage(content: string, enableThinking: boolean = false) {
+async function handleSendMessage(content: string) {
   // 如果没有活动对话，创建一个
   if (!activeConversationId.value) {
     handleNewChat();
@@ -204,8 +204,7 @@ async function handleSendMessage(content: string, enableThinking: boolean = fals
   try {
     // 调用 iFlow CLI 获取回复
     const response = await invoke<string>('send_message_to_iflow', {
-      message: content,
-      enableThinking: enableThinking
+      message: content
     });
 
     // 解析响应，提取思考过程和执行信息

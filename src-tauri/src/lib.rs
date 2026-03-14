@@ -271,7 +271,7 @@ async fn stop_iflow() -> Result<String, String> {
 // 向 iFlow CLI 发送消息（支持流式传输和思考模式）
 #[tauri::command]
 #[instrument(skip(message))]
-async fn send_message_to_iflow(message: String, enable_thinking: bool) -> Result<String, String> {
+async fn send_message_to_iflow(message: String) -> Result<String, String> {
     info!("向 iFlow CLI 发送消息: {}", message);
 
     #[cfg(target_os = "windows")]
@@ -280,12 +280,11 @@ async fn send_message_to_iflow(message: String, enable_thinking: bool) -> Result
     #[cfg(not(target_os = "windows"))]
     let iflow_cmd = "iflow";
 
-    let mut cmd = Command::new(iflow_cmd);
-    cmd.arg("-p").arg(&message).arg("--stream");
-
-    if enable_thinking {
-        cmd.arg("--thinking");
-    }
+    let cmd = Command::new(iflow_cmd)
+        .arg("-p")
+        .arg(&message)
+        .arg("--stream")
+        .arg("--thinking");
 
     match cmd.output() {
         Ok(output) => {

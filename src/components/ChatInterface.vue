@@ -8,12 +8,6 @@
           @model-change="handleModelChange"
         />
       </div>
-      <div class="header-right">
-        <button @click="toggleThinkingMode" :class="['toggle-btn', { active: thinkingMode }]">
-          <span class="icon">🧠</span>
-          <span class="text">思考模式</span>
-        </button>
-      </div>
     </div>
 
     <div class="messages-container" ref="messagesContainer">
@@ -23,13 +17,12 @@
         class="message-wrapper"
       >
         <!-- 思考过程区域 -->
-        <div v-if="message.thinking" class="thinking-process" :class="{ collapsed: !showThinking[message.id] }">
-          <div class="thinking-header" @click="toggleThinkingDisplay(message.id)">
-            <span class="thinking-icon">🤔</span>
-            <span class="thinking-title">思考过程</span>
-            <span class="collapse-icon">{{ showThinking[message.id] ? '▼' : '▶' }}</span>
+        <div v-if="message.thinking" class="thinking-process">
+          <div class="thinking-header">
+            <span class="thinking-icon">💭</span>
+            <span class="thinking-title">Thinking...</span>
           </div>
-          <div v-show="showThinking[message.id]" class="thinking-content">
+          <div class="thinking-content">
             <div class="thinking-text">{{ message.thinking }}</div>
           </div>
         </div>
@@ -66,8 +59,8 @@
       <div v-if="isGenerating" class="message-wrapper">
         <div class="thinking-process">
           <div class="thinking-header">
-            <span class="thinking-icon">🤔</span>
-            <span class="thinking-title">正在思考...</span>
+            <span class="thinking-icon">💭</span>
+            <span class="thinking-title">Thinking...</span>
           </div>
         </div>
         <div class="message assistant">
@@ -121,22 +114,20 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'send-message': [content: string, enableThinking: boolean];
+  'send-message': [content: string];
   'model-change': [modelId: string];
 }>();
 
 const inputText = ref('');
 const inputRef = ref<HTMLTextAreaElement>();
 const messagesContainer = ref<HTMLDivElement>();
-const thinkingMode = ref(false);
-const showThinking = ref<Record<string, boolean>>({});
 
 async function sendMessage() {
   const content = inputText.value.trim();
   if (!content || props.isGenerating) return;
 
   inputText.value = '';
-  emit('send-message', content, thinkingMode.value);
+  emit('send-message', content);
 
   // 自动调整输入框高度
   if (inputRef.value) {
@@ -156,14 +147,6 @@ function handleKeyDown(event: KeyboardEvent) {
 
 function handleModelChange(modelId: string) {
   emit('model-change', modelId);
-}
-
-function toggleThinkingMode() {
-  thinkingMode.value = !thinkingMode.value;
-}
-
-function toggleThinkingDisplay(messageId: string) {
-  showThinking.value[messageId] = !showThinking.value[messageId];
 }
 
 function formatTime(timestamp: number): string {
@@ -294,11 +277,6 @@ onMounted(() => {
   border: 1px solid var(--thinking-border, #ffd591);
   border-radius: 8px;
   overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.thinking-process.collapsed {
-  border-radius: 8px;
 }
 
 .thinking-header {
@@ -306,14 +284,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  cursor: pointer;
   background: var(--thinking-header-bg, #fffbe6);
-  user-select: none;
-  transition: background 0.2s;
-}
-
-.thinking-header:hover {
-  background: var(--thinking-hover-bg, #fff5cc);
 }
 
 .thinking-icon {
@@ -325,16 +296,7 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 500;
   color: var(--thinking-text, #d46b08);
-}
-
-.collapse-icon {
-  font-size: 10px;
-  color: var(--thinking-text, #d46b08);
-  transition: transform 0.3s ease;
-}
-
-.thinking-process.collapsed .collapse-icon {
-  transform: rotate(-90deg);
+  font-style: italic;
 }
 
 .thinking-content {
