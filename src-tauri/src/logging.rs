@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use chrono::Local;
 
 /// 初始化日志系统
 ///
@@ -57,35 +58,69 @@ pub fn init_logging() {
 
 /// 获取日志目录路径
 ///
-/// 优先级：
-/// 1. 应用数据目录（Windows: %APPDATA%\iflow-desktop\logs）
-/// 2. 当前目录下的 logs 文件夹
+/// 返回安装目录下的 logs 文件夹
 fn get_log_directory() -> PathBuf {
-    // 尝试获取应用数据目录
-    if let Some(app_data) = std::env::var("APPDATA").ok() {
-        let log_dir = PathBuf::from(app_data)
-            .join("我的一个梦")
-            .join("logs");
+    // 获取可执行文件路径
+    let exe_path = std::env::current_exe()
+        .unwrap_or_else(|_| PathBuf::from("."));
 
-        // 如果目录不存在或不可写，回退到当前目录
-        if log_dir.exists() || std::fs::create_dir_all(&log_dir).is_ok() {
-            return log_dir;
+    // 获取安装目录（可执行文件的父目录）
+    let install_dir = exe_path.parent()
+        .unwrap_or(&PathBuf::from("."))
+        .to_path_buf();
+
+    // 在安装目录下创建 logs 文件夹
+    let log_dir = install_dir.join("logs");
+
+    // 确保日志目录存在
+    if !log_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(&log_dir) {
+            eprintln!("无法创建日志目录: {:?}, 错误: {}", log_dir, e);
+            // 如果创建失败，回退到当前目录
+            return PathBuf::from("logs");
         }
     }
 
-    // 回退到当前目录下的 logs 文件夹
-    PathBuf::from("logs")
+    log_dir
 }
 
 /// 获取当前日志文件路径（用于显示给用户）
 pub fn get_log_file_path() -> Option<PathBuf> {
     let log_dir = get_log_directory();
-    let log_file = log_dir.join("iflow-desktop.log");
+
+    // 获取今天的日期字符串
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let log_file = log_dir.join(format!("iflow-desktop.log.{}", today));
 
     if log_file.exists() {
         Some(log_file)
     } else {
-        None
+        // 如果今天的日志文件不存在，返回最新的日志文件
+        if let Ok(mut entries) = std::fs::read_dir(&log_dir) {
+            let mut latest_file: Option<PathBuf> = None;
+            let mut latest_time: Option<std::time::SystemTime> = None;
+
+            while let Some(Ok(entry)) = entries.next() {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("log") ||
+                   path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    continue;
+                }
+
+                if let Ok(metadata) = std::fs::metadata(&path) {
+                    if let Ok(modified) = metadata.modified() {
+                        if latest_time.is_none() || modified > latest_time.unwrap() {
+                            latest_time = Some(modified);
+                            latest_file = Some(path);
+                        }
+                    }
+                }
+            }
+
+            latest_file
+        } else {
+            None
+        }
     }
 }
 
