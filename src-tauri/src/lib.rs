@@ -175,29 +175,35 @@ async fn clean_old_logs() -> Result<(), String> {
     }
 }
 
-// 启动 iFlow CLI
+// 启动 iFlow CLI（后台运行，不显示窗口）
 #[tauri::command]
 #[instrument(skip())]
 async fn start_iflow() -> Result<String, String> {
-    info!("启动 iFlow CLI");
+    info!("检查 iFlow CLI 是否可用");
 
     #[cfg(target_os = "windows")]
-    let result = Command::new("cmd")
-        .args(["/c", "start", "cmd", "/k", "iflow.cmd"])
-        .spawn();
+    let result = Command::new("iflow.cmd")
+        .arg("--version")
+        .output();
 
     #[cfg(not(target_os = "windows"))]
     let result = Command::new("iflow")
-        .spawn();
+        .arg("--version")
+        .output();
 
     match result {
-        Ok(_) => {
-            info!("iFlow CLI 启动成功");
-            Ok("iFlow CLI 已启动".to_string())
+        Ok(output) => {
+            if output.status.success() {
+                info!("iFlow CLI 已就绪");
+                Ok("iFlow CLI 已就绪".to_string())
+            } else {
+                warn!("iFlow CLI 命令执行失败");
+                Ok("iFlow CLI 未就绪".to_string())
+            }
         },
         Err(e) => {
-            error!("启动 iFlow CLI 失败: {}", e);
-            Err(format!("启动失败: {}", e))
+            warn!("iFlow CLI 不可用: {}", e);
+            Ok("iFlow CLI 未安装".to_string())
         },
     }
 }
@@ -268,7 +274,7 @@ async fn stop_iflow() -> Result<String, String> {
     }
 }
 
-// 向 iFlow CLI 发送消息（支持流式传输和思考模式）
+// 向 iFlow CLI 发送消息（支持流式传输和思考模式，后台运行）
 #[tauri::command]
 #[instrument(skip(message))]
 async fn send_message_to_iflow(message: String) -> Result<serde_json::Value, String> {
@@ -280,11 +286,19 @@ async fn send_message_to_iflow(message: String) -> Result<serde_json::Value, Str
     #[cfg(not(target_os = "windows"))]
     let iflow_cmd = "iflow";
 
-    let cmd = Command::new(iflow_cmd)
-        .arg("-p")
+    let mut cmd = Command::new(iflow_cmd);
+    cmd.arg("-p")
         .arg(&message)
         .arg("--stream")
         .arg("--thinking");
+
+    // Windows 上隐藏命令行窗口
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
 
     match cmd.output() {
         Ok(output) => {
