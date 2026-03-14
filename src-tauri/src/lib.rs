@@ -216,6 +216,44 @@ async fn stop_iflow() -> Result<String, String> {
     }
 }
 
+// 向 iFlow CLI 发送消息
+#[tauri::command]
+#[instrument(skip(message))]
+async fn send_message_to_iflow(message: String) -> Result<String, String> {
+    info!("向 iFlow CLI 发送消息: {}", message);
+
+    #[cfg(target_os = "windows")]
+    let iflow_cmd = "iflow.cmd";
+
+    #[cfg(not(target_os = "windows"))]
+    let iflow_cmd = "iflow";
+
+    match Command::new(iflow_cmd)
+        .arg("-p")
+        .arg(&message)
+        .output()
+    {
+        Ok(output) => {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+                info!("iFlow CLI 响应成功");
+                Ok(stdout)
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                error!("iFlow CLI 命令执行失败: {}", stderr);
+                Ok(format!("错误: {}\n输出: {}", stderr, stdout))
+            }
+        },
+        Err(e) => {
+            error!("发送消息到 iFlow CLI 失败: {}", e);
+            Err(format!("执行失败: {}", e))
+        },
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     info!("启动 Tauri 应用");
@@ -233,7 +271,8 @@ pub fn run() {
             clean_old_logs,
             start_iflow,
             check_iflow_running,
-            stop_iflow
+            stop_iflow,
+            send_message_to_iflow
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

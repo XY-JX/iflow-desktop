@@ -35,7 +35,7 @@
       <textarea
         v-model="inputText"
         @keydown="handleKeyDown"
-        placeholder="输入消息..."
+        placeholder="输入消息与 iFlow AI 交流..."
         rows="1"
         ref="inputRef"
       ></textarea>

@@ -16,11 +16,11 @@
         <div class="status-indicator">
           <div :class="['status-dot', iflowRunning ? 'running' : 'stopped']"></div>
           <span class="status-text">
-            iFlow CLI: {{ iflowRunning ? '运行中' : '已停止' }}
+            iFlow: {{ iflowRunning ? '已就绪' : '未就绪' }}
           </span>
         </div>
         <button @click="toggleIflow" :class="['btn-toggle', iflowRunning ? 'btn-stop' : 'btn-start']">
-          {{ iflowRunning ? '⏹️ 停止' : '🚀 启动' }}
+          {{ iflowRunning ? '⏹️ 停止服务' : '🚀 启动服务' }}
         </button>
         <span v-if="iflowStatus" class="status-message">{{ iflowStatus }}</span>
       </div>
@@ -130,12 +130,9 @@ async function toggleIflow() {
   }
 }
 
-// 组件挂载时自动检查并启动 iFlow
+// 组件挂载时检查 iFlow 状态
 onMounted(async () => {
   await checkIflowStatus();
-  if (!iflowRunning.value) {
-    await toggleIflow();
-  }
 });
 
 // 当前对话的消息
@@ -201,15 +198,35 @@ async function handleSendMessage(content: string) {
   }
   conversation.updatedAt = Date.now();
 
-  // 添加提示消息
-  const guideMessage: Message = {
-    id: (Date.now() + 1).toString(),
-    role: 'assistant',
-    content: `💡 提示：\n\n"我的一个梦" 桌面应用用于管理文件和对话历史。\n\n🚀 iFlow CLI 已自动启动！在打开的命令窗口中登录即可使用。\n\n📋 快速开始：\n1. iFlow CLI 已自动启动\n2. 在打开的命令窗口中选择 "Login with iFlow" 登录\n3. 完成浏览器授权\n4. 开始使用 AI 辅助编程\n\n⚙️ 状态管理：\n- 顶部状态栏显示 iFlow 运行状态\n- 点击"启动/停止"按钮可手动控制\n\n📚 详细文档：https://platform.iflow.cn/cli/quickstart\n\n🎯 当前对话已保存，您可以随时继续。`,
-    timestamp: Date.now(),
-  };
-  conversation.messages.push(guideMessage);
-  conversation.updatedAt = Date.now();
+  // 设置生成状态
+  isGenerating.value = true;
+
+  try {
+    // 调用 iFlow CLI 获取回复
+    const response = await invoke<string>('send_message_to_iflow', { message: content });
+
+    // 添加助手回复
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: response,
+      timestamp: Date.now(),
+    };
+    conversation.messages.push(assistantMessage);
+    conversation.updatedAt = Date.now();
+  } catch (error) {
+    // 添加错误消息
+    const errorMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: `❌ 获取回复失败：${error}`,
+      timestamp: Date.now(),
+    };
+    conversation.messages.push(errorMessage);
+    conversation.updatedAt = Date.now();
+  } finally {
+    isGenerating.value = false;
+  }
 }
 
 // 切换模型
