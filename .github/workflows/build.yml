@@ -6,11 +6,39 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Cache Rust registry and index
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            src-tauri/target/debug
+            src-tauri/target/release
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('src-tauri/**/Cargo.lock') }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-target-${{ hashFiles('src-tauri/**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-target-
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -18,30 +46,14 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-      
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src-tauri/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-cargo-
-      
       - name: Cache Node modules
         uses: actions/cache@v4
         with:
           path: |
             node_modules
-            src-tauri/target/release/deps
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-
             ${{ runner.os }}-node-
       
       - name: Install dependencies
@@ -63,38 +75,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Cache Rust registry and index
+        uses: actions/cache@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
       
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-apple-darwin, aarch64-apple-darwin
       
-      - name: Cache Rust dependencies
+      - name: Cache Rust build artifacts
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+            src-tauri/target/debug
+            src-tauri/target/release
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('src-tauri/**/Cargo.lock') }}-${{ hashFiles('src-tauri/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-target-${{ hashFiles('src-tauri/**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-target-
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
       
       - name: Cache Node modules
         uses: actions/cache@v4
         with:
           path: |
             node_modules
-            src-tauri/target/release/deps
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-
             ${{ runner.os }}-node-
       
       - name: Install dependencies
