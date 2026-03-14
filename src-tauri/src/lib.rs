@@ -8,9 +8,9 @@ use tracing::{info, warn, error, debug, instrument};
 #[instrument(skip())]
 async fn check_iflow_installed() -> Result<bool, String> {
     info!("检查 iFlow CLI 安装状态");
-    debug!("执行命令: iflow --version");
+    debug!("执行命令: iflow.cmd --version");
 
-    match Command::new("iflow").arg("--version").output() {
+    match Command::new("iflow.cmd").arg("--version").output() {
         Ok(output) => {
             if output.status.success() {
                 info!("iFlow CLI 已安装");
@@ -40,10 +40,12 @@ async fn get_iflow_guide() -> Result<String, String> {
    npm install -g @iflow-ai/iflow-cli@latest
 
 2. 验证安装
-   iflow --version
+   iflow.cmd --version (Windows)
+   iflow --version (macOS/Linux)
 
 3. 启动 iFlow CLI
-   iflow
+   iflow.cmd (Windows)
+   iflow (macOS/Linux)
 
 4. 登录
    - 选择 "Login with iFlow"（推荐）
@@ -121,6 +123,99 @@ async fn clean_old_logs() -> Result<(), String> {
     }
 }
 
+// 启动 iFlow CLI
+#[tauri::command]
+#[instrument(skip())]
+async fn start_iflow() -> Result<String, String> {
+    info!("启动 iFlow CLI");
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("cmd")
+        .args(["/c", "start", "cmd", "/k", "iflow.cmd"])
+        .spawn();
+
+    #[cfg(not(target_os = "windows"))]
+    let result = Command::new("iflow")
+        .spawn();
+
+    match result {
+        Ok(_) => {
+            info!("iFlow CLI 启动成功");
+            Ok("iFlow CLI 已启动".to_string())
+        },
+        Err(e) => {
+            error!("启动 iFlow CLI 失败: {}", e);
+            Err(format!("启动失败: {}", e))
+        },
+    }
+}
+
+// 检查 iFlow CLI 是否在运行
+#[tauri::command]
+#[instrument(skip())]
+async fn check_iflow_running() -> Result<bool, String> {
+    info!("检查 iFlow CLI 运行状态");
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("tasklist")
+        .args(["/FI", "IMAGENAME eq node.exe", "/FO", "CSV"])
+        .output();
+
+    #[cfg(not(target_os = "windows"))]
+    let result = Command::new("pgrep")
+        .arg("-f")
+        .arg("iflow")
+        .output();
+
+    match result {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            let is_running = output_str.contains("node.exe") || output_str.contains("iflow");
+            info!("iFlow CLI 运行状态: {}", is_running);
+            Ok(is_running)
+        },
+        Err(e) => {
+            warn!("检查 iFlow CLI 运行状态失败: {}", e);
+            Ok(false)
+        },
+    }
+}
+
+// 停止 iFlow CLI
+#[tauri::command]
+#[instrument(skip())]
+async fn stop_iflow() -> Result<String, String> {
+    info!("停止 iFlow CLI");
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("taskkill")
+        .args(["/F", "/IM", "node.exe", "/FI", "WINDOWTITLE eq iflow*"])
+        .output();
+
+    #[cfg(not(target_os = "windows"))]
+    let result = Command::new("pkill")
+        .arg("-f")
+        .arg("iflow")
+        .output();
+
+    match result {
+        Ok(output) => {
+            if output.status.success() {
+                info!("iFlow CLI 已停止");
+                Ok("iFlow CLI 已停止".to_string())
+            } else {
+                // Windows 上 taskkill 可能找不到进程，但这也是正常的
+                info!("iFlow CLI 未在运行");
+                Ok("iFlow CLI 未在运行".to_string())
+            }
+        },
+        Err(e) => {
+            warn!("停止 iFlow CLI 失败: {}", e);
+            Err(format!("停止失败: {}", e))
+        },
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     info!("启动 Tauri 应用");
@@ -135,7 +230,10 @@ pub fn run() {
             load_conversations,
             save_conversations,
             get_log_file_path,
-            clean_old_logs
+            clean_old_logs,
+            start_iflow,
+            check_iflow_running,
+            stop_iflow
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

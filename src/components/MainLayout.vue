@@ -12,6 +12,18 @@
     </div>
 
     <div class="main-content">
+      <div class="toolbar">
+        <div class="status-indicator">
+          <div :class="['status-dot', iflowRunning ? 'running' : 'stopped']"></div>
+          <span class="status-text">
+            iFlow CLI: {{ iflowRunning ? '运行中' : '已停止' }}
+          </span>
+        </div>
+        <button @click="toggleIflow" :class="['btn-toggle', iflowRunning ? 'btn-stop' : 'btn-start']">
+          {{ iflowRunning ? '⏹️ 停止' : '🚀 启动' }}
+        </button>
+        <span v-if="iflowStatus" class="status-message">{{ iflowStatus }}</span>
+      </div>
       <ChatInterface
         :messages="currentMessages"
         :is-generating="isGenerating"
@@ -39,7 +51,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import ChatHistory from './ChatHistory.vue';
 import ChatInterface from './ChatInterface.vue';
 import FileExplorer from './FileExplorer.vue';
@@ -64,6 +77,66 @@ const isGenerating = ref(false);
 
 // 文件编辑
 const selectedFile = ref<FileItem | null>(null);
+
+// iFlow 启动状态
+const iflowStatus = ref<string>('');
+const iflowRunning = ref(false);
+
+// 检查 iFlow 运行状态
+async function checkIflowStatus() {
+  try {
+    const isRunning = await invoke<boolean>('check_iflow_running');
+    iflowRunning.value = isRunning;
+  } catch (error) {
+    console.error('检查 iFlow 状态失败:', error);
+    iflowRunning.value = false;
+  }
+}
+
+// 切换 iFlow 状态
+async function toggleIflow() {
+  if (iflowRunning.value) {
+    // 停止 iFlow
+    iflowStatus.value = '正在停止 iFlow CLI...';
+    try {
+      const result = await invoke<string>('stop_iflow');
+      iflowStatus.value = result;
+      await checkIflowStatus();
+      setTimeout(() => {
+        iflowStatus.value = '';
+      }, 2000);
+    } catch (error) {
+      iflowStatus.value = `停止失败: ${error}`;
+      setTimeout(() => {
+        iflowStatus.value = '';
+      }, 3000);
+    }
+  } else {
+    // 启动 iFlow
+    iflowStatus.value = '正在启动 iFlow CLI...';
+    try {
+      const result = await invoke<string>('start_iflow');
+      iflowStatus.value = result;
+      await checkIflowStatus();
+      setTimeout(() => {
+        iflowStatus.value = '';
+      }, 2000);
+    } catch (error) {
+      iflowStatus.value = `启动失败: ${error}`;
+      setTimeout(() => {
+        iflowStatus.value = '';
+      }, 3000);
+    }
+  }
+}
+
+// 组件挂载时自动检查并启动 iFlow
+onMounted(async () => {
+  await checkIflowStatus();
+  if (!iflowRunning.value) {
+    await toggleIflow();
+  }
+});
 
 // 当前对话的消息
 const currentMessages = computed(() => {
@@ -132,7 +205,7 @@ async function handleSendMessage(content: string) {
   const guideMessage: Message = {
     id: (Date.now() + 1).toString(),
     role: 'assistant',
-    content: `💡 提示：\n\n"我的一个梦" 桌面应用用于管理文件和对话历史。\n\n🚀 要使用 AI 编程功能，请在命令提示符中运行：\n\n  iflow\n\n📋 快速开始：\n1. 打开命令提示符或 PowerShell\n2. 运行：iflow\n3. 选择 "Login with iFlow" 登录\n4. 开始使用 AI 辅助编程\n\n📚 详细文档：https://platform.iflow.cn/cli/quickstart\n\n🎯 当前对话已保存，您可以随时继续。`,
+    content: `💡 提示：\n\n"我的一个梦" 桌面应用用于管理文件和对话历史。\n\n🚀 iFlow CLI 已自动启动！在打开的命令窗口中登录即可使用。\n\n📋 快速开始：\n1. iFlow CLI 已自动启动\n2. 在打开的命令窗口中选择 "Login with iFlow" 登录\n3. 完成浏览器授权\n4. 开始使用 AI 辅助编程\n\n⚙️ 状态管理：\n- 顶部状态栏显示 iFlow 运行状态\n- 点击"启动/停止"按钮可手动控制\n\n📚 详细文档：https://platform.iflow.cn/cli/quickstart\n\n🎯 当前对话已保存，您可以随时继续。`,
     timestamp: Date.now(),
   };
   conversation.messages.push(guideMessage);
@@ -181,6 +254,132 @@ function handleFileSaved() {
   overflow: hidden;
 }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-color, #ffffff);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 8px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.status-dot.running {
+  background: #52c41a;
+  box-shadow: 0 0 8px rgba(82, 196, 26, 0.6);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.stopped {
+  background: #ff4d4f;
+  box-shadow: 0 0 8px rgba(255, 77, 79, 0.6);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.status-text {
+  font-size: 14px;
+  color: var(--text-color, #333);
+  font-weight: 500;
+}
+
+.btn-toggle {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
+}
+
+.btn-start:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(82, 196, 26, 0.4);
+}
+
+.btn-stop {
+  background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(255, 77, 79, 0.3);
+}
+
+.btn-stop:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 77, 79, 0.4);
+}
+
+.btn-toggle:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.status-message {
+  font-size: 14px;
+  color: var(--text-color-secondary, #666);
+}
+
+@media (prefers-color-scheme: dark) {
+  .toolbar {
+    border-bottom-color: var(--border-color, #404040);
+    background: var(--bg-color, #1e1e1e);
+  }
+
+  .status-message {
+    color: var(--text-color-secondary, #999);
+  }
+}
+
 .sidebar-right {
   border-left: 1px solid var(--border-color, #e0e0e0);
 }
@@ -202,6 +401,23 @@ function handleFileSaved() {
 
   .sidebar-right {
     border-left-color: var(--border-color, #404040);
+  }
+
+  .toolbar {
+    border-bottom-color: var(--border-color, #404040);
+    background: var(--bg-color, #1e1e1e);
+  }
+
+  .status-indicator {
+    background: var(--bg-secondary, #2d2d2d);
+  }
+
+  .status-text {
+    color: var(--text-color, #e0e0e0);
+  }
+
+  .status-message {
+    color: var(--text-color-secondary, #999);
   }
 }
 </style>
