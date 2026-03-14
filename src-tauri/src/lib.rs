@@ -312,7 +312,7 @@ async fn send_message_to_iflow(message: String) -> Result<serde_json::Value, Str
                 let execution_info = parse_execution_info(&stderr);
 
                 // 创建结构化响应
-                let mut response = serde_json::json!({
+                let response = serde_json::json!({
                     "content": stdout,
                     "execution_info": execution_info
                 });
