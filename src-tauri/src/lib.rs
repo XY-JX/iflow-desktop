@@ -216,10 +216,10 @@ async fn stop_iflow() -> Result<String, String> {
     }
 }
 
-// 向 iFlow CLI 发送消息
+// 向 iFlow CLI 发送消息（支持流式传输和思考模式）
 #[tauri::command]
 #[instrument(skip(message))]
-async fn send_message_to_iflow(message: String) -> Result<String, String> {
+async fn send_message_to_iflow(message: String, enable_thinking: bool) -> Result<String, String> {
     info!("向 iFlow CLI 发送消息: {}", message);
 
     #[cfg(target_os = "windows")]
@@ -228,18 +228,38 @@ async fn send_message_to_iflow(message: String) -> Result<String, String> {
     #[cfg(not(target_os = "windows"))]
     let iflow_cmd = "iflow";
 
-    match Command::new(iflow_cmd)
-        .arg("-p")
-        .arg(&message)
-        .output()
-    {
+    let mut cmd = Command::new(iflow_cmd);
+    cmd.arg("-p").arg(&message).arg("--stream");
+
+    if enable_thinking {
+        cmd.arg("--thinking");
+    }
+
+    match cmd.output() {
         Ok(output) => {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-                info!("iFlow CLI 响应成功");
-                Ok(stdout)
+                info!("iFlow CLI 响应成功，输出长度: {}", stdout.len());
+
+                // 解析执行信息
+                let execution_info = parse_execution_info(&stderr);
+
+                // 组合响应内容
+                let response = if let Some(info) = execution_info {
+                    format!("{}\n\n[执行信息]\n轮次: {}\n耗时: {}ms\nToken: 输入 {} / 输出 {} / 总计 {}",
+                        stdout,
+                        info.assistant_rounds,
+                        info.execution_time_ms,
+                        info.token_usage.input,
+                        info.token_usage.output,
+                        info.token_usage.total)
+                } else {
+                    stdout
+                };
+
+                Ok(response)
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 let stdout = String::from_utf8_lossy(&output.stdout);
@@ -251,6 +271,50 @@ async fn send_message_to_iflow(message: String) -> Result<String, String> {
             error!("发送消息到 iFlow CLI 失败: {}", e);
             Err(format!("执行失败: {}", e))
         },
+    }
+}
+
+// 执行信息结构
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct TokenUsage {
+    input: u64,
+    output: u64,
+    total: u64,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct ExecutionInfo {
+    session_id: String,
+    conversation_id: String,
+    #[serde(rename = "assistantRounds")]
+    assistant_rounds: u64,
+    #[serde(rename = "executionTimeMs")]
+    execution_time_ms: u64,
+    #[serde(rename = "tokenUsage")]
+    token_usage: TokenUsage,
+}
+
+// 解析执行信息
+fn parse_execution_info(stderr: &str) -> Option<ExecutionInfo> {
+    // 查找 <Execution Info> 标签内的 JSON
+    let start_tag = "<Execution Info>";
+    let end_tag = "</Execution Info>";
+
+    if let Some(start) = stderr.find(start_tag) {
+        if let Some(end) = stderr.find(end_tag) {
+            let json_str = &stderr[start + start_tag.len()..end];
+            match serde_json::from_str(json_str) {
+                Ok(info) => Some(info),
+                Err(e) => {
+                    warn!("解析执行信息失败: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 

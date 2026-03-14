@@ -1,9 +1,9 @@
 {
-  "name": "mydream",
+  "name": "iflow-desktop",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.7.1",
   "type": "module",
-  "description": "我的一个梦 - AI 助手桌面应用",
+  "description": "iFlow Desktop - AI 编程助手桌面应用，集成 iFlow CLI 提供智能对话、思考过程展示和执行信息监控",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",

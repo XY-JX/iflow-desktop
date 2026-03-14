@@ -1,57 +1,115 @@
 <template>
   <div class="chat-interface">
     <div class="chat-header">
-      <ModelSelector
-        :models="availableModels"
-        :selected-model="currentModel"
-        @model-change="handleModelChange"
-      />
+      <div class="header-left">
+        <ModelSelector
+          :models="availableModels"
+          :selected-model="currentModel"
+          @model-change="handleModelChange"
+        />
+      </div>
+      <div class="header-right">
+        <button @click="toggleThinkingMode" :class="['toggle-btn', { active: thinkingMode }]">
+          <span class="icon">🧠</span>
+          <span class="text">思考模式</span>
+        </button>
+      </div>
     </div>
 
     <div class="messages-container" ref="messagesContainer">
       <div
         v-for="message in messages"
         :key="message.id"
-        class="message"
-        :class="message.role"
+        class="message-wrapper"
       >
-        <div class="message-avatar">
-          {{ message.role === 'user' ? '👤' : '🤖' }}
+        <!-- 思考过程区域 -->
+        <div v-if="message.thinking" class="thinking-process" :class="{ collapsed: !showThinking[message.id] }">
+          <div class="thinking-header" @click="toggleThinkingDisplay(message.id)">
+            <span class="thinking-icon">🤔</span>
+            <span class="thinking-title">思考过程</span>
+            <span class="collapse-icon">{{ showThinking[message.id] ? '▼' : '▶' }}</span>
+          </div>
+          <div v-show="showThinking[message.id]" class="thinking-content">
+            <div class="thinking-text">{{ message.thinking }}</div>
+          </div>
         </div>
-        <div class="message-content">
-          <div class="message-text">{{ message.content }}</div>
-          <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+
+        <!-- 消息内容 -->
+        <div class="message" :class="message.role">
+          <div class="message-avatar">
+            {{ message.role === 'user' ? '👤' : '🤖' }}
+          </div>
+          <div class="message-content">
+            <div class="message-text">{{ message.content }}</div>
+            <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+
+            <!-- 执行信息 -->
+            <div v-if="message.executionInfo" class="execution-info">
+              <div class="info-item">
+                <span class="info-icon">⏱️</span>
+                <span class="info-text">耗时：{{ (message.executionInfo.execution_time_ms / 1000).toFixed(2) }}s</span>
+              </div>
+              <div class="info-item">
+                <span class="info-icon">📊</span>
+                <span class="info-text">Token：输入 {{ formatNumber(message.executionInfo.token_usage.input) }} / 输出 {{ formatNumber(message.executionInfo.token_usage.output) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-icon">🔄</span>
+                <span class="info-text">轮次：{{ message.executionInfo.assistant_rounds }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div v-if="isGenerating" class="message assistant">
-        <div class="message-avatar">🤖</div>
-        <div class="message-content">
-          <div class="message-text typing">正在思考...</div>
+
+      <!-- 正在生成状态 -->
+      <div v-if="isGenerating" class="message-wrapper">
+        <div class="thinking-process">
+          <div class="thinking-header">
+            <span class="thinking-icon">🤔</span>
+            <span class="thinking-title">正在思考...</span>
+          </div>
+        </div>
+        <div class="message assistant">
+          <div class="message-avatar">🤖</div>
+          <div class="message-content">
+            <div class="message-text typing">
+              <span class="typing-dot">●</span>
+              <span class="typing-dot">●</span>
+              <span class="typing-dot">●</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="input-area">
-      <textarea
-        v-model="inputText"
-        @keydown="handleKeyDown"
-        placeholder="输入消息与 iFlow AI 交流..."
-        rows="1"
-        ref="inputRef"
-      ></textarea>
-      <button
-        class="send-btn"
-        @click="sendMessage"
-        :disabled="!inputText.trim() || isGenerating"
-      >
-        发送
-      </button>
+      <div class="input-wrapper">
+        <textarea
+          v-model="inputText"
+          @keydown="handleKeyDown"
+          placeholder="输入消息与 iFlow AI 交流..."
+          rows="1"
+          ref="inputRef"
+        ></textarea>
+        <button
+          class="send-btn"
+          @click="sendMessage"
+          :disabled="!inputText.trim() || isGenerating"
+        >
+          <span class="icon">📤</span>
+          <span class="text">发送</span>
+        </button>
+      </div>
+      <div class="input-hint">
+        按 Enter 发送，Shift + Enter 换行
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue';
+import { ref, nextTick, watch, onMounted } from 'vue';
 import ModelSelector from './ModelSelector.vue';
 import type { Message, Model } from '../types';
 
@@ -63,20 +121,22 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'send-message': [content: string];
+  'send-message': [content: string, enableThinking: boolean];
   'model-change': [modelId: string];
 }>();
 
 const inputText = ref('');
 const inputRef = ref<HTMLTextAreaElement>();
 const messagesContainer = ref<HTMLDivElement>();
+const thinkingMode = ref(false);
+const showThinking = ref<Record<string, boolean>>({});
 
 async function sendMessage() {
   const content = inputText.value.trim();
   if (!content || props.isGenerating) return;
 
   inputText.value = '';
-  emit('send-message', content);
+  emit('send-message', content, thinkingMode.value);
 
   // 自动调整输入框高度
   if (inputRef.value) {
@@ -98,11 +158,23 @@ function handleModelChange(modelId: string) {
   emit('model-change', modelId);
 }
 
+function toggleThinkingMode() {
+  thinkingMode.value = !thinkingMode.value;
+}
+
+function toggleThinkingDisplay(messageId: string) {
+  showThinking.value[messageId] = !showThinking.value[messageId];
+}
+
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit'
   });
+}
+
+function formatNumber(num: number): string {
+  return num.toLocaleString('zh-CN');
 }
 
 async function scrollToBottom() {
@@ -129,6 +201,11 @@ watch(inputText, () => {
     inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 150) + 'px';
   }
 });
+
+// 初始化时滚动到底部
+onMounted(() => {
+  scrollToBottom();
+});
 </script>
 
 <style scoped>
@@ -143,6 +220,45 @@ watch(inputText, () => {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   background: var(--bg-secondary, #f8f9fa);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-primary, white);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+
+.toggle-btn:hover {
+  border-color: var(--primary-color, #4a90e2);
+  color: var(--primary-color, #4a90e2);
+}
+
+.toggle-btn.active {
+  background: var(--primary-color, #4a90e2);
+  border-color: var(--primary-color, #4a90e2);
+  color: white;
+}
+
+.toggle-btn .icon {
+  font-size: 16px;
 }
 
 .messages-container {
@@ -151,24 +267,93 @@ watch(inputText, () => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
-.message {
+.message-wrapper {
   display: flex;
-  gap: 12px;
-  animation: fadeIn 0.3s ease;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideIn 0.3s ease;
 }
 
-@keyframes fadeIn {
+@keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 思考过程样式 */
+.thinking-process {
+  background: var(--thinking-bg, #fff7e6);
+  border: 1px solid var(--thinking-border, #ffd591);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.thinking-process.collapsed {
+  border-radius: 8px;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  background: var(--thinking-header-bg, #fffbe6);
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.thinking-header:hover {
+  background: var(--thinking-hover-bg, #fff5cc);
+}
+
+.thinking-icon {
+  font-size: 16px;
+}
+
+.thinking-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--thinking-text, #d46b08);
+}
+
+.collapse-icon {
+  font-size: 10px;
+  color: var(--thinking-text, #d46b08);
+  transition: transform 0.3s ease;
+}
+
+.thinking-process.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.thinking-content {
+  padding: 12px;
+  border-top: 1px solid var(--thinking-border, #ffd591);
+}
+
+.thinking-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--thinking-text, #d46b08);
+  white-space: pre-wrap;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* 消息样式 */
+.message {
+  display: flex;
+  gap: 12px;
 }
 
 .message.user {
@@ -198,7 +383,7 @@ watch(inputText, () => {
   max-width: 70%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .message.user .message-content {
@@ -209,7 +394,7 @@ watch(inputText, () => {
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
@@ -228,6 +413,34 @@ watch(inputText, () => {
 
 .message-text.typing {
   color: var(--text-secondary, #999);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-secondary, #999);
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
 }
 
 .message-time {
@@ -239,12 +452,47 @@ watch(inputText, () => {
   text-align: right;
 }
 
+/* 执行信息样式 */
+.execution-info {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--info-bg, #f0f9ff);
+  border: 1px solid var(--info-border, #bae7ff);
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--info-text, #096dd9);
+}
+
+.info-icon {
+  font-size: 14px;
+}
+
+.info-text {
+  flex: 1;
+}
+
+/* 输入区域样式 */
 .input-area {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   padding: 16px;
   border-top: 1px solid var(--border-color, #e0e0e0);
   background: var(--bg-secondary, #f8f9fa);
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 12px;
 }
 
 .input-area textarea {
@@ -258,16 +506,20 @@ watch(inputText, () => {
   max-height: 150px;
   background: var(--bg-primary, white);
   color: var(--text-primary, #333);
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-area textarea:focus {
   outline: none;
   border-color: var(--primary-color, #4a90e2);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
 .send-btn {
-  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
   background: var(--primary-color, #4a90e2);
   color: white;
   border: none;
@@ -281,11 +533,27 @@ watch(inputText, () => {
 
 .send-btn:hover:not(:disabled) {
   background: var(--primary-hover, #357abd);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.send-btn .icon {
+  font-size: 16px;
+}
+
+.input-hint {
+  font-size: 12px;
+  color: var(--text-secondary, #999);
+  text-align: center;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -298,13 +566,51 @@ watch(inputText, () => {
     border-bottom-color: var(--border-color, #404040);
   }
 
+  .toggle-btn {
+    background: var(--bg-secondary, #2d2d2d);
+    border-color: var(--border-color, #404040);
+    color: var(--text-secondary, #999);
+  }
+
+  .toggle-btn:hover {
+    border-color: var(--primary-color, #4a90e2);
+    color: var(--primary-color, #4a90e2);
+  }
+
+  .thinking-process {
+    background: var(--thinking-bg-dark, #2a2620);
+    border-color: var(--thinking-border-dark, #4a4539);
+  }
+
+  .thinking-header {
+    background: var(--thinking-header-bg-dark, #2a2a20);
+  }
+
+  .thinking-header:hover {
+    background: var(--thinking-hover-bg-dark, #3a3a30);
+  }
+
+  .thinking-title,
+  .collapse-icon {
+    color: var(--thinking-text-dark, #d4b896);
+  }
+
+  .thinking-text {
+    color: var(--thinking-text-dark, #d4b896);
+  }
+
   .message.assistant .message-text {
     background: var(--bg-secondary, #2d2d2d);
     color: var(--text-primary, #f0f0f0);
   }
 
-  .message-time {
-    color: var(--text-secondary, #777);
+  .execution-info {
+    background: var(--info-bg-dark, #1a2630);
+    border-color: var(--info-border-dark, #2a4050);
+  }
+
+  .info-item {
+    color: var(--info-text-dark, #5aa9ff);
   }
 
   .input-area {
@@ -320,6 +626,11 @@ watch(inputText, () => {
 
   .input-area textarea:focus {
     border-color: var(--primary-color, #4a90e2);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+  }
+
+  .input-hint {
+    color: var(--text-secondary, #777);
   }
 }
 </style>

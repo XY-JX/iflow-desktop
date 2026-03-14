@@ -4,6 +4,21 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  thinking?: string; // 思考过程
+  executionInfo?: ExecutionInfo; // 执行信息
+}
+
+// 执行信息类型
+export interface ExecutionInfo {
+  session_id: string;
+  conversation_id: string;
+  assistant_rounds: number;
+  execution_time_ms: number;
+  token_usage: {
+    input: number;
+    output: number;
+    total: number;
+  };
 }
 
 // 对话会话类型

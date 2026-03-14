@@ -174,7 +174,7 @@ function deleteConversation(id: string) {
 }
 
 // 发送消息
-async function handleSendMessage(content: string) {
+async function handleSendMessage(content: string, enableThinking: boolean = false) {
   // 如果没有活动对话，创建一个
   if (!activeConversationId.value) {
     handleNewChat();
@@ -203,15 +203,19 @@ async function handleSendMessage(content: string) {
 
   try {
     // 调用 iFlow CLI 获取回复
-    const response = await invoke<string>('send_message_to_iflow', { message: content });
+    const response = await invoke<string>('send_message_to_iflow', {
+      message: content,
+      enableThinking: enableThinking
+    });
 
-    // 添加助手回复
+    // 解析响应，提取思考过程和执行信息
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
       content: response,
       timestamp: Date.now(),
     };
+
     conversation.messages.push(assistantMessage);
     conversation.updatedAt = Date.now();
   } catch (error) {
