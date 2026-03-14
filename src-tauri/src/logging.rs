@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
-use chrono::Local;
 
 /// 初始化日志系统
 ///
@@ -88,39 +87,38 @@ fn get_log_directory() -> PathBuf {
 pub fn get_log_file_path() -> Option<PathBuf> {
     let log_dir = get_log_directory();
 
-    // 获取今天的日期字符串
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let log_file = log_dir.join(format!("iflow-desktop.log.{}", today));
+    // 返回最新的日志文件
+    if let Ok(mut entries) = std::fs::read_dir(&log_dir) {
+        let mut latest_file: Option<PathBuf> = None;
+        let mut latest_time: Option<std::time::SystemTime> = None;
 
-    if log_file.exists() {
-        Some(log_file)
-    } else {
-        // 如果今天的日志文件不存在，返回最新的日志文件
-        if let Ok(mut entries) = std::fs::read_dir(&log_dir) {
-            let mut latest_file: Option<PathBuf> = None;
-            let mut latest_time: Option<std::time::SystemTime> = None;
+        while let Some(Ok(entry)) = entries.next() {
+            let path = entry.path();
 
-            while let Some(Ok(entry)) = entries.next() {
-                let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("log") ||
-                   path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    continue;
-                }
+            // 跳过目录和非日志文件
+            if path.is_dir() {
+                continue;
+            }
 
-                if let Ok(metadata) = std::fs::metadata(&path) {
-                    if let Ok(modified) = metadata.modified() {
-                        if latest_time.is_none() || modified > latest_time.unwrap() {
-                            latest_time = Some(modified);
-                            latest_file = Some(path);
-                        }
+            // 检查文件名是否匹配日志文件格式
+            let file_name = path.file_name()?.to_str()?;
+            if !file_name.starts_with("iflow-desktop.log") {
+                continue;
+            }
+
+            if let Ok(metadata) = std::fs::metadata(&path) {
+                if let Ok(modified) = metadata.modified() {
+                    if latest_time.is_none() || modified > latest_time.unwrap() {
+                        latest_time = Some(modified);
+                        latest_file = Some(path);
                     }
                 }
             }
-
-            latest_file
-        } else {
-            None
         }
+
+        latest_file
+    } else {
+        None
     }
 }
 
