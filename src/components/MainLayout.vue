@@ -6,8 +6,8 @@
         :conversations="conversations"
         :active-conversation-id="activeConversationId"
         @new-chat="handleNewChat"
-        @select-conversation="selectConversation"
-        @delete-conversation="deleteConversation"
+        @select-conversation="selectConversationWrapper"
+        @delete-conversation="deleteConversationWrapper"
       />
     </div>
 
@@ -65,7 +65,7 @@
     <div v-if="selectedFile" class="editor-panel">
       <FileEditor
         :file="selectedFile"
-        @close="selectedFile = null"
+        @close="clearSelection"
         @saved="handleFileSaved"
       />
     </div>
@@ -73,39 +73,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { useChatStore } from '../stores/chatStore';
+import { useFileStore } from '../stores/fileStore';
+import { useIflowStore } from '../stores/iflowStore';
 import ChatHistory from './ChatHistory.vue';
 import ChatInterface from './ChatInterface.vue';
 import FileExplorer from './FileExplorer.vue';
 import FileEditor from './FileEditor.vue';
-import type { Conversation, Message, Model, FileItem } from '../types';
+import type { Message, Model, FileItem } from '../types';
 
-// 对话历史
-const conversations = ref<Conversation[]>([]);
-const activeConversationId = ref<string | undefined>();
+// 初始化 Store
+const chatStore = useChatStore();
+const fileStore = useFileStore();
+const iflowStore = useIflowStore();
 
-// 当前模型
+// 解构状态 (响应式保持)
+const { conversations, activeConversationId, currentMessages, isGenerating, latestThinking } = chatStore;
+const { createNewConversation, selectConversation, deleteConversation: storeDeleteConversation, addMessage, setGenerating, setThinking } = chatStore;
+const { selectedFile, selectFile, clearSelection } = fileStore;
+const { iflowRunning, iflowStatus } = iflowStore;
+const { setRunning, setStatus, clearStatus } = iflowStore;
+
+// 当前模型 (本地状态)
 const availableModels: Model[] = [
   { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI' },
   { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' },
   { id: 'claude-3', name: 'Claude 3', provider: 'Anthropic' },
-  { id: 'glm-4', name: 'GLM-4', provider: '智谱AI' },
+  { id: 'glm-4', name: 'GLM-4', provider: '智谱 AI' },
 ];
 const currentModel = ref('glm-4');
-
-// 生成状态
-const isGenerating = ref(false);
-
-// 文件编辑
-const selectedFile = ref<FileItem | null>(null);
-
-// iFlow 启动状态
-const iflowStatus = ref<string>('');
-const iflowRunning = ref(false);
-
-// 思考过程显示
-const latestThinking = ref<string>('');
 
 // 检查 iFlow 运行状态
 async function checkIflowStatus() {
@@ -160,30 +158,21 @@ onMounted(async () => {
   await checkIflowStatus();
 });
 
-// 当前对话的消息
-const currentMessages = computed(() => {
-  if (!activeConversationId.value) return [];
-  const conversation = conversations.value.find(c => c.id === activeConversationId.value);
-  return conversation?.messages || [];
-});
+// 当前对话的消息 (从 store 计算属性获取)
+// const currentMessages = computed(() => {
+//   if (!activeConversationId.value) return [];
+//   const conversation = conversations.value.find(c => c.id === activeConversationId.value);
+//   return conversation?.messages || [];
+// });
 
 // 创建新对话
 function handleNewChat() {
-  const newConversation: Conversation = {
-    id: Date.now().toString(),
-    title: '新对话',
-    messages: [],
-    model: currentModel.value,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-  conversations.value.unshift(newConversation);
-  activeConversationId.value = newConversation.id;
+  createNewConversation('新对话', currentModel.value);
 }
 
 // 选择对话
-function selectConversation(id: string) {
-  activeConversationId.value = id;
+function selectConversationWrapper(id: string) {
+  selectConversation(id);
   const conversation = conversations.value.find(c => c.id === id);
   if (conversation) {
     currentModel.value = conversation.model;
@@ -191,22 +180,16 @@ function selectConversation(id: string) {
 }
 
 // 删除对话
-function deleteConversation(id: string) {
-  conversations.value = conversations.value.filter(c => c.id !== id);
-  if (activeConversationId.value === id) {
-    activeConversationId.value = undefined;
-  }
+function deleteConversationWrapper(id: string) {
+  storeDeleteConversation(id);
 }
 
 // 发送消息
 async function handleSendMessage(content: string) {
   // 如果没有活动对话，创建一个
   if (!activeConversationId.value) {
-    handleNewChat();
+    createNewConversation();
   }
-
-  const conversation = conversations.value.find(c => c.id === activeConversationId.value);
-  if (!conversation) return;
 
   // 添加用户消息
   const userMessage: Message = {
@@ -215,17 +198,11 @@ async function handleSendMessage(content: string) {
     content,
     timestamp: Date.now(),
   };
-  conversation.messages.push(userMessage);
-
-  // 更新对话标题（如果是第一条消息）
-  if (conversation.messages.length === 1) {
-    conversation.title = content.slice(0, 30) + (content.length > 30 ? '...' : '');
-  }
-  conversation.updatedAt = Date.now();
+  addMessage(userMessage);
 
   // 设置生成状态
-  isGenerating.value = true;
-  latestThinking.value = '正在思考...';
+  setGenerating(true);
+  setThinking('正在思考...');
 
   try {
     // 调用 iFlow CLI 获取回复
@@ -238,7 +215,7 @@ async function handleSendMessage(content: string) {
     const executionInfo = response.execution_info;
 
     // 更新思考过程显示
-    latestThinking.value = assistantContent;
+    setThinking(assistantContent);
 
     // 创建助手消息
     const assistantMessage: Message = {
@@ -249,8 +226,7 @@ async function handleSendMessage(content: string) {
       executionInfo: executionInfo
     };
 
-    conversation.messages.push(assistantMessage);
-    conversation.updatedAt = Date.now();
+    addMessage(assistantMessage);
   } catch (error) {
     // 添加错误消息
     const errorMessage: Message = {
@@ -259,11 +235,10 @@ async function handleSendMessage(content: string) {
       content: `❌ 获取回复失败：${error}`,
       timestamp: Date.now(),
     };
-    conversation.messages.push(errorMessage);
-    conversation.updatedAt = Date.now();
-    latestThinking.value = '获取回复失败';
+    addMessage(errorMessage);
+    setThinking('获取回复失败');
   } finally {
-    isGenerating.value = false;
+    setGenerating(false);
   }
 }
 
@@ -281,7 +256,7 @@ function handleModelChange(modelId: string) {
 
 // 选择文件
 function handleFileSelected(file: FileItem) {
-  selectedFile.value = file;
+  selectFile(file);
 }
 
 // 文件保存成功
