@@ -1,6 +1,6 @@
 [package]
 name = "iflow-desktop"
-version = "1.7.1"
+version = "1.8.0"
 description = "iFlow Desktop - AI 编程助手桌面应用"
 authors = ["you"]
 edition = "2021"
