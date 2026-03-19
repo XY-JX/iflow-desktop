@@ -94,7 +94,6 @@ const { conversations, activeConversationId, currentMessages, isGenerating, late
 const { createNewConversation, selectConversation, deleteConversation: storeDeleteConversation, addMessage, setGenerating, setThinking } = chatStore;
 const { selectedFile, selectFile, clearSelection } = fileStore;
 const { iflowRunning, iflowStatus } = iflowStore;
-const { setRunning, setStatus, clearStatus } = iflowStore;
 
 // 当前模型 (本地状态)
 const availableModels: Model[] = [
@@ -105,7 +104,6 @@ const availableModels: Model[] = [
 ];
 const currentModel = ref('glm-4');
 
-// 检查 iFlow 运行状态
 async function checkIflowStatus() {
   try {
     const isRunning = await invoke<boolean>('check_iflow_running');
@@ -129,7 +127,7 @@ async function toggleIflow() {
         iflowStatus.value = '';
       }, 2000);
     } catch (error) {
-      iflowStatus.value = `停止失败: ${error}`;
+      iflowStatus.value = `停止失败：${error}`;
       setTimeout(() => {
         iflowStatus.value = '';
       }, 3000);
@@ -145,7 +143,7 @@ async function toggleIflow() {
         iflowStatus.value = '';
       }, 2000);
     } catch (error) {
-      iflowStatus.value = `启动失败: ${error}`;
+      iflowStatus.value = `启动失败：${error}`;
       setTimeout(() => {
         iflowStatus.value = '';
       }, 3000);

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useChatStore } from '../stores/chatStore';
 import { createPinia, setActivePinia } from 'pinia';
 
