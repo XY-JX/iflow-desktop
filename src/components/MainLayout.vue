@@ -75,6 +75,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { storeToRefs } from 'pinia';
 import { useChatStore } from '../stores/chatStore';
 import { useFileStore } from '../stores/fileStore';
 import { useIflowStore } from '../stores/iflowStore';
@@ -89,11 +90,11 @@ const chatStore = useChatStore();
 const fileStore = useFileStore();
 const iflowStore = useIflowStore();
 
-// 解构状态 (响应式保持)
-const { conversations, activeConversationId, currentMessages, isGenerating, latestThinking } = chatStore;
+// 解构状态 (使用 storeToRefs 保持响应式)
+const { conversations, activeConversationId, currentMessages, isGenerating, latestThinking } = storeToRefs(chatStore);
 const { createNewConversation, selectConversation, deleteConversation: storeDeleteConversation, addMessage, setGenerating, setThinking } = chatStore;
 const { selectedFile, selectFile, clearSelection } = fileStore;
-const { iflowRunning, iflowStatus } = iflowStore;
+const { iflowRunning, iflowStatus } = storeToRefs(iflowStore);
 
 // 当前模型 (本地状态)
 const availableModels: Model[] = [
