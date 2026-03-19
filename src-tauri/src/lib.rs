@@ -24,8 +24,8 @@ pub fn run() {
             commands::conversation::load_conversations,
             commands::conversation::save_conversations,
             // 日志相关命令
-            logging::get_log_file_path(),
-            logging::clean_old_logs(),
+            logging::get_log_file_path,
+            logging::clean_old_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
