@@ -1,0 +1,24 @@
+{
+  "files.associations": {
+    "*.rs": "rust",
+    "*.vue": "vue"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": {
+    "typescript": "esbenp.prettier-vscode",
+    "vue": "Vue.volar",
+    "rust": "rust-lang.rust-analyzer"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "Vue.volar"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "vue.vitePressMode": false,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "rust-analyzer.cargo.features": "all"
+}
