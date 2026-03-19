@@ -1728,7 +1728,7 @@ dependencies = [
 
 [[package]]
 name = "iflow-desktop"
-version = "1.7.1"
+version = "1.8.0"
 dependencies = [
  "serde",
  "serde_json",
