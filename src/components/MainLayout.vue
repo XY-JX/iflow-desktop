@@ -94,7 +94,8 @@ const iflowStore = useIflowStore();
 const { conversations, activeConversationId, currentMessages, isGenerating, latestThinking } = storeToRefs(chatStore);
 const { createNewConversation, selectConversation, deleteConversation: storeDeleteConversation, addMessage, setGenerating, setThinking } = chatStore;
 const { selectedFile, selectFile, clearSelection } = fileStore;
-const { iflowRunning, iflowStatus } = storeToRefs(iflowStore);
+const iflowStoreRefs = storeToRefs(iflowStore);
+const { iflowRunning, iflowStatus } = iflowStoreRefs;
 
 // 当前模型 (本地状态)
 const availableModels: Model[] = [
