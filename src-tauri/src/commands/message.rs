@@ -12,14 +12,16 @@ struct TokenUsage {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ExecutionInfo {
+    #[serde(default)]
     session_id: String,
+    #[serde(default)]
     conversation_id: String,
-    #[serde(rename = "assistantRounds")]
+    #[serde(rename = "assistantRounds", default)]
     assistant_rounds: u64,
-    #[serde(rename = "executionTimeMs")]
+    #[serde(rename = "executionTimeMs", default)]
     execution_time_ms: u64,
-    #[serde(rename = "tokenUsage")]
-    token_usage: TokenUsage,
+    #[serde(rename = "tokenUsage", default)]
+    token_usage: Option<TokenUsage>,
 }
 
 /// 向 iFlow CLI 发送消息
@@ -95,10 +97,58 @@ fn parse_execution_info(stderr: &str) -> Option<ExecutionInfo> {
     if let Some(start) = stderr.find(start_tag) {
         if let Some(end) = stderr.find(end_tag) {
             let json_str = &stderr[start + start_tag.len()..end];
+            
+            // 清理 JSON 字符串（移除可能的空白字符）
+            let json_str = json_str.trim();
+            
             match serde_json::from_str(json_str) {
-                Ok(info) => Some(info),
+                Ok(info) => {
+                    info!("成功解析执行信息：session={}, rounds={}, time={}ms", 
+                          info.session_id, info.assistant_rounds, info.execution_time_ms);
+                    Some(info)
+                },
                 Err(e) => {
-                    warn!("解析执行信息失败：{}", e);
+                    warn!("解析执行信息失败：{}, JSON: {}", e, json_str);
+                    
+                    // 尝试使用更宽松的方式解析
+                    let mut execution_info = ExecutionInfo {
+                        session_id: String::new(),
+                        conversation_id: String::new(),
+                        assistant_rounds: 0,
+                        execution_time_ms: 0,
+                        token_usage: None,
+                    };
+                    
+                    // 尝试从部分 JSON 中提取信息
+                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
+                        if let Some(obj) = value.as_object() {
+                            execution_info.session_id = obj.get("session_id")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            execution_info.conversation_id = obj.get("conversation_id")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            execution_info.assistant_rounds = obj.get("assistantRounds")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0);
+                            execution_info.execution_time_ms = obj.get("executionTimeMs")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0);
+                            
+                            if let Some(token_obj) = obj.get("tokenUsage").and_then(|v| v.as_object()) {
+                                execution_info.token_usage = Some(TokenUsage {
+                                    input: token_obj.get("input").and_then(|v| v.as_u64()).unwrap_or(0),
+                                    output: token_obj.get("output").and_then(|v| v.as_u64()).unwrap_or(0),
+                                    total: token_obj.get("total").and_then(|v| v.as_u64()).unwrap_or(0),
+                                });
+                            }
+                            
+                            return Some(execution_info);
+                        }
+                    }
+                    
                     None
                 }
             }
