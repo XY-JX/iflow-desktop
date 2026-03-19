@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::fs;
-use tracing::{info, debug};
+use tracing::{info, debug, instrument};
 
 /// 获取配置目录
 pub fn get_config_dir() -> Result<PathBuf, String> {

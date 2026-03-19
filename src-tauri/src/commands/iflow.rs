@@ -1,5 +1,5 @@
 use std::process::Command;
-use tracing::{info, warn};
+use tracing::{info, warn, instrument};
 
 /// 检查 iFlow CLI 是否已安装
 #[tauri::command]

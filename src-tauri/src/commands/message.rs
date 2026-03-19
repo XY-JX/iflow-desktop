@@ -1,6 +1,6 @@
 use std::process::Command;
 use serde::{Serialize, Deserialize};
-use tracing::{info, warn, error};
+use tracing::{info, warn, error, instrument};
 
 /// 执行信息结构
 #[derive(Serialize, Deserialize, Debug)]
