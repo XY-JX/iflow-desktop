@@ -101,7 +101,7 @@ fn parse_execution_info(stderr: &str) -> Option<ExecutionInfo> {
             // 清理 JSON 字符串（移除可能的空白字符）
             let json_str = json_str.trim();
             
-            match serde_json::from_str(json_str) {
+            match serde_json::from_str::<ExecutionInfo>(json_str) {
                 Ok(info) => {
                     info!("成功解析执行信息：session={}, rounds={}, time={}ms", 
                           info.session_id, info.assistant_rounds, info.execution_time_ms);
