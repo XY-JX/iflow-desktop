@@ -84,6 +84,7 @@ fn get_log_directory() -> PathBuf {
 }
 
 /// 获取当前日志文件路径（用于显示给用户）
+#[tauri::command]
 pub fn get_log_file_path() -> Option<PathBuf> {
     let log_dir = get_log_directory();
 
@@ -123,6 +124,7 @@ pub fn get_log_file_path() -> Option<PathBuf> {
 }
 
 /// 清理旧的日志文件（保留最近 7 天）
+#[tauri::command]
 pub fn clean_old_logs() -> Result<(), String> {
     let log_dir = get_log_directory();
 
