@@ -200,8 +200,6 @@ onMounted(async () => {
 });
 </script>
 
-</template>
-
 <style scoped>
 .chat-interface {
   display: flex;
@@ -226,7 +224,7 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.toggle-btn {
+toggle-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -240,18 +238,18 @@ onMounted(async () => {
   color: var(--text-secondary, #666);
 }
 
-.toggle-btn:hover {
+toggle-btn:hover {
   border-color: var(--primary-color, #4a90e2);
   color: var(--primary-color, #4a90e2);
 }
 
-.toggle-btn.active {
+toggle-btn.active {
   background: var(--primary-color, #4a90e2);
   border-color: var(--primary-color, #4a90e2);
   color: white;
 }
 
-.toggle-btn .icon {
+toggle-btn .icon {
   font-size: 16px;
 }
 
@@ -606,3 +604,4 @@ onMounted(async () => {
     color: var(--text-secondary, #777);
   }
 }
+</style>
