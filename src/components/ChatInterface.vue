@@ -200,6 +200,8 @@ onMounted(async () => {
 });
 </script>
 
+</template>
+
 <style scoped>
 .chat-interface {
   display: flex;
