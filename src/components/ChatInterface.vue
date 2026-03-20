@@ -126,13 +126,18 @@ async function sendMessage() {
   const content = inputText.value.trim();
   if (!content || props.isGenerating) return;
 
-  inputText.value = '';
+  // 先发送消息
   emit('send-message', content);
 
-  // 自动调整输入框高度
-  if (inputRef.value) {
-    inputRef.value.style.height = 'auto';
-  }
+  // 清空输入框并触发视图更新
+  inputText.value = '';
+  
+  // 确保DOM更新后再调整高度
+  await nextTick(() => {
+    if (inputRef.value) {
+      inputRef.value.style.height = 'auto';
+    }
+  });
 
   // 滚动到底部
   await scrollToBottom();
@@ -178,10 +183,15 @@ watch(() => props.isGenerating, () => {
 });
 
 // 自动调整输入框高度
-watch(inputText, () => {
+watch(inputText, async () => {
   if (inputRef.value) {
+    // 先重置高度以获取正确的scrollHeight
     inputRef.value.style.height = 'auto';
-    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 150) + 'px';
+    await nextTick();
+    
+    // 计算新高度，限制最大高度
+    const newHeight = Math.min(inputRef.value.scrollHeight, 150);
+    inputRef.value.style.height = newHeight + 'px';
   }
 });
 

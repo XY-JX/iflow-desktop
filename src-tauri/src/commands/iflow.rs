@@ -109,20 +109,23 @@ pub async fn check_iflow_running() -> Result<bool, String> {
     info!("检查 iFlow CLI 运行状态");
     
     #[cfg(target_os = "windows")]
-    let result = Command::new("tasklist")
-        .args(["/FI", "IMAGENAME eq node.exe", "/FO", "CSV"])
+    let result = Command::new("wmic")
+        .args(["process", "where", "name='node.exe' and commandline like '%iflow%'", "get", "commandline"])
         .output();
     
     #[cfg(not(target_os = "windows"))]
     let result = Command::new("pgrep")
-        .arg("-f")
-        .arg("iflow")
+        .args(["-f", "iflow"])
         .output();
     
     match result {
         Ok(output) => {
             let output_str = String::from_utf8_lossy(&output.stdout);
-            let is_running = output_str.contains("node.exe") || output_str.contains("iflow");
+            let is_running = if cfg!(target_os = "windows") {
+                output_str.contains("iflow") && !output_str.contains("wmic")
+            } else {
+                !output_str.trim().is_empty()
+            };
             info!("iFlow CLI 运行状态：{}", is_running);
             Ok(is_running)
         },
