@@ -110,7 +110,7 @@ pub async fn check_iflow_running() -> Result<bool, String> {
     
     #[cfg(target_os = "windows")]
     let result = Command::new("wmic")
-        .args(["process", "where", "name='node.exe' and commandline like '%iflow%'", "get", "commandline"])
+        .args(["process", "where", "name='node.exe' and commandline like '%iflow%' and not commandline like '%wmic%'", "get", "commandline"])
         .output();
     
     #[cfg(not(target_os = "windows"))]

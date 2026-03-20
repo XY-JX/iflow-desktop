@@ -133,11 +133,10 @@ async function sendMessage() {
   inputText.value = '';
   
   // 确保DOM更新后再调整高度
-  await nextTick(() => {
-    if (inputRef.value) {
-      inputRef.value.style.height = 'auto';
-    }
-  });
+  await nextTick();
+  if (inputRef.value) {
+    inputRef.value.style.height = 'auto';
+  }
 
   // 滚动到底部
   await scrollToBottom();
@@ -173,13 +172,13 @@ async function scrollToBottom() {
 }
 
 // 监听消息变化，自动滚动到底部
-watch(() => props.messages, () => {
-  scrollToBottom();
+watch(() => props.messages, async () => {
+  await scrollToBottom();
 }, { deep: true });
 
 // 监听生成状态变化
-watch(() => props.isGenerating, () => {
-  scrollToBottom();
+watch(() => props.isGenerating, async () => {
+  await scrollToBottom();
 });
 
 // 自动调整输入框高度
@@ -196,8 +195,8 @@ watch(inputText, async () => {
 });
 
 // 初始化时滚动到底部
-onMounted(() => {
-  scrollToBottom();
+onMounted(async () => {
+  await scrollToBottom();
 });
 </script>
 
@@ -605,4 +604,3 @@ onMounted(() => {
     color: var(--text-secondary, #777);
   }
 }
-</style>
