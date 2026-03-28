@@ -204,15 +204,15 @@ const availableModels: Model[] = [
 ];
 const currentModel = ref('glm-4.6v');
 
-async function checkZhipuStatus() {
-  try {
-    const isReady = await invoke<boolean>('check_zhipu_status');
-    zhipuReady.value = isReady;
-  } catch (error) {
-    console.error('检查智谱 AI 状态失败:', error);
-    zhipuReady.value = false;
-  }
-}
+// async function checkZhipuStatus() {
+//   try {
+//     const isReady = await invoke<boolean>('check_zhipu_status');
+//     zhipuReady.value = isReady;
+//   } catch (error) {
+//     console.error('检查智谱 AI 状态失败:', error);
+//     zhipuReady.value = false;
+//   }
+// }
 
 // 初始化智谱 AI 客户端
 async function initZhipuClient() {
@@ -586,6 +586,7 @@ function saveQuickRoles() {
   console.log('角色已切换:', systemPrompt.value);
 }
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // 删除自定义角色
 function deleteCustomRole(roleLabel: string) {
   if (!confirm(`确定要删除角色 "${roleLabel}" 吗？\n\n此操作不可恢复！`)) {
@@ -594,7 +595,7 @@ function deleteCustomRole(roleLabel: string) {
   
   try {
     const customRoles = getCustomRoles();
-    const index = customRoles.findIndex(r => r.label === roleLabel);
+    const index = customRoles.findIndex((r: any) => r.label === roleLabel);
     
     if (index === -1) {
       alert('未找到该角色');
