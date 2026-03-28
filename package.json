@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run --config vite.config.test.ts",
-    "test:watch": "vitest --config vite.config.test.ts"
+    "test:watch": "vitest --config vite.config.test.ts",
+    "package": "powershell -ExecutionPolicy Bypass -File ./package-build.ps1"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
