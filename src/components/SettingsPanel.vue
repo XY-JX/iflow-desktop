@@ -1,0 +1,698 @@
+<template>
+  <div class="settings-panel">
+    <div class="panel-header">
+      <span class="panel-title">⚙️ 模型设置</span>
+      <button class="close-btn" @click="$emit('close')">×</button>
+    </div>
+
+    <div class="panel-content">
+      <!-- 系统提示词 -->
+      <div class="setting-section">
+        <label class="section-label">🤖 系统角色设定</label>
+        <div class="current-role-display" v-if="localSystemPrompt">
+          <span class="role-icon">✅</span>
+          <span class="role-text">当前角色：{{ getCurrentRoleName() }}</span>
+        </div>
+        <textarea
+          v-model="localSystemPrompt"
+          class="system-prompt-input"
+          placeholder="输入系统提示词，例如：你是一个有帮助的 AI 助手..."
+          rows="4"
+          @change="updateSettings"
+        ></textarea>
+        <div class="preset-prompts">
+          <button 
+            class="preset-btn"
+            :class="{ active: localSystemPrompt === preset.value }"
+            v-for="preset in presetPrompts"
+            :key="preset.value"
+            @click="setSystemPrompt(preset.value)"
+          >
+            {{ preset.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 温度参数 -->
+      <div class="setting-section">
+        <label class="section-label">🌡️ 温度 (Temperature): {{ temperature }}</label>
+        <input
+          type="range"
+          v-model.number="temperature"
+          min="0"
+          max="1"
+          step="0.1"
+          class="slider"
+          @change="updateSettings"
+        />
+        <div class="slider-labels">
+          <span>精准 (0)</span>
+          <span>随机 (1)</span>
+        </div>
+      </div>
+
+      <!-- 最大 Token 数 -->
+      <div class="setting-section">
+        <label class="section-label">📏 最大输出长度 (Tokens): {{ maxTokens }}</label>
+        <input
+          type="range"
+          v-model.number="maxTokens"
+          min="256"
+          max="8192"
+          step="256"
+          class="slider"
+          @change="updateSettings"
+        />
+        <div class="slider-labels">
+          <span>256</span>
+          <span>8192</span>
+        </div>
+      </div>
+
+      <!-- 重置按钮 -->
+      <div class="setting-actions">
+        <button class="reset-btn" @click="resetToDefaults">
+          🔄 恢复默认设置
+        </button>
+      </div>
+
+      <!-- 自定义角色管理 -->
+      <div class="setting-section">
+        <label class="section-label">🎭 自定义角色管理</label>
+        <button @click="showAddRoleDialog = true" class="btn-add-role-panel">
+          ➕ 添加自定义角色
+        </button>
+        
+        <div v-if="customRoles.length > 0" class="custom-roles-list">
+          <div v-for="(role, index) in customRoles" :key="index" class="role-item">
+            <div class="role-info">
+              <span class="role-icon-display">{{ role.icon }}</span>
+              <div class="role-details">
+                <span class="role-name-display">{{ role.label }}</span>
+                <span class="role-prompt-display">{{ role.value.substring(0, 50) }}{{ role.value.length > 50 ? '...' : '' }}</span>
+              </div>
+            </div>
+            <div class="role-actions">
+              <button @click="editCustomRole(index)" class="btn-edit-role" title="编辑此角色">
+                ✏️
+              </button>
+              <button @click="deleteCustomRole(index)" class="btn-delete-role" title="删除此角色">
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div v-else class="no-roles-hint">
+          <p>暂无自定义角色，点击上方按钮添加</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加角色对话框 -->
+    <div v-if="showAddRoleDialog" class="dialog-overlay" @click="showAddRoleDialog = false">
+      <div class="dialog-content" @click.stop>
+        <h3 class="dialog-title">➕ 添加自定义角色</h3>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label class="form-label">角色图标</label>
+            <input 
+              v-model="newRole.icon"
+              type="text"
+              class="form-input"
+              placeholder="例如：🚀"
+              maxlength="2"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">角色名称</label>
+            <input 
+              v-model="newRole.label"
+              type="text"
+              class="form-input"
+              placeholder="例如：翻译助手"
+              maxlength="10"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">系统提示词</label>
+            <textarea 
+              v-model="newRole.value"
+              class="form-textarea"
+              placeholder="描述这个角色的职责和能力..."
+              rows="4"
+            ></textarea>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button @click="showAddRoleDialog = false" class="btn-dialog-cancel">取消</button>
+          <button @click="handleAddRole" class="btn-dialog-confirm">确定</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 编辑角色对话框 -->
+    <div v-if="showEditRoleDialog" class="dialog-overlay" @click="showEditRoleDialog = false">
+      <div class="dialog-content" @click.stop>
+        <h3 class="dialog-title">✏️ 编辑自定义角色</h3>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label class="form-label">角色图标</label>
+            <input 
+              v-model="newRole.icon"
+              type="text"
+              class="form-input"
+              placeholder="例如：🚀"
+              maxlength="2"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">角色名称</label>
+            <input 
+              v-model="newRole.label"
+              type="text"
+              class="form-input"
+              placeholder="例如：翻译助手"
+              maxlength="10"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">系统提示词</label>
+            <textarea 
+              v-model="newRole.value"
+              class="form-textarea"
+              placeholder="描述这个角色的职责和能力..."
+              rows="4"
+            ></textarea>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button @click="showEditRoleDialog = false" class="btn-dialog-cancel">取消</button>
+          <button @click="saveEditedRole" class="btn-dialog-confirm">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+
+interface SettingsPanelProps {
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+const props = withDefaults(defineProps<SettingsPanelProps>(), {
+  systemPrompt: '你是一个有用的 AI 编程助手。',
+  temperature: 0.7,
+  maxTokens: 2048,
+});
+
+const emit = defineEmits<{
+  close: [];
+  'update:settings': [settings: { systemPrompt: string; temperature: number; maxTokens: number }];
+}>();
+
+const localSystemPrompt = ref(props.systemPrompt);
+const temperature = ref(props.temperature);
+const maxTokens = ref(props.maxTokens);
+const showAddRoleDialog = ref(false);
+const showEditRoleDialog = ref(false);
+const editingRoleIndex = ref(-1);
+const newRole = ref({
+  icon: '🚀',
+  label: '',
+  value: ''
+});
+
+// 自定义角色存储
+const customRoles = ref<any[]>([]);
+
+// 加载自定义角色 (从本地文件)
+async function loadCustomRoles() {
+  try {
+    const config: any = await invoke('load_app_config');
+    customRoles.value = config.custom_roles || [];
+    console.log(`已加载 ${customRoles.value.length} 个自定义角色`);
+  } catch (error) {
+    console.error('加载自定义角色失败:', error);
+  }
+}
+
+// 保存自定义角色 (到本地文件)
+// async function saveCustomRoles() {
+//   try {
+//     const config: any = await invoke('load_app_config');
+//     config.custom_roles = customRoles.value;
+//     await invoke('save_app_config', { config });
+//     console.log(`已保存 ${customRoles.value.length} 个自定义角色`);
+//   } catch (error) {
+//     console.error('保存自定义角色失败:', error);
+//   }
+// }
+
+// 添加新角色
+async function handleAddRole() {
+  if (!newRole.value.label || !newRole.value.value) {
+    alert('请填写角色名称和系统提示词');
+    return;
+  }
+  
+  try {
+    await invoke('add_custom_role', {
+      role: {
+        icon: newRole.value.icon,
+        label: newRole.value.label,
+        value: newRole.value.value
+      }
+    });
+    
+    // 重新加载角色列表
+    await loadCustomRoles();
+    
+    // 重置表单
+    newRole.value = {
+      icon: '🚀',
+      label: '',
+      value: ''
+    };
+    
+    showAddRoleDialog.value = false;
+  } catch (error) {
+    console.error('添加角色失败:', error);
+    alert('添加角色失败：' + error);
+  }
+}
+
+// 删除角色
+async function deleteCustomRole(index: number) {
+  const role = customRoles.value[index];
+  if (!role) {
+    alert('未找到该角色');
+    return;
+  }
+  
+  if (!confirm(`确定要删除角色 "${role.icon} ${role.label}" 吗？\n\n此操作不可恢复！`)) {
+    return;
+  }
+  
+  try {
+    await invoke('delete_custom_role', { index });
+    // 重新加载角色列表
+    await loadCustomRoles();
+    alert(`角色 "${role.icon} ${role.label}" 已删除`);
+  } catch (error) {
+    console.error('删除角色失败:', error);
+    alert('删除角色失败：' + error);
+  }
+}
+
+// 编辑角色
+function editCustomRole(index: number) {
+  const role = customRoles.value[index];
+  if (!role) {
+    alert('未找到该角色');
+    return;
+  }
+  
+  editingRoleIndex.value = index;
+  newRole.value = {
+    icon: role.icon,
+    label: role.label,
+    value: role.value
+  };
+  showEditRoleDialog.value = true;
+}
+
+// 保存编辑的角色
+async function saveEditedRole() {
+  if (!newRole.value.label || !newRole.value.value) {
+    alert('请填写角色名称和系统提示词');
+    return;
+  }
+  
+  try {
+    await invoke('add_custom_role', {
+      role: {
+        icon: newRole.value.icon,
+        label: newRole.value.label,
+        value: newRole.value.value
+      }
+    });
+    
+    // 重新加载角色列表
+    await loadCustomRoles();
+    
+    // 重置表单
+    newRole.value = {
+      icon: '🚀',
+      label: '',
+      value: ''
+    };
+    editingRoleIndex.value = -1;
+    showEditRoleDialog.value = false;
+    
+    alert('角色已更新');
+  } catch (error) {
+    console.error('更新角色失败:', error);
+    alert('更新角色失败：' + error);
+  }
+}
+
+// 组件挂载时加载角色
+onMounted(() => {
+  loadCustomRoles();
+});
+
+// 预设提示词
+const presetPrompts = [
+  { label: '💻 编程助手', value: '你是一个专业的 AI 编程助手，擅长代码编写、调试和优化。' },
+  { label: '📝 文案专家', value: '你是专业的文案写作专家，擅长创作吸引人的营销内容。' },
+  { label: '🔬 学术顾问', value: '你是学术研究顾问，能提供专业的学术建议和指导。' },
+  { label: '🎨 创意助手', value: '你是富有创意的 AI 助手，能帮助进行头脑风暴和创意构思。' },
+];
+
+function setSystemPrompt(value: string) {
+  localSystemPrompt.value = value;
+  updateSettings();
+}
+
+function getCurrentRoleName() {
+  const preset = presetPrompts.find(p => p.value === localSystemPrompt.value);
+  return preset ? preset.label : '自定义角色';
+}
+
+function updateSettings() {
+  emit('update:settings', {
+    systemPrompt: localSystemPrompt.value,
+    temperature: temperature.value,
+    maxTokens: maxTokens.value,
+  });
+}
+
+function resetToDefaults() {
+  localSystemPrompt.value = '你是一个有用的 AI 编程助手。';
+  temperature.value = 0.7;
+  maxTokens.value = 2048;
+  updateSettings();
+}
+</script>
+
+<style scoped>
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary, white);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text-secondary, #666);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--hover-bg, #f0f0f0);
+  color: var(--text-primary, #333);
+}
+
+.panel-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.setting-section {
+  margin-bottom: 24px;
+}
+
+.section-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  margin-bottom: 8px;
+}
+
+.system-prompt-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.system-prompt-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #4a90e2);
+}
+
+.preset-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.preset-btn {
+  padding: 6px 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-btn:hover {
+  background: var(--primary-color, #4a90e2);
+  border-color: var(--primary-color, #4a90e2);
+  color: white;
+}
+
+.preset-btn.active {
+  background: var(--primary-color, #4a90e2);
+  border-color: var(--primary-color, #4a90e2);
+  color: white;
+  font-weight: 600;
+}
+
+.current-role-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-success, #e6f7e6);
+  border: 1px solid var(--border-success, #52c41a);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.role-icon {
+  font-size: 16px;
+}
+
+.role-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-success, #389e0d);
+}
+
+.slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--primary-color, #4a90e2) 0%, var(--primary-color, #4a90e2) var(--value, 70%), var(--border-color, #ddd) var(--value, 70%), var(--border-color, #ddd) 100%);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-color, #4a90e2);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #999);
+}
+
+.setting-actions {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.reset-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: var(--hover-bg, #e0e0e0);
+  border-color: var(--border-color, #ccc);
+}
+
+/* 角色管理 */
+.btn-add-role-panel {
+  width: 100%;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.btn-add-role-panel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.custom-roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.role-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.role-item:hover {
+  background: var(--bg-hover, #e8e8e8);
+  border-color: var(--primary-color, #4a90e2);
+}
+
+.role-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.role-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.role-name-display {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.role-prompt-display {
+  font-size: 12px;
+  color: var(--text-secondary, #999);
+  line-height: 1.4;
+}
+
+.role-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit-role,
+.btn-delete-role {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.btn-edit-role:hover {
+  background: #1890ff;
+  border-color: #1890ff;
+  color: white;
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.btn-delete-role {
+  opacity: 0.7;
+}
+
+.btn-delete-role:hover {
+  background: #ff4d4f;
+  border-color: #ff4d4f;
+  color: white;
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.no-roles-hint {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary, #999);
+  font-size: 14px;
+}
+</style>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { Conversation, Message } from '../types';
 
 export const useChatStore = defineStore('chat', () => {
@@ -8,6 +8,38 @@ export const useChatStore = defineStore('chat', () => {
   const activeConversationId = ref<string | undefined>();
   const isGenerating = ref(false);
   const latestThinking = ref<string>('');
+
+  // 本地存储键名
+  const STORAGE_KEY = 'iflow_conversations';
+
+  // 从 localStorage 加载对话
+  function loadFromStorage() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        conversations.value = data || [];
+        console.log(`已加载 ${conversations.value.length} 个对话`);
+      }
+    } catch (error) {
+      console.error('加载对话历史失败:', error);
+    }
+  }
+
+  // 保存到 localStorage
+  function saveToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations.value));
+      console.log(`已保存 ${conversations.value.length} 个对话`);
+    } catch (error) {
+      console.error('保存对话历史失败:', error);
+    }
+  }
+
+  // 监听对话变化，自动保存
+  watch(conversations, () => {
+    saveToStorage();
+  }, { deep: true });
 
   // 计算属性
   const currentMessages = computed(() => {
@@ -102,5 +134,7 @@ export const useChatStore = defineStore('chat', () => {
     setThinking,
     clearThinking,
     loadConversations,
+    loadFromStorage,
+    saveToStorage,
   };
 });

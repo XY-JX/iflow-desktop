@@ -33,7 +33,7 @@
             {{ message.role === 'user' ? '👤' : '🤖' }}
           </div>
           <div class="message-content">
-            <div class="message-text">{{ message.content }}</div>
+            <div class="message-text" v-html="renderMarkdown(message.content)"></div>
             <div class="message-time">{{ formatTime(message.timestamp) }}</div>
 
             <!-- 执行信息 -->
@@ -50,26 +50,6 @@
                 <span class="info-icon">🔄</span>
                 <span class="info-text">轮次：{{ message.executionInfo.assistant_rounds }}</span>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 正在生成状态 -->
-      <div v-if="isGenerating" class="message-wrapper">
-        <div class="thinking-process">
-          <div class="thinking-header">
-            <span class="thinking-icon">💭</span>
-            <span class="thinking-title">Thinking...</span>
-          </div>
-        </div>
-        <div class="message assistant">
-          <div class="message-avatar">🤖</div>
-          <div class="message-content">
-            <div class="message-text typing">
-              <span class="typing-dot">●</span>
-              <span class="typing-dot">●</span>
-              <span class="typing-dot">●</span>
             </div>
           </div>
         </div>
@@ -104,7 +84,16 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted } from 'vue';
 import ModelSelector from './ModelSelector.vue';
+import MarkdownIt from 'markdown-it';
 import type { Message, Model } from '../types';
+
+// 初始化 Markdown 解析器
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+});
 
 const props = defineProps<{
   messages: Message[];
@@ -164,6 +153,12 @@ function formatNumber(num: number): string {
   return num.toLocaleString('zh-CN');
 }
 
+// 渲染 Markdown
+function renderMarkdown(content: string): string {
+  if (!content) return '';
+  return md.render(content);
+}
+
 async function scrollToBottom() {
   await nextTick();
   if (messagesContainer.value) {
@@ -205,6 +200,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
   background: var(--bg-primary, white);
 }
 
@@ -256,10 +252,12 @@ toggle-btn .icon {
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 0;
 }
 
 .message-wrapper {
@@ -367,7 +365,107 @@ toggle-btn .icon {
   font-size: 14px;
   line-height: 1.6;
   word-wrap: break-word;
-  white-space: pre-wrap;
+}
+
+/* Markdown 样式 */
+.message-text :deep(p) {
+  margin: 8px 0;
+}
+
+.message-text :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.message-text :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.message-text :deep(h1),
+.message-text :deep(h2),
+.message-text :deep(h3),
+.message-text :deep(h4),
+.message-text :deep(h5),
+.message-text :deep(h6) {
+  margin: 16px 0 8px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.message-text :deep(h1) { font-size: 1.5em; }
+.message-text :deep(h2) { font-size: 1.3em; }
+.message-text :deep(h3) { font-size: 1.1em; }
+
+.message-text :deep(ul),
+.message-text :deep(ol) {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.message-text :deep(li) {
+  margin: 4px 0;
+}
+
+.message-text :deep(blockquote) {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 4px solid var(--primary-color, #4a90e2);
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 4px;
+  color: var(--text-secondary, #666);
+}
+
+.message-text :deep(hr) {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.message-text :deep(a) {
+  color: var(--primary-color, #4a90e2);
+  text-decoration: underline;
+}
+
+.message-text :deep(a:hover) {
+  text-decoration: none;
+}
+
+.message-text :deep(img) {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+/* 代码块样式 */
+.message-text :deep(pre) {
+  background: var(--code-bg, #1e1e1e);
+  color: var(--code-text, #d4d4d4);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.message-text :deep(code) {
+  background: var(--inline-code-bg, #f0f0f0);
+  color: var(--inline-code-text, #e83e8c);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.message-text :deep(pre code) {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.message.user .message-text :deep(code) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .message.user .message-text {
@@ -573,6 +671,15 @@ toggle-btn .icon {
   .message.assistant .message-text {
     background: var(--bg-secondary, #2d2d2d);
     color: var(--text-primary, #f0f0f0);
+  }
+
+  .message-text :deep(code) {
+    background: var(--inline-code-bg-dark, #2d2d2d);
+    color: var(--inline-code-text-dark, #f472b6);
+  }
+
+  .message.user .message-text :deep(code) {
+    background: rgba(255, 255, 255, 0.15);
   }
 
   .execution-info {

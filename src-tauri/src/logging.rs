@@ -1,6 +1,10 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+
+// 标记日志系统是否已初始化
+static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// 初始化日志系统
 ///
@@ -8,6 +12,10 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 /// - 控制台：彩色输出，显示错误和警告级别
 /// - 文件：详细日志，包含调试信息
 pub fn init_logging() {
+    // 防止重复初始化
+    if INITIALIZED.swap(true, Ordering::SeqCst) {
+        return;
+    }
     // 获取应用数据目录
     let log_dir = get_log_directory();
 
