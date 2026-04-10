@@ -1,24 +1,29 @@
 import { createApp } from "vue";
 import { createPinia } from 'pinia';
 import App from "./App.vue";
+import { initTheme } from './theme';
+import { ErrorHandler } from './utils/errorHandler';
 
 const app = createApp(App);
 const pinia = createPinia();
 
+// 初始化主题
+initTheme();
+
 // 全局错误处理
 app.config.errorHandler = (err, _instance, info) => {
-  console.error('[Vue 全局错误]:', err, info);
+  ErrorHandler.handle(err, `Vue Component: ${info}`);
 };
 
 // 未捕获的 Promise 错误
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('[未处理的 Promise 错误]:', event.reason);
-  event.preventDefault(); // 防止控制台重复输出
+  ErrorHandler.handle(event.reason, 'Unhandled Promise Rejection');
+  event.preventDefault();
 });
 
 // 未捕获的全局错误
 window.addEventListener('error', (event) => {
-  console.error('[全局 JavaScript 错误]:', event.error);
+  ErrorHandler.handle(event.error, 'Global JavaScript Error');
   event.preventDefault();
 });
 

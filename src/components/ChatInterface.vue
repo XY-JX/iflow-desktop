@@ -10,11 +10,20 @@
       </div>
     </div>
 
-    <div class="messages-container" ref="messagesContainer">
+    <div class="messages-container" ref="messagesContainer" @scroll="handleScroll">
+      <!-- 总高度占位 -->
+      <div class="messages-spacer" :style="{ height: totalHeight + 'px' }"></div>
+      
+      <!-- 可视消息列表 -->
       <div
-        v-for="message in messages"
+        v-for="message in visibleMessages"
         :key="message.id"
         class="message-wrapper"
+        :style="{
+          position: 'absolute',
+          top: message.offsetTop + 'px',
+          width: '100%'
+        }"
       >
         <!-- 思考过程区域 -->
         <div v-if="message.thinking" class="thinking-process">
@@ -33,8 +42,19 @@
             {{ message.role === 'user' ? '👤' : '🤖' }}
           </div>
           <div class="message-content">
+            <!-- 引用显示 -->
+            <div v-if="message.replyTo" class="reply-reference">
+              <span class="reply-icon">↩️</span>
+              <span class="reply-text">回复：{{ getRepliedMessagePreview(message.replyTo) }}</span>
+            </div>
+            
             <div class="message-text" v-html="renderMarkdown(message.content)"></div>
-            <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+            <div class="message-time">
+              {{ formatTime(message.timestamp) }}
+              <button @click="replyToMessageFunc(message)" class="btn-reply" title="回复此消息">
+                ↩️ 回复
+              </button>
+            </div>
 
             <!-- 执行信息 -->
             <div v-if="message.executionInfo" class="execution-info">
@@ -56,7 +76,44 @@
       </div>
     </div>
 
+    <!-- 聊天快捷操作栏 -->
+    <div class="chat-actions-bar">
+      <button @click="$emit('clear-conversation')" class="action-btn" title="清空对话">
+        🗑️
+      </button>
+      <button @click="$emit('export-conversation')" class="action-btn" title="导出为Markdown">
+        📥
+      </button>
+      <button @click="$emit('export-pdf')" class="action-btn" title="导出为PDF">
+        📄
+      </button>
+      <button @click="$emit('copy-last-answer')" class="action-btn" title="复制最后回答">
+        📋
+      </button>
+      <button @click="saveLastCodeSnippet" class="action-btn" title="收藏代码片段">
+        💾
+      </button>
+      <div class="divider"></div>
+      <button @click="$emit('apply-template', 'explain')" class="action-btn" title="解释代码">
+        💡
+      </button>
+      <button @click="$emit('apply-template', 'optimize')" class="action-btn" title="优化代码">
+        ⚡
+      </button>
+      <button @click="$emit('apply-template', 'debug')" class="action-btn" title="调试帮助">
+        🐛
+      </button>
+    </div>
+
     <div class="input-area">
+      <!-- 引用提示 -->
+      <div v-if="replyToMessage" class="reply-indicator">
+        <span class="reply-indicator-text">
+          ↩️ 回复：{{ getRepliedMessagePreview(replyToMessage.id) }}
+        </span>
+        <button @click="cancelReply" class="btn-cancel-reply">×</button>
+      </div>
+      
       <div class="input-wrapper">
         <textarea
           v-model="inputText"
@@ -82,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted } from 'vue';
+import { ref, nextTick, watch, onMounted, computed } from 'vue';
 import ModelSelector from './ModelSelector.vue';
 import MarkdownIt from 'markdown-it';
 import type { Message, Model } from '../types';
@@ -105,18 +162,66 @@ const props = defineProps<{
 const emit = defineEmits<{
   'send-message': [content: string];
   'model-change': [modelId: string];
+  'clear-conversation': [];
+  'export-conversation': [];
+  'export-pdf': [];
+  'copy-last-answer': [];
+  'apply-template': [type: string];
+  'save-code-snippet': [code: string, language: string];
 }>();
 
 const inputText = ref('');
 const inputRef = ref<HTMLTextAreaElement>();
 const messagesContainer = ref<HTMLDivElement>();
+const replyToMessage = ref<Message | null>(null); // 当前引用的消息
+
+// 虚拟滚动相关
+const scrollTop = ref(0);
+const containerHeight = ref(0);
+const estimatedItemHeight = 200; // 估计每条消息的高度（像素）
+const bufferSize = 5; // 缓冲区大小（前后各渲染几条）
+
+// 计算可视区域内的消息
+const visibleMessages = computed(() => {
+  if (props.messages.length === 0) return [];
+  
+  const startIndex = Math.max(0, Math.floor(scrollTop.value / estimatedItemHeight) - bufferSize);
+  const visibleCount = Math.ceil(containerHeight.value / estimatedItemHeight) + bufferSize * 2;
+  const endIndex = Math.min(props.messages.length, startIndex + visibleCount);
+  
+  return props.messages.slice(startIndex, endIndex).map((msg, index) => ({
+    ...msg,
+    virtualIndex: startIndex + index,
+    offsetTop: (startIndex + index) * estimatedItemHeight
+  }));
+});
+
+// 总高度（用于滚动条）
+const totalHeight = computed(() => {
+  return props.messages.length * estimatedItemHeight;
+});
+
+// 处理滚动事件
+function handleScroll() {
+  if (messagesContainer.value) {
+    scrollTop.value = messagesContainer.value.scrollTop;
+    containerHeight.value = messagesContainer.value.clientHeight;
+  }
+}
 
 async function sendMessage() {
   const content = inputText.value.trim();
   if (!content || props.isGenerating) return;
 
+  // 如果有引用，在内容前添加引用标记
+  let finalContent = content;
+  if (replyToMessage.value) {
+    finalContent = `> 回复 @${replyToMessage.value.role === 'user' ? '用户' : '助手'}: ${getRepliedMessagePreview(replyToMessage.value.id)}\n\n${content}`;
+    cancelReply();
+  }
+
   // 先发送消息
-  emit('send-message', content);
+  emit('send-message', finalContent);
 
   // 清空输入框并触发视图更新
   inputText.value = '';
@@ -192,7 +297,71 @@ watch(inputText, async () => {
 // 初始化时滚动到底部
 onMounted(async () => {
   await scrollToBottom();
+  // 初始化容器高度
+  if (messagesContainer.value) {
+    containerHeight.value = messagesContainer.value.clientHeight;
+  }
 });
+
+// 从消息内容中提取代码块
+function extractCodeBlocks(content: string): Array<{ code: string; language: string }> {
+  const codeBlocks: Array<{ code: string; language: string }> = [];
+  const regex = /```(\w+)?\s*\n([\s\S]*?)```/g;
+  let match;
+  
+  while ((match = regex.exec(content)) !== null) {
+    codeBlocks.push({
+      language: match[1] || 'text',
+      code: match[2].trim()
+    });
+  }
+  
+  return codeBlocks;
+}
+
+// 收藏最后一条消息中的代码
+function saveLastCodeSnippet() {
+  const assistantMessages = props.messages.filter(m => m.role === 'assistant');
+  if (assistantMessages.length === 0) {
+    alert('没有找到助手的消息');
+    return;
+  }
+  
+  const lastMessage = assistantMessages[assistantMessages.length - 1];
+  const codeBlocks = extractCodeBlocks(lastMessage.content);
+  
+  if (codeBlocks.length === 0) {
+    alert('该消息中没有找到代码块');
+    return;
+  }
+  
+  // 收藏第一个代码块
+  const firstBlock = codeBlocks[0];
+  emit('save-code-snippet', firstBlock.code, firstBlock.language);
+}
+
+// 引用消息
+function replyToMessageFunc(message: Message) {
+  replyToMessage.value = message;
+  // 聚焦到输入框
+  if (inputRef.value) {
+    inputRef.value.focus();
+  }
+}
+
+// 取消引用
+function cancelReply() {
+  replyToMessage.value = null;
+}
+
+// 获取被引用消息的预览
+function getRepliedMessagePreview(messageId: string): string {
+  const message = props.messages.find(m => m.id === messageId);
+  if (!message) return '未知消息';
+  
+  const preview = message.content.substring(0, 50);
+  return preview + (message.content.length > 50 ? '...' : '');
+}
 </script>
 
 <style scoped>
@@ -258,6 +427,12 @@ toggle-btn .icon {
   flex-direction: column;
   gap: 20px;
   min-height: 0;
+  position: relative;
+}
+
+.messages-spacer {
+  position: relative;
+  width: 100%;
 }
 
 .message-wrapper {
@@ -265,6 +440,7 @@ toggle-btn .icon {
   flex-direction: column;
   gap: 8px;
   animation: slideIn 0.3s ease;
+  /* 虚拟滚动时使用绝对定位 */
 }
 
 @keyframes slideIn {
@@ -515,10 +691,59 @@ toggle-btn .icon {
 .message-time {
   font-size: 12px;
   color: var(--text-secondary, #999);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .message.user .message-time {
   text-align: right;
+  flex-direction: row-reverse;
+}
+
+/* 引用显示 */
+.reply-reference {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  background: var(--bg-hover, #f5f5f5);
+  border-left: 3px solid var(--primary-color, #4a90e2);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+}
+
+.reply-icon {
+  font-size: 14px;
+}
+
+.reply-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 回复按钮 */
+.btn-reply {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-reply:hover {
+  background: var(--primary-light, #e8f4ff);
+  border-color: var(--primary-color, #4a90e2);
+  color: var(--primary-color, #4a90e2);
 }
 
 /* 执行信息样式 */
@@ -549,6 +774,43 @@ toggle-btn .icon {
   flex: 1;
 }
 
+/* 聊天快捷操作栏 */
+.chat-actions-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: white;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  background: #f0f5ff;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.divider {
+  width: 1px;
+  background: var(--border-color, #e0e0e0);
+  margin: 4px 4px;
+}
+
 /* 输入区域样式 */
 .input-area {
   display: flex;
@@ -557,6 +819,47 @@ toggle-btn .icon {
   padding: 16px;
   border-top: 1px solid var(--border-color, #e0e0e0);
   background: var(--bg-secondary, #f8f9fa);
+}
+
+/* 引用提示 */
+.reply-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--primary-light, #e8f4ff);
+  border-left: 3px solid var(--primary-color, #4a90e2);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.reply-indicator-text {
+  flex: 1;
+  color: var(--text-primary, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-cancel-reply {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #666);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+
+.btn-cancel-reply:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--text-primary, #333);
 }
 
 .input-wrapper {
@@ -709,6 +1012,34 @@ toggle-btn .icon {
 
   .input-hint {
     color: var(--text-secondary, #777);
+  }
+  
+  /* 深色主题 - 引用 */
+  .reply-indicator {
+    background: var(--primary-dark, #1a4d7a);
+  }
+  
+  .reply-indicator-text {
+    color: var(--text-primary, #f0f0f0);
+  }
+  
+  .btn-cancel-reply:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .reply-reference {
+    background: var(--bg-hover, #3d3d3d);
+  }
+  
+  .btn-reply {
+    border-color: var(--border-color, #404040);
+    color: var(--text-secondary, #aaa);
+  }
+  
+  .btn-reply:hover {
+    background: var(--primary-dark, #1a4d7a);
+    border-color: var(--primary-color, #4a90e2);
+    color: #7cb3ff;
   }
 }
 </style>

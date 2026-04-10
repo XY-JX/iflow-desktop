@@ -41,34 +41,31 @@ import MainLayout from './components/MainLayout.vue';
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* 深色主题 */
-    --bg-primary: #1a1a1a;
-    --bg-secondary: #2d2d2d;
-    --bg-tertiary: #1f1f1f;
-    --bg-hover: #3d3d3d;
-    --text-primary: #f0f0f0;
-    --text-secondary: #aaaaaa;
-    --border-color: #404040;
-    --primary-color: #4a90e2;
-    --primary-hover: #5aa0f2;
-    --primary-light: #1a4d7a;
-    --primary-dark: #1a4d7a;
-    --secondary-color: #7c6ce8;
+/* 深色主题 - 通过 data-theme 属性切换 */
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #242424;
+  --bg-tertiary: #2a2a2a;
+  --bg-hover: #333333;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --border-color: #333333;
+  --primary-color: #7c8ff0;
+  --primary-hover: #9aa8f5;
+  --primary-light: #1a4d7a;
+  --secondary-color: #8b5cf6;
 
-    /* 思考过程颜色 */
-    --thinking-bg-dark: #2a2620;
-    --thinking-border-dark: #4a4539;
-    --thinking-header-bg-dark: #2a2a20;
-    --thinking-hover-bg-dark: #3a3a30;
-    --thinking-text-dark: #d4b896;
+  /* 思考过程颜色 */
+  --thinking-bg: #2a2620;
+  --thinking-border: #4a4539;
+  --thinking-header-bg: #2a2a20;
+  --thinking-hover-bg: #3a3a30;
+  --thinking-text: #d4b896;
 
-    /* 执行信息颜色 */
-    --info-bg-dark: #1a2630;
-    --info-border-dark: #2a4050;
-    --info-text-dark: #5aa9ff;
-  }
+  /* 执行信息颜色 */
+  --info-bg: #1a2630;
+  --info-border: #2a4050;
+  --info-text: #5aa9ff;
 }
 
 * {

@@ -6,6 +6,7 @@ export interface Message {
   timestamp: number;
   thinking?: string; // 思考过程
   executionInfo?: ExecutionInfo; // 执行信息
+  replyTo?: string; // 引用的消息 ID
 }
 
 // 执行信息类型
@@ -27,6 +28,7 @@ export interface Conversation {
   title: string;
   messages: Message[];
   model: string;
+  tags?: string[]; // 标签列表
   createdAt: number;
   updatedAt: number;
 }

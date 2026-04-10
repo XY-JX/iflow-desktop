@@ -19,8 +19,8 @@
             智谱 AI: {{ zhipuReady ? '已就绪' : (zhipuStatus || '未配置') }}
           </span>
         </div>
-        <button @click="initZhipuClient" :class="['btn-toggle', zhipuReady ? 'btn-stop' : 'btn-start']">
-          {{ zhipuReady ? '✅ 已就绪' : '🔑 配置 API Key' }}
+        <button @click="openApiKeyDialog" class="btn-toggle" :class="zhipuReady ? 'btn-stop' : 'btn-start'">
+          {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
         </button>
         
         <!-- 快速角色选择 -->
@@ -35,6 +35,25 @@
         <button @click="showSettingsPanel = !showSettingsPanel" class="btn-settings">
           ⚙️ 高级设置
         </button>
+        
+        <button @click="showStatsPanel = !showStatsPanel" class="btn-stats">
+          📊 统计
+        </button>
+        
+        <!-- 对话统计 -->
+        <div class="conversation-stats">
+          <div class="stat-item-small">
+            <span class="stat-icon">💬</span>
+            <span class="stat-value">{{ currentMessageCount }}</span>
+            <span class="stat-label">消息</span>
+          </div>
+          <div class="stat-item-small">
+            <span class="stat-icon">🔢</span>
+            <span class="stat-value">{{ estimatedTokens }}</span>
+            <span class="stat-label">Token</span>
+          </div>
+        </div>
+        
         <span v-if="zhipuStatus" class="status-message">{{ zhipuStatus }}</span>
       </div>
       <ChatInterface
@@ -44,6 +63,12 @@
         :current-model="currentModel"
         @send-message="handleSendMessage"
         @model-change="handleModelChange"
+        @clear-conversation="handleClearConversation"
+        @export-conversation="handleExportConversation"
+        @export-pdf="handleExportAsPDF"
+        @copy-last-answer="handleCopyLastAnswer"
+        @apply-template="applyPromptTemplate"
+        @save-code-snippet="handleSaveCodeSnippet"
       />
     </div>
 
@@ -56,6 +81,15 @@
           :max-tokens="maxTokens"
           @close="showSettingsPanel = false"
           @update:settings="handleSettingsUpdate"
+          @role-added="handleRoleAdded"
+        />
+      </div>
+      
+      <!-- 统计面板 -->
+      <div v-else-if="showStatsPanel" class="stats-panel-container">
+        <StatsPanel
+          :conversations="conversations"
+          @close="showStatsPanel = false"
         />
       </div>
       
@@ -63,11 +97,98 @@
       <template v-else>
         <div class="sidebar-right-top">
           <div class="panel-header">
-            <span class="panel-title">📁 文件浏览器</span>
+            <span class="panel-title">🛠️ 快捷工具</span>
           </div>
-          <FileExplorer
-            @file-selected="handleFileSelected"
-          />
+          
+          <div class="quick-tools-panel">
+            <!-- Tab 切换 -->
+            <div class="tools-tabs">
+              <button 
+                v-for="tab in toolTabs" 
+                :key="tab.id"
+                @click="activeToolTab = tab.id"
+                :class="['tab-btn', { active: activeToolTab === tab.id }]"
+              >
+                {{ tab.icon }} {{ tab.label }}
+              </button>
+            </div>
+            
+            <!-- 代码片段 -->
+            <div v-if="activeToolTab === 'snippets'" class="tool-content">
+              <div class="tool-header">
+                <span>💾 常用代码片段</span>
+                <button @click="addNewSnippet" class="btn-add-small" title="添加新片段">+</button>
+              </div>
+              <div class="snippets-list">
+                <div v-for="(snippet, index) in codeSnippets" :key="index" class="snippet-item">
+                  <div class="snippet-header">
+                    <span class="snippet-name">{{ snippet.name }}</span>
+                    <div class="snippet-actions">
+                      <button @click="copySnippet(snippet.code)" class="btn-icon" title="复制">📋</button>
+                      <button @click="deleteSnippet(index)" class="btn-icon" title="删除">🗑️</button>
+                    </div>
+                  </div>
+                  <pre class="snippet-code">{{ snippet.code.substring(0, 100) }}{{ snippet.code.length > 100 ? '...' : '' }}</pre>
+                </div>
+                <div v-if="codeSnippets.length === 0" class="empty-state">
+                  <p>暂无代码片段</p>
+                  <p class="hint">点击 + 添加常用代码</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 快速链接 -->
+            <div v-if="activeToolTab === 'links'" class="tool-content">
+              <div class="tool-header">
+                <span>🔗 快速链接</span>
+                <button @click="addNewLink" class="btn-add-small" title="添加链接">+</button>
+              </div>
+              <div class="links-list">
+                <a v-for="(link, index) in quickLinks" :key="index" 
+                   :href="link.url" 
+                   target="_blank"
+                   class="link-item">
+                  <span class="link-icon">{{ link.icon }}</span>
+                  <div class="link-info">
+                    <span class="link-name">{{ link.name }}</span>
+                    <span class="link-url">{{ link.url }}</span>
+                  </div>
+                  <button @click.prevent="deleteLink(index)" class="btn-icon-delete" title="删除">×</button>
+                </a>
+                <div v-if="quickLinks.length === 0" class="empty-state">
+                  <p>暂无收藏链接</p>
+                  <p class="hint">点击 + 添加常用网站</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 快捷笔记 -->
+            <div v-if="activeToolTab === 'notes'" class="tool-content">
+              <div class="tool-header">
+                <span>📝 快捷笔记</span>
+                <button @click="addNewNote" class="btn-add-small" title="添加笔记">+</button>
+              </div>
+              <div class="notes-list">
+                <div v-for="(note, index) in quickNotes" :key="index" class="note-item">
+                  <textarea 
+                    v-model="note.content" 
+                    @input="saveNotes"
+                    class="note-textarea"
+                    placeholder="输入笔记内容..."
+                    rows="3"
+                  ></textarea>
+                  <div class="note-footer">
+                    <span class="note-time">{{ formatTime(note.timestamp) }}</span>
+                    <button @click="deleteNote(index)" class="btn-icon" title="删除">🗑️</button>
+                  </div>
+                </div>
+                <div v-if="quickNotes.length === 0" class="empty-state">
+                  <p>暂无笔记</p>
+                  <p class="hint">点击 + 添加临时笔记</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="sidebar-right-bottom">
           <div class="panel-header">
@@ -96,45 +217,44 @@
         @saved="handleFileSaved"
       />
     </div>
-
-    <!-- 添加角色对话框 -->
-    <div v-if="showAddRoleDialog" class="dialog-overlay" @click="showAddRoleDialog = false">
-      <div class="dialog-content" @click.stop>
-        <h3 class="dialog-title">➕ 添加自定义角色</h3>
-        <div class="dialog-body">
-          <div class="form-group">
-            <label class="form-label">角色图标</label>
-            <input 
-              v-model="newRole.icon"
-              type="text"
-              class="form-input"
-              placeholder="例如：🚀"
-              maxlength="2"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">角色名称</label>
-            <input 
-              v-model="newRole.label"
-              type="text"
-              class="form-input"
-              placeholder="例如：翻译助手"
-              maxlength="10"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">系统提示词</label>
-            <textarea 
-              v-model="newRole.value"
-              class="form-textarea"
-              placeholder="描述这个角色的职责和能力..."
-              rows="4"
-            ></textarea>
-          </div>
+    
+    <!-- API Key 管理对话框 -->
+    <div v-if="showApiKeyDialog" class="dialog-overlay" @click.self="closeApiKeyDialog">
+      <div class="api-key-dialog" @click.stop>
+        <h3 class="dialog-title">{{ zhipuReady ? '⚙️ API Key 管理' : '🔑 配置 API Key' }}</h3>
+        
+        <div v-if="zhipuReady" class="current-key-info">
+          <div class="info-label">当前状态</div>
+          <div class="info-value success">✅ 已配置并可用</div>
         </div>
+        
+        <div v-else class="current-key-info warning">
+          <div class="info-label">当前状态</div>
+          <div class="info-value warn">⚠️ 未配置</div>
+        </div>
+        
+        <div class="input-section">
+          <label class="input-label">API Key</label>
+          <input 
+            v-model="apiKeyInput" 
+            type="password"
+            class="api-key-input"
+            placeholder="请输入智谱 AI API Key"
+          />
+          <p class="input-hint">如果没有 API Key，可以留空直接关闭</p>
+        </div>
+        
+        <div class="dialog-actions">
+          <button @click="handleClearKey" class="btn-action btn-clear" :disabled="!zhipuReady">
+            🗑️ 清除配置
+          </button>
+          <button @click="handleSaveKey" class="btn-action btn-save">
+            💾 保存配置
+          </button>
+        </div>
+        
         <div class="dialog-footer">
-          <button @click="showAddRoleDialog = false" class="btn-dialog-cancel">取消</button>
-          <button @click="handleAddRole" class="btn-dialog-confirm">确定</button>
+          <button @click="closeApiKeyDialog" class="btn-close">关闭</button>
         </div>
       </div>
     </div>
@@ -153,7 +273,9 @@ import ChatInterface from './ChatInterface.vue';
 import FileExplorer from './FileExplorer.vue';
 import FileEditor from './FileEditor.vue';
 import SettingsPanel from './SettingsPanel.vue';
+import StatsPanel from './StatsPanel.vue';
 import { truncateConversation, estimateTokenCount } from '../utils/tokenUtils';
+import { toggleTheme, currentTheme } from '../theme';
 import type { Message, Model, FileItem } from '../types';
 
 // 初始化 Store
@@ -176,23 +298,65 @@ const defaultRoles = [
 // 智谱 AI 状态
 const zhipuReady = ref(false);
 const zhipuStatus = ref('');
+const showApiKeyDialog = ref(false); // 显示 API Key 管理对话框
+const apiKeyInput = ref(''); // API Key 输入框
+
+// 主题状态
+const isDarkMode = computed(() => currentTheme.value === 'dark');
 
 // 设置面板状态
 const showSettingsPanel = ref(false);
-const systemPrompt = ref(defaultRoles[0]?.value || '你是一个有用的 AI 编程助手。'); // 默认选择第一个角色，如果 defaultRoles 未加载则使用默认值
+const showStatsPanel = ref(false);
+const systemPrompt = ref(defaultRoles[0]?.value || '你是一个有用的 AI 编程助手。');
 const temperature = ref(0.7);
 const maxTokens = ref(2048);
-const showAddRoleDialog = ref(false);
-const newRole = ref({
-  icon: '🚀',
-  label: '',
-  value: ''
-});
+
+// 自定义角色列表（从 SettingsPanel 同步）
+const customRoles = ref<any[]>([]);
+
+// 快捷工具状态
+const activeToolTab = ref('snippets'); // 当前激活的工具tab
+const toolTabs = [
+  { id: 'snippets', icon: '💾', label: '代码片段' },
+  { id: 'links', icon: '🔗', label: '快速链接' },
+  { id: 'notes', icon: '📝', label: '快捷笔记' },
+];
+
+// 代码片段
+interface CodeSnippet {
+  name: string;
+  code: string;
+}
+
+const codeSnippets = ref([] as CodeSnippet[]);
+codeSnippets.value = [
+  { name: 'Vue3 模板', code: '<' + 'template>\n  <div>\n    <!-- 内容 -->\n  </div>\n</' + 'template>\n\n<' + 'script setup lang="ts">\n// 代码\n</' + 'script>' },
+  { name: 'TypeScript 接口', code: 'interface UserData {\n  id: string;\n  name: string;\n  email?: string;\n}' },
+];
+
+// 快速链接
+interface QuickLink {
+  name: string;
+  url: string;
+  icon: string;
+}
+
+const quickLinks = ref([] as QuickLink[]);
+quickLinks.value = [
+  { name: 'Vue 文档', url: 'https://vuejs.org/', icon: '💚' },
+  { name: 'Tauri 文档', url: 'https://tauri.app/', icon: '🦀' },
+  { name: '智谱 AI', url: 'https://open.bigmodel.cn/', icon: '🤖' },
+];
+
+// 快捷笔记
+interface QuickNote {
+  content: string;
+  timestamp: number;
+}
+
+const quickNotes = ref([] as QuickNote[]);
 
 // 本地存储键名
-const ROLES_STORAGE_KEY = 'iflow_custom_roles';
-
-// API Key 存储键名
 const API_KEY_STORAGE_KEY = 'zhipu_api_key';
 
 // 当前模型 (本地状态)
@@ -215,35 +379,8 @@ const currentModel = ref('glm-4.6v');
 // }
 
 // 初始化智谱 AI 客户端
-async function initZhipuClient() {
+async function initZhipuClient(apiKey: string) {
   console.log('[MainLayout] 开始初始化智谱 AI 客户端');
-  
-  if (zhipuReady.value) {
-    // 已就绪时显示清除选项
-    const confirmClear = confirm('是否要清除当前 API Key 并重新配置？\n\n点击"确定"清除并重新配置\n点击"取消"保持当前配置');
-    if (!confirmClear) {
-      zhipuStatus.value = '保持当前配置';
-      setTimeout(() => {
-        zhipuStatus.value = '';
-      }, 2000);
-      return;
-    }
-    // 清除存储的 API Key
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
-    zhipuReady.value = false;
-  }
-  
-  // 提示用户输入 API Key
-  const apiKey = prompt('请输入智谱 AI API Key:\n\n如果没有 API Key，可以点击“取消”跳过，不影响其他功能使用。');
-  if (!apiKey) {
-    console.log('[MainLayout] 用户取消配置 - 可继续使用其他功能');
-    zhipuStatus.value = '⚠️ 未配置';
-    zhipuReady.value = false;
-    setTimeout(() => {
-      zhipuStatus.value = '';
-    }, 3000);
-    return;
-  }
   
   console.log('[MainLayout] 用户输入了 API Key，长度:', apiKey.length);
   zhipuStatus.value = '正在初始化...';
@@ -276,7 +413,510 @@ async function initZhipuClient() {
   }
 }
 
-// 组件挂载时检查智谱 AI 状态
+// 清除 API Key
+function handleClearKey() {
+  if (!zhipuReady.value) return;
+  
+  localStorage.removeItem(API_KEY_STORAGE_KEY);
+  zhipuReady.value = false;
+  zhipuStatus.value = '';
+  apiKeyInput.value = '';
+  console.log('[MainLayout] API Key 已清除');
+}
+
+// 保存 API Key
+async function handleSaveKey() {
+  const apiKey = apiKeyInput.value.trim();
+  
+  if (!apiKey) {
+    // 如果输入为空且已配置，询问是否清除
+    if (zhipuReady.value) {
+      const confirm = window.confirm('输入为空，是否清除当前配置？');
+      if (confirm) {
+        handleClearKey();
+      }
+      return;
+    }
+    // 未配置时直接关闭
+    closeApiKeyDialog();
+    return;
+  }
+  
+  // 保存并初始化
+  await initZhipuClient(apiKey);
+  closeApiKeyDialog();
+}
+
+// 打开 API Key 对话框
+function openApiKeyDialog() {
+  // 如果已配置，加载当前 key
+  const savedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+  if (savedKey) {
+    apiKeyInput.value = savedKey;
+  } else {
+    apiKeyInput.value = '';
+  }
+  showApiKeyDialog.value = true;
+}
+
+// 关闭 API Key 对话框
+function closeApiKeyDialog() {
+  showApiKeyDialog.value = false;
+  apiKeyInput.value = '';
+}
+
+// ========== 快捷工具相关函数 ==========
+
+// 添加新代码片段
+function addNewSnippet() {
+  const name = prompt('请输入代码片段名称：');
+  if (!name) return;
+  
+  const code = prompt('请输入代码内容：');
+  if (!code) return;
+  
+  codeSnippets.value.push({ name, code });
+  saveSnippets();
+}
+
+// 复制代码片段
+function copySnippet(code: string) {
+  navigator.clipboard.writeText(code).then(() => {
+    alert('已复制到剪贴板');
+  }).catch(() => {
+    alert('复制失败');
+  });
+}
+
+// 删除代码片段
+function deleteSnippet(index: number) {
+  if (confirm('确定要删除这个代码片段吗？')) {
+    codeSnippets.value.splice(index, 1);
+    saveSnippets();
+  }
+}
+
+// 保存代码片段
+function saveSnippets() {
+  localStorage.setItem('code_snippets', JSON.stringify(codeSnippets.value));
+}
+
+// 加载代码片段
+function loadSnippets() {
+  const saved = localStorage.getItem('code_snippets');
+  if (saved) {
+    try {
+      codeSnippets.value = JSON.parse(saved);
+    } catch (e) {
+      console.error('加载代码片段失败', e);
+    }
+  }
+}
+
+// 从对话中收藏代码片段
+function handleSaveCodeSnippet(code: string, language: string) {
+  const name = prompt(`请输入代码片段名称（语言：${language}）：`);
+  if (!name) return;
+  
+  codeSnippets.value.unshift({ name, code });
+  saveSnippets();
+  alert('✅ 代码片段已收藏');
+}
+
+// 添加新链接
+function addNewLink() {
+  const name = prompt('请输入链接名称：');
+  if (!name) return;
+  
+  const url = prompt('请输入链接地址：');
+  if (!url) return;
+  
+  const icon = prompt('请输入图标 emoji（可选）：') || '🔗';
+  
+  quickLinks.value.push({ name, url, icon });
+  saveLinks();
+}
+
+// 删除链接
+function deleteLink(index: number) {
+  if (confirm('确定要删除这个链接吗？')) {
+    quickLinks.value.splice(index, 1);
+    saveLinks();
+  }
+}
+
+// 保存链接
+function saveLinks() {
+  localStorage.setItem('quick_links', JSON.stringify(quickLinks.value));
+}
+
+// 加载链接
+function loadLinks() {
+  const saved = localStorage.getItem('quick_links');
+  if (saved) {
+    try {
+      quickLinks.value = JSON.parse(saved);
+    } catch (e) {
+      console.error('加载链接失败', e);
+    }
+  }
+}
+
+// 添加新笔记
+function addNewNote() {
+  quickNotes.value.unshift({
+    content: '',
+    timestamp: Date.now(),
+  });
+  saveNotes();
+}
+
+// 删除笔记
+function deleteNote(index: number) {
+  if (confirm('确定要删除这条笔记吗？')) {
+    quickNotes.value.splice(index, 1);
+    saveNotes();
+  }
+}
+
+// 保存笔记
+function saveNotes() {
+  localStorage.setItem('quick_notes', JSON.stringify(quickNotes.value));
+}
+
+// 加载笔记
+function loadNotes() {
+  const saved = localStorage.getItem('quick_notes');
+  if (saved) {
+    try {
+      quickNotes.value = JSON.parse(saved);
+    } catch (e) {
+      console.error('加载笔记失败', e);
+    }
+  }
+}
+
+// 格式化时间
+function formatTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+  
+  return date.toLocaleDateString();
+}
+
+// 计算属性：当前对话消息数
+const currentMessageCount = computed(() => {
+  return currentMessages.value.length;
+});
+
+// 计算属性：估算 Token 数
+const estimatedTokens = computed(() => {
+  if (currentMessages.value.length === 0) return 0;
+  
+  let totalTokens = 0;
+  for (const msg of currentMessages.value) {
+    totalTokens += estimateTokenCount(msg.content);
+  }
+  
+  return totalTokens;
+});
+
+// 清空当前对话
+function handleClearConversation() {
+  if (currentMessages.value.length === 0) {
+    alert('当前对话已经没有消息了');
+    return;
+  }
+  
+  const confirm = window.confirm('确定要清空当前对话的所有消息吗？\n\n此操作不可恢复！');
+  if (!confirm) return;
+  
+  const conversation = conversations.value.find(c => c.id === activeConversationId.value);
+  if (conversation) {
+    conversation.messages = [];
+    setThinking('');
+  }
+  
+  showQuickActions.value = false;
+}
+
+// 导出对话记录
+function handleExportConversation() {
+  if (currentMessages.value.length === 0) {
+    alert('当前对话没有消息可导出');
+    return;
+  }
+  
+  const conversation = conversations.value.find(c => c.id === activeConversationId.value);
+  if (!conversation) return;
+  
+  // 生成 Markdown 格式
+  let markdown = `# ${conversation.title}\n\n`;
+  markdown += `**导出时间**: ${new Date().toLocaleString()}\n`;
+  markdown += `**模型**: ${conversation.model}
+
+---
+
+`;
+  
+  conversation.messages.forEach(msg => {
+    const role = msg.role === 'user' ? '👤 用户' : '🤖 助手';
+    const time = new Date(msg.timestamp).toLocaleString();
+    markdown += `### ${role} (${time})
+
+${msg.content}
+
+`;
+    
+    if (msg.thinking) {
+      markdown += `<details>
+<summary>思考过程</summary>
+
+${msg.thinking}
+
+</details>
+
+`;
+    }
+    
+    markdown += `---\n\n`;
+  });
+  
+  // 创建下载链接
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${conversation.title}_${Date.now()}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showQuickActions.value = false;
+  alert('对话已导出为 Markdown 文件');
+}
+
+// 导出对话为 PDF（通过打印功能）
+function handleExportAsPDF() {
+  if (currentMessages.value.length === 0) {
+    alert('当前对话没有消息可导出');
+    return;
+  }
+  
+  const conversation = conversations.value.find(c => c.id === activeConversationId.value);
+  if (!conversation) return;
+  
+  // 创建打印窗口
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('无法打开打印窗口，请允许弹出窗口');
+    return;
+  }
+  
+  // 生成 HTML 内容
+  let html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${conversation.title}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+    }
+    .meta {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .message {
+      margin-bottom: 30px;
+      padding: 15px;
+      border-radius: 8px;
+      page-break-inside: avoid;
+    }
+    .user {
+      background: #f0f7ff;
+      border-left: 4px solid #4a90e2;
+    }
+    .assistant {
+      background: #f5f5f5;
+      border-left: 4px solid #6c5ce7;
+    }
+    .role {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #4a90e2;
+    }
+    .time {
+      font-size: 12px;
+      color: #999;
+      margin-top: 8px;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+    pre code {
+      background: transparent;
+      padding: 0;
+    }
+    @media print {
+      body { padding: 20px; }
+      .message { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${conversation.title}</h1>
+  <div class="meta">
+    <p><strong>导出时间：</strong>${new Date().toLocaleString()}</p>
+    <p><strong>模型：</strong>${conversation.model}</p>
+    <p><strong>消息数：</strong>${conversation.messages.length}</p>
+  </div>
+`;
+  
+  conversation.messages.forEach(msg => {
+    const role = msg.role === 'user' ? '👤 用户' : '🤖 助手';
+    const time = new Date(msg.timestamp).toLocaleString();
+    const content = msg.content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+    
+    html += `
+  <div class="message ${msg.role}">
+    <div class="role">${role}</div>
+    <div class="content">${content}</div>
+    <div class="time">${time}</div>
+  </div>
+`;
+  });
+  
+  html += `
+</body>
+</html>`;
+  
+  printWindow.document.write(html);
+  printWindow.document.close();
+  
+  // 等待内容加载后打印
+  setTimeout(() => {
+    printWindow.print();
+  }, 500);
+}
+
+// 复制最后一条助手回答
+function handleCopyLastAnswer() {
+  const assistantMessages = currentMessages.value.filter(m => m.role === 'assistant');
+  
+  if (assistantMessages.length === 0) {
+    alert('没有找到助手的回答');
+    return;
+  }
+  
+  const lastAnswer = assistantMessages[assistantMessages.length - 1].content;
+  
+  navigator.clipboard.writeText(lastAnswer).then(() => {
+    alert('已复制到剪贴板');
+  }).catch(() => {
+    alert('复制失败，请手动复制');
+  });
+  
+  showQuickActions.value = false;
+}
+
+// 应用提示词模板
+function applyPromptTemplate(type: string) {
+  const templates: Record<string, string> = {
+    explain: '请详细解释以下代码的功能、逻辑和可能的优化点：\n\n```\n[在此粘贴代码]\n```',
+    optimize: '请分析以下代码的性能瓶颈，并提供优化建议和改进后的代码：\n\n```\n[在此粘贴代码]\n```',
+    debug: '我遇到了一个问题，请帮我调试以下代码并找出问题所在：\n\n```\n[在此粘贴代码]\n```\n\n错误信息：\n[在此描述错误或异常行为]',
+  };
+  
+  const template = templates[type];
+  if (!template) return;
+  
+  // 将模板填入输入框（通过自定义事件）
+  const event = new CustomEvent('apply-prompt-template', { detail: template });
+  window.dispatchEvent(event);
+  
+  showQuickActions.value = false;
+}
+
+// 注册键盘快捷键
+function registerKeyboardShortcuts() {
+  window.addEventListener('keydown', (event: KeyboardEvent) => {
+    // Ctrl/Cmd + Enter: 发送消息（如果输入框有焦点）
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      const textarea = document.querySelector('.input-area textarea') as HTMLTextAreaElement;
+      if (textarea && document.activeElement === textarea && textarea.value.trim()) {
+        event.preventDefault();
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      }
+    }
+    
+    // Ctrl/Cmd + K: 清空对话
+    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+      event.preventDefault();
+      handleClearConversation();
+    }
+    
+    // Ctrl/Cmd + /: 显示帮助
+    if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+      event.preventDefault();
+      showKeyboardHelp();
+    }
+    
+    // Escape: 关闭对话框/面板
+    if (event.key === 'Escape') {
+      if (showApiKeyDialog.value) {
+        closeApiKeyDialog();
+      } else if (showSettingsPanel.value) {
+        showSettingsPanel.value = false;
+      }
+    }
+  });
+}
+
+// 显示快捷键帮助
+function showKeyboardHelp() {
+  const help = `
+📝 快捷键列表：
+
+Ctrl/Cmd + Enter  - 发送消息
+Ctrl/Cmd + K      - 清空当前对话
+Ctrl/Cmd + /      - 显示此帮助
+Escape            - 关闭对话框/面板
+  `;
+  alert(help);
+}
+
 onMounted(async () => {
   console.log('[MainLayout] 组件开始挂载');
   
@@ -285,6 +925,20 @@ onMounted(async () => {
     console.log('[MainLayout] 加载对话历史');
     loadFromStorage();
     
+    // 加载自定义角色
+    try {
+      const config: any = await invoke('load_app_config');
+      customRoles.value = config.custom_roles || [];
+      console.log(`[MainLayout] 已加载 ${customRoles.value.length} 个自定义角色`);
+    } catch (error) {
+      console.error('[MainLayout] 加载自定义角色失败:', error);
+    }
+    
+    // 加载快捷工具数据
+    loadSnippets();
+    loadLinks();
+    loadNotes();
+    
     // 尝试从 localStorage 加载 API Key
     const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
     console.log('[MainLayout] localStorage 中的 API Key:', savedApiKey ? '存在' : '不存在');
@@ -292,7 +946,7 @@ onMounted(async () => {
     if (savedApiKey) {
       try {
         console.log('[MainLayout] 自动初始化智谱 AI...');
-        await invoke<string>('init_zhipu_client', { apiKey: savedApiKey });
+        await initZhipuClient(savedApiKey);
         zhipuStatus.value = '✅ 已就绪';
         zhipuReady.value = true;
         console.log('[MainLayout] 智谱 AI 初始化成功');
@@ -313,6 +967,9 @@ onMounted(async () => {
       console.log('[MainLayout] 创建新对话');
       createNewConversation();
     }
+    
+    // 注册快捷键
+    registerKeyboardShortcuts();
     
     console.log('[MainLayout] 组件挂载完成 - 应用可正常使用');
   } catch (error) {
@@ -539,39 +1196,22 @@ function handleSettingsUpdate(settings: { systemPrompt: string; temperature: num
 
 // 计算属性：合并默认角色和自定义角色
 const quickRoles = computed(() => {
-  const customRoles = getCustomRoles();
-  return [...defaultRoles, ...customRoles];
+  return [...defaultRoles, ...customRoles.value];
 });
 
-// 加载自定义角色
-function getCustomRoles() {
+// 从 SettingsPanel 接收角色添加事件
+async function handleRoleAdded() {
+  console.log('[MainLayout] 收到角色添加通知，重新加载角色');
   try {
-    const saved = localStorage.getItem(ROLES_STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
+    const config: any = await invoke('load_app_config');
+    customRoles.value = config.custom_roles || [];
+    console.log(`[MainLayout] 已加载 ${customRoles.value.length} 个自定义角色`);
   } catch (error) {
-    console.error('加载自定义角色失败:', error);
-  }
-  return [];
-}
-
-// 保存自定义角色
-function saveCustomRoles(roles: any[]) {
-  try {
-    localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(roles));
-    console.log(`已保存 ${roles.length} 个自定义角色`);
-  } catch (error) {
-    console.error('保存自定义角色失败:', error);
+    console.error('[MainLayout] 加载角色失败:', error);
   }
 }
 
-// 添加新角色
-function addNewRole(role: { icon: string; label: string; value: string }) {
-  const customRoles = getCustomRoles();
-  customRoles.push(role);
-  saveCustomRoles(customRoles);
-}
+
 
 // 删除角色
 // function deleteRole(index: number) {
@@ -587,71 +1227,7 @@ function saveQuickRoles() {
 }
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// 删除自定义角色
-function deleteCustomRole(roleLabel: string) {
-  if (!confirm(`确定要删除角色 "${roleLabel}" 吗？\n\n此操作不可恢复！`)) {
-    return;
-  }
-  
-  try {
-    const customRoles = getCustomRoles();
-    const index = customRoles.findIndex((r: any) => r.label === roleLabel);
-    
-    if (index === -1) {
-      alert('未找到该角色');
-      return;
-    }
-    
-    // 检查是否是当前选中的角色
-    const deletedRole = customRoles[index];
-    if (systemPrompt.value === deletedRole.value) {
-      // 如果正在使用，切换到第一个默认角色
-      systemPrompt.value = defaultRoles[0].value;
-      console.log('已切换到默认角色');
-    }
-    
-    customRoles.splice(index, 1);
-    saveCustomRoles(customRoles);
-    
-    console.log(`已删除角色：${roleLabel}`);
-    alert(`角色 "${roleLabel}" 已删除`);
-  } catch (error) {
-    console.error('删除角色失败:', error);
-    alert('删除失败：' + error);
-  }
-}
 
-// 处理添加角色
-function handleAddRole() {
-  if (!newRole.value.label || !newRole.value.value) {
-    alert('请填写角色名称和系统提示词');
-    return;
-  }
-  
-  try {
-    // 添加到存储
-    addNewRole({
-      icon: newRole.value.icon,
-      label: newRole.value.label,
-      value: newRole.value.value
-    });
-    
-    // 重置表单
-    newRole.value = {
-      icon: '🚀',
-      label: '',
-      value: ''
-    };
-    
-    showAddRoleDialog.value = false;
-    
-    // 提示成功
-    alert('角色添加成功！\n新角色已添加到角色选择列表中。');
-  } catch (error) {
-    console.error('添加角色失败:', error);
-    alert('添加角色失败：' + error);
-  }
-}
 
 // 选择文件
 function handleFileSelected(file: FileItem) {
@@ -872,6 +1448,64 @@ function handleFileSaved() {
   transform: translateY(0);
 }
 
+.btn-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(245, 87, 108, 0.2);
+  white-space: nowrap;
+}
+
+.btn-stats:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(245, 87, 108, 0.3);
+}
+
+.btn-stats:active {
+  transform: translateY(0);
+}
+
+/* 对话统计 */
+.conversation-stats {
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.stat-item-small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-icon {
+  font-size: 14px;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #667eea;
+  min-width: 20px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 /* 对话框 */
 .dialog-overlay {
   position: fixed;
@@ -1024,6 +1658,13 @@ function handleFileSaved() {
   flex-direction: column;
 }
 
+.stats-panel-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .sidebar-right-top {
   flex: 1;
   overflow: hidden;
@@ -1112,6 +1753,575 @@ function handleFileSaved() {
   height: 100vh;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+}
+
+/* 确认对话框样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.api-key-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 400px;
+  max-width: 450px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.current-key-info {
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.current-key-info.warning {
+  background: #fff7e6;
+  border-color: #ffd591;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.info-value.success {
+  color: #52c41a;
+}
+
+.info-value.warn {
+  color: #fa8c16;
+}
+
+.input-section {
+  margin-bottom: 20px;
+}
+
+.input-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.api-key-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  transition: all 0.2s;
+  background: white;
+}
+
+.api-key-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.input-hint {
+  font-size: 12px;
+  color: #999;
+  margin: 8px 0 0 0;
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-action {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-clear {
+  background: #fff1f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+.btn-clear:hover {
+  background: #ffccc7;
+  transform: translateY(-1px);
+}
+
+.btn-reconfigure {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-save:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-clear:disabled:hover {
+  background: #fff1f0;
+  transform: none;
+}
+
+.btn-reconfigure:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-close {
+  padding: 8px 20px;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  color: #667eea;
+  border-color: #667eea;
+}
+
+/* 快捷操作菜单 */
+.quick-actions {
+  position: relative;
+}
+
+.btn-quick-actions {
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-quick-actions:hover {
+  background: #f5f5f5;
+  border-color: #667eea;
+  transform: scale(1.05);
+}
+
+.quick-actions-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  max-width: 320px;
+  z-index: 10000;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-section {
+  padding: 12px 16px;
+}
+
+.menu-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 0;
+}
+
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: #f5f5f5;
+  color: #667eea;
+}
+
+.item-icon {
+  font-size: 16px;
+}
+
+.item-text {
+  flex: 1;
+}
+
+/* 快捷工具面板 */
+.quick-tools-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tools-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background: #f5f5f5;
+}
+
+.tab-btn.active {
+  background: #f0f5ff;
+  border-color: #667eea;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.tool-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.tool-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.btn-add-small {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: #667eea;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-add-small:hover {
+  background: #5a6fd6;
+  transform: scale(1.1);
+}
+
+/* 代码片段样式 */
+.snippets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.snippet-item {
+  padding: 10px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.snippet-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.snippet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.snippet-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.snippet-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.snippet-code {
+  font-size: 11px;
+  color: #666;
+  background: white;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+}
+
+/* 链接样式 */
+.links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.link-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s;
+}
+
+.link-item:hover {
+  border-color: #667eea;
+  background: #f0f5ff;
+}
+
+.link-icon {
+  font-size: 20px;
+}
+
+.link-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.link-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.link-url {
+  font-size: 11px;
+  color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon-delete {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon-delete:hover {
+  color: #ff4d4f;
+}
+
+/* 笔记样式 */
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-item {
+  padding: 10px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.note-item:hover {
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.15);
+}
+
+.note-textarea {
+  width: 100%;
+  padding: 8px;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.note-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.note-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.note-time {
+  font-size: 11px;
+  color: #999;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+.empty-state .hint {
+  font-size: 12px;
+  color: #bbb;
+}
+
+/* 图标按钮 */
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.btn-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 @media (prefers-color-scheme: dark) {

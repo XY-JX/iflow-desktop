@@ -115,6 +115,42 @@ export const useChatStore = defineStore('chat', () => {
     conversations.value = data;
   }
 
+  // 标签管理
+  function addTag(conversationId: string, tag: string) {
+    const conversation = conversations.value.find(c => c.id === conversationId);
+    if (!conversation) return;
+    
+    if (!conversation.tags) {
+      conversation.tags = [];
+    }
+    
+    // 避免重复标签
+    if (!conversation.tags.includes(tag)) {
+      conversation.tags.push(tag);
+      conversation.updatedAt = Date.now();
+    }
+  }
+
+  function removeTag(conversationId: string, tag: string) {
+    const conversation = conversations.value.find(c => c.id === conversationId);
+    if (!conversation || !conversation.tags) return;
+    
+    conversation.tags = conversation.tags.filter(t => t !== tag);
+    conversation.updatedAt = Date.now();
+  }
+
+  function getUniqueTags(): string[] {
+    const tagsSet = new Set<string>();
+    conversations.value.forEach(conv => {
+      conv.tags?.forEach(tag => tagsSet.add(tag));
+    });
+    return Array.from(tagsSet).sort();
+  }
+
+  function filterByTag(tag: string): Conversation[] {
+    return conversations.value.filter(conv => conv.tags?.includes(tag));
+  }
+
   return {
     // 状态
     conversations,
@@ -136,5 +172,10 @@ export const useChatStore = defineStore('chat', () => {
     loadConversations,
     loadFromStorage,
     saveToStorage,
+    // 标签管理
+    addTag,
+    removeTag,
+    getUniqueTags,
+    filterByTag,
   };
 });

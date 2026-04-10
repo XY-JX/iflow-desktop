@@ -78,13 +78,18 @@
 
       <!-- 自定义角色管理 -->
       <div class="setting-section">
-        <label class="section-label">🎭 自定义角色管理</label>
-        <button @click="showAddRoleDialog = true" class="btn-add-role-panel">
-          ➕ 添加自定义角色
-        </button>
+        <div class="section-header">
+          <label class="section-label">🎭 自定义角色管理</label>
+          <button @click="showAddRoleDialog = true" class="btn-add-role-panel" title="添加新角色">
+            ➕ 添加角色
+          </button>
+        </div>
         
         <div v-if="customRoles.length > 0" class="custom-roles-list">
-          <div v-for="(role, index) in customRoles" :key="index" class="role-item">
+          <div v-for="(role, index) in customRoles" :key="index" 
+               class="role-item"
+               :class="{ 'role-selected': localSystemPrompt === role.value }"
+               @click="selectCustomRole(role)">
             <div class="role-info">
               <span class="role-icon-display">{{ role.icon }}</span>
               <div class="role-details">
@@ -92,7 +97,7 @@
                 <span class="role-prompt-display">{{ role.value.substring(0, 50) }}{{ role.value.length > 50 ? '...' : '' }}</span>
               </div>
             </div>
-            <div class="role-actions">
+            <div class="role-actions" @click.stop>
               <button @click="editCustomRole(index)" class="btn-edit-role" title="编辑此角色">
                 ✏️
               </button>
@@ -110,71 +115,75 @@
     </div>
 
     <!-- 添加角色对话框 -->
-    <div v-if="showAddRoleDialog" class="dialog-overlay" @click="showAddRoleDialog = false">
-      <div class="dialog-content" @click.stop>
+    <div v-if="showAddRoleDialog" class="dialog-overlay" @click.self="cancelAddRole">
+      <div class="dialog-content dialog-add-role" @click.stop>
         <h3 class="dialog-title">➕ 添加自定义角色</h3>
         <div class="dialog-body">
-          <div class="form-group">
-            <label class="form-label">角色图标</label>
-            <input 
-              v-model="newRole.icon"
-              type="text"
-              class="form-input"
-              placeholder="例如：🚀"
-              maxlength="2"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">角色名称</label>
-            <input 
-              v-model="newRole.label"
-              type="text"
-              class="form-input"
-              placeholder="例如：翻译助手"
-              maxlength="10"
-            />
+          <div class="form-row">
+            <div class="form-group form-group-icon">
+              <label class="form-label">角色图标</label>
+              <input 
+                v-model="newRole.icon"
+                type="text"
+                class="form-input input-icon"
+                placeholder="🚀"
+                maxlength="2"
+              />
+            </div>
+            <div class="form-group form-group-name">
+              <label class="form-label">角色名称</label>
+              <input 
+                v-model="newRole.label"
+                type="text"
+                class="form-input"
+                placeholder="例如：翻译助手"
+                maxlength="10"
+              />
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">系统提示词</label>
             <textarea 
               v-model="newRole.value"
               class="form-textarea"
-              placeholder="描述这个角色的职责和能力..."
-              rows="4"
+              placeholder="描述这个角色的职责和能力...\n\n例如：你是专业的翻译助手，精通多国语言翻译..."
+              rows="5"
             ></textarea>
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="showAddRoleDialog = false" class="btn-dialog-cancel">取消</button>
-          <button @click="handleAddRole" class="btn-dialog-confirm">确定</button>
+          <button @click="cancelAddRole" class="btn-dialog-cancel">取消</button>
+          <button @click="handleAddRole" class="btn-dialog-confirm">确定添加</button>
         </div>
       </div>
     </div>
     
     <!-- 编辑角色对话框 -->
-    <div v-if="showEditRoleDialog" class="dialog-overlay" @click="showEditRoleDialog = false">
-      <div class="dialog-content" @click.stop>
+    <div v-if="showEditRoleDialog" class="dialog-overlay" @click.self="cancelEditRole">
+      <div class="dialog-content dialog-add-role" @click.stop>
         <h3 class="dialog-title">✏️ 编辑自定义角色</h3>
         <div class="dialog-body">
-          <div class="form-group">
-            <label class="form-label">角色图标</label>
-            <input 
-              v-model="newRole.icon"
-              type="text"
-              class="form-input"
-              placeholder="例如：🚀"
-              maxlength="2"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">角色名称</label>
-            <input 
-              v-model="newRole.label"
-              type="text"
-              class="form-input"
-              placeholder="例如：翻译助手"
-              maxlength="10"
-            />
+          <div class="form-row">
+            <div class="form-group form-group-icon">
+              <label class="form-label">角色图标</label>
+              <input 
+                v-model="newRole.icon"
+                type="text"
+                class="form-input input-icon"
+                placeholder="🚀"
+                maxlength="2"
+              />
+            </div>
+            <div class="form-group form-group-name">
+              <label class="form-label">角色名称</label>
+              <input 
+                v-model="newRole.label"
+                type="text"
+                class="form-input"
+                placeholder="例如：翻译助手"
+                maxlength="10"
+              />
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">系统提示词</label>
@@ -182,13 +191,13 @@
               v-model="newRole.value"
               class="form-textarea"
               placeholder="描述这个角色的职责和能力..."
-              rows="4"
+              rows="5"
             ></textarea>
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="showEditRoleDialog = false" class="btn-dialog-cancel">取消</button>
-          <button @click="saveEditedRole" class="btn-dialog-confirm">保存</button>
+          <button @click="cancelEditRole" class="btn-dialog-cancel">取消</button>
+          <button @click="saveEditedRole" class="btn-dialog-confirm">保存修改</button>
         </div>
       </div>
     </div>
@@ -214,6 +223,7 @@ const props = withDefaults(defineProps<SettingsPanelProps>(), {
 const emit = defineEmits<{
   close: [];
   'update:settings': [settings: { systemPrompt: string; temperature: number; maxTokens: number }];
+  'role-added': []; // 新增事件：角色添加成功
 }>();
 
 const localSystemPrompt = ref(props.systemPrompt);
@@ -254,6 +264,13 @@ async function loadCustomRoles() {
 //   }
 // }
 
+// 临时保存原始数据（用于取消时恢复）
+const tempRoleBackup = ref({
+  icon: '🚀',
+  label: '',
+  value: ''
+});
+
 // 添加新角色
 async function handleAddRole() {
   if (!newRole.value.label || !newRole.value.value) {
@@ -281,10 +298,25 @@ async function handleAddRole() {
     };
     
     showAddRoleDialog.value = false;
+    
+    // 通知父组件角色已添加
+    emit('role-added');
   } catch (error) {
     console.error('添加角色失败:', error);
     alert('添加角色失败：' + error);
   }
+}
+
+// 取消添加角色
+function cancelAddRole() {
+  showAddRoleDialog.value = false;
+  // 不重置表单，保留用户输入
+}
+
+// 选择自定义角色
+function selectCustomRole(role: any) {
+  localSystemPrompt.value = role.value;
+  updateSettings();
 }
 
 // 删除角色
@@ -319,12 +351,26 @@ function editCustomRole(index: number) {
   }
   
   editingRoleIndex.value = index;
+  // 备份原始数据
+  tempRoleBackup.value = {
+    icon: role.icon,
+    label: role.label,
+    value: role.value
+  };
   newRole.value = {
     icon: role.icon,
     label: role.label,
     value: role.value
   };
   showEditRoleDialog.value = true;
+}
+
+// 取消编辑角色
+function cancelEditRole() {
+  showEditRoleDialog.value = false;
+  editingRoleIndex.value = -1;
+  // 恢复原始数据
+  newRole.value = { ...tempRoleBackup.value };
 }
 
 // 保存编辑的角色
@@ -584,23 +630,29 @@ function resetToDefaults() {
 
 /* 角色管理 */
 .btn-add-role-panel {
-  width: 100%;
-  padding: 10px 16px;
+  padding: 6px 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   color: white;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  white-space: nowrap;
 }
 
 .btn-add-role-panel:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .custom-roles-list {
@@ -615,14 +667,22 @@ function resetToDefaults() {
   justify-content: space-between;
   padding: 12px 16px;
   background: var(--bg-secondary, #f5f5f5);
-  border: 1px solid var(--border-color, #ddd);
+  border: 2px solid var(--border-color, #ddd);
   border-radius: 8px;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .role-item:hover {
   background: var(--bg-hover, #e8e8e8);
   border-color: var(--primary-color, #4a90e2);
+  transform: translateX(2px);
+}
+
+.role-item.role-selected {
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-color: #1890ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
 }
 
 .role-info {
@@ -654,6 +714,12 @@ function resetToDefaults() {
 .role-actions {
   display: flex;
   gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.role-item:hover .role-actions {
+  opacity: 1;
 }
 
 .btn-edit-role,
@@ -694,5 +760,136 @@ function resetToDefaults() {
   padding: 24px;
   color: var(--text-secondary, #999);
   font-size: 14px;
+}
+
+/* 对话框优化 */
+.dialog-add-role {
+  max-width: 520px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.dialog-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-group-icon,
+.form-group-name {
+  margin-bottom: 0;
+}
+
+.input-icon {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 20px;
+  text-align: center;
+  transition: all 0.2s;
+  background: white;
+}
+
+.input-icon:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: white;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  transition: all 0.2s;
+  line-height: 1.6;
+  background: white;
+  min-height: 100px;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-dialog-cancel {
+  padding: 8px 20px;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dialog-cancel:hover {
+  color: #667eea;
+  border-color: #667eea;
+}
+
+.btn-dialog-confirm {
+  padding: 8px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dialog-confirm:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 </style>
