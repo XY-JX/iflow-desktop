@@ -61,7 +61,20 @@ export interface FileItem {
 export interface AppConfig {
   custom_roles: CustomRole[];
   cached_models?: ZhipuModelInfo[]; // 缓存的模型列表
+  
+  // 上下文压缩配置
+  contextConfig?: ContextConfig;
+  
   [key: string]: any;
+}
+
+// 上下文压缩配置
+export interface ContextConfig {
+  maxTokens: number;              // 最大 Token 限制
+  compressionLevel: 'none' | 'light' | 'aggressive'; // 压缩级别
+  keepCodeBlocks: boolean;        // 是否保留代码块
+  keepErrors: boolean;            // 是否保留错误信息
+  recentRounds: number;           // 保留最近完整对话轮数
 }
 
 // 自定义角色类型

@@ -33,14 +33,22 @@ describe('Logger', () => {
   describe('warn', () => {
     it('should log warning messages', () => {
       warn('TestModule', 'warning message');
-      expect(console.warn).toHaveBeenCalledWith('[TestModule] warning message');
+      expect(console.warn).toHaveBeenCalled();
+      // 验证包含模块名和消息(时间戳会变化)
+      const callArgs = (console.warn as any).mock.calls[0][0];
+      expect(callArgs).toContain('[TestModule]');
+      expect(callArgs).toContain('warning message');
     });
   });
 
   describe('error', () => {
     it('should always log error messages', () => {
       error('TestModule', 'error message');
-      expect(console.error).toHaveBeenCalledWith('[TestModule] error message');
+      expect(console.error).toHaveBeenCalled();
+      // 验证包含模块名和消息(时间戳会变化)
+      const callArgs = (console.error as any).mock.calls[0][0];
+      expect(callArgs).toContain('[TestModule]');
+      expect(callArgs).toContain('error message');
     });
 
     it('should format multiple arguments correctly', () => {

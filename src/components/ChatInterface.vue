@@ -13,17 +13,6 @@
     <div class="messages-container" ref="messagesContainer">
       <!-- 消息列表 -->
       <div v-for="message in messages" :key="message.id" class="message-wrapper">
-        <!-- 思考过程区域 -->
-        <div v-if="message.thinking" class="thinking-process">
-          <div class="thinking-header">
-            <span class="thinking-icon">💭</span>
-            <span class="thinking-title">Thinking...</span>
-          </div>
-          <div class="thinking-content">
-            <div class="thinking-text">{{ message.thinking }}</div>
-          </div>
-        </div>
-
         <!-- 消息内容 -->
         <div class="message" :class="message.role">
           <div class="message-avatar">
@@ -112,6 +101,13 @@
           <span class="text">发送</span>
         </button>
       </div>
+      
+      <!-- 响应状态提示 -->
+      <div v-if="isGenerating" class="response-status">
+        <span class="status-dot"></span>
+        <span class="status-text">AI 正在思考并回复中...</span>
+      </div>
+      
       <div class="input-hint">按 Enter 发送，Shift + Enter 换行</div>
     </div>
   </div>
@@ -209,18 +205,27 @@
     return md.render(content);
   }
 
-  async function scrollToBottom() {
-    await nextTick();
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-    }
+  function scrollToBottom() {
+    if (!messagesContainer.value) return;
+    
+    // 立即滚动，不等待下一帧
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
 
   // 监听消息变化，自动滚动到底部
   watch(
     () => props.messages,
-    async () => {
-      await scrollToBottom();
+    (newMessages, oldMessages) => {
+      // 生成中时，始终滚动到底部
+      if (props.isGenerating) {
+        scrollToBottom();
+        return;
+      }
+      
+      // 非生成状态：只有当消息数量增加时才滚动
+      if (!oldMessages || newMessages.length > oldMessages.length) {
+        scrollToBottom();
+      }
     },
     { deep: true },
   );
@@ -228,8 +233,8 @@
   // 监听生成状态变化
   watch(
     () => props.isGenerating,
-    async () => {
-      await scrollToBottom();
+    () => {
+      scrollToBottom();
     },
   );
 
@@ -247,8 +252,8 @@
   });
 
   // 初始化时滚动到底部
-  onMounted(async () => {
-    await scrollToBottom();
+  onMounted(() => {
+    scrollToBottom();
   });
 
   // 从消息内容中提取代码块
@@ -877,6 +882,35 @@
     font-size: 12px;
     color: var(--text-secondary, #999);
     text-align: center;
+  }
+
+  /* 响应状态提示 */
+  .response-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--primary-color, #4a90e2);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary-color, #4a90e2);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(0.8);
+    }
   }
 
   @media (prefers-color-scheme: dark) {

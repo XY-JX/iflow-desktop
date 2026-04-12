@@ -1,12 +1,23 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import viteCompression from 'vite-plugin-compression';
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    // Gzip 压缩
+    viteCompression({
+      verbose: true,
+      disable: false,
+      threshold: 10240, // 大于 10KB 的文件才压缩
+      algorithm: 'gzip',
+      ext: '.gz'
+    })
+  ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -39,7 +50,11 @@ export default defineConfig(async () => ({
           'vue-vendor': ['vue', 'pinia'],
           'markdown': ['markdown-it'],
           'tauri': ['@tauri-apps/api/core', '@tauri-apps/api/event']
-        }
+        },
+        // 优化 chunk 文件名
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     },
     // 压缩配置
@@ -48,9 +63,26 @@ export default defineConfig(async () => ({
       compress: {
         drop_console: true, // 生产环境移除 console
         drop_debugger: true
+      },
+      format: {
+        comments: false // 移除所有注释
       }
     },
     // chunk 大小警告限制
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    // 启用 CSS 代码分割
+    cssCodeSplit: true,
+    // 资源内联限制 (小于 4KB 转 base64)
+    assetsInlineLimit: 4096,
+    // 启用预加载策略
+    modulePreload: {
+      polyfill: true
+    }
+  },
+  
+  // 预加载优化
+  preview: {
+    port: 4173,
+    strictPort: true
   }
 }));

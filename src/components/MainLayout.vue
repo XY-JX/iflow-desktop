@@ -121,19 +121,14 @@
             @delete-note="deleteNote"
           />
         </div>
-        <div class="sidebar-right-bottom">
+
+        <!-- 思考过程面板 -->
+        <div v-if="latestThinking" class="sidebar-right-bottom">
           <div class="panel-header">
             <span class="panel-title">🧠 思考过程</span>
           </div>
           <div class="thinking-display" ref="thinkingDisplay">
-            <div v-if="latestThinking" class="thinking-content">
-              <div class="thinking-note">ℹ️ 注意：以下显示的是 AI 的思考和回答过程</div>
-              {{ latestThinking }}
-            </div>
-            <div v-else class="thinking-placeholder">
-              <span class="placeholder-icon">💭</span>
-              <span class="placeholder-text">思考过程将显示在这里</span>
-            </div>
+            <div class="thinking-content">{{ latestThinking }}</div>
           </div>
         </div>
       </template>
@@ -217,6 +212,7 @@
     addMessage,
     setGenerating,
     setThinking,
+    clearThinking,
     loadFromStorage,
   } = chatStore;
   const { selectedFile, selectFile, clearSelection } = fileStore;
@@ -257,8 +253,9 @@
   const customRoles = ref<CustomRole[]>([]);
 
   // 快捷工具状态
-  const activeToolTab = ref('snippets'); // 当前激活的工具tab
+  const activeToolTab = ref('totp'); // 当前激活的工具tab
   const toolTabs = [
+    { id: 'totp', icon: '🔐', label: '验证码' },
     { id: 'snippets', icon: '💾', label: '代码片段' },
     { id: 'links', icon: '🔗', label: '快速链接' },
     { id: 'notes', icon: '📝', label: '快捷笔记' },
@@ -320,6 +317,9 @@
     { id: 'glm-4-flash', name: 'GLM-4 Flash', provider: '智谱 AI' },
   ]);
   const currentModel = ref('glm-4.6v');
+
+  // 思考过程显示引用
+  const thinkingDisplay = ref<HTMLDivElement>();
 
   // async function checkZhipuStatus() {
   //   try {
@@ -654,7 +654,6 @@
     const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
     if (conversation) {
       conversation.messages = [];
-      setThinking('');
     }
   }
 
@@ -684,20 +683,9 @@
 
 ${msg.content}
 
-`;
-
-      if (msg.thinking) {
-        markdown += `<details>
-<summary>思考过程</summary>
-
-${msg.thinking}
-
-</details>
+---
 
 `;
-      }
-
-      markdown += `---\n\n`;
     });
 
     // 创建下载链接
@@ -1047,30 +1035,6 @@ Escape            - 关闭对话框/面板
     }
   });
 
-  // 当前对话的消息 (从 store 计算属性获取)
-  const currentMessageContent = ref('');
-  const thinkingDisplay = ref<HTMLDivElement>();
-
-  // 监听思考内容变化，自动滚动到底部
-  watch(latestThinking, () => {
-    if (thinkingDisplay.value) {
-      thinkingDisplay.value.scrollTop = thinkingDisplay.value.scrollHeight;
-    }
-  });
-
-  // 更新消息的思考过程
-  function updateMessageThinking(messageId: string, thinking: string) {
-    // 更新消息中的 thinking
-    const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
-    if (conversation) {
-      const message = conversation.messages.find((m) => m.id === messageId);
-      if (message) {
-        message.thinking = thinking;
-      }
-    }
-    // 同时更新 store 中的 latestThinking，让右下角能显示
-    setThinking(thinking);
-  }
 
   // 更新消息内容和执行信息
   function updateMessageContent(
@@ -1087,6 +1051,9 @@ Escape            - 关闭对话框/面板
         if (executionInfo) {
           message.executionInfo = executionInfo;
         }
+        
+        // 自动保存
+        chatStore.saveToStorage();
       }
     }
   }
@@ -1134,9 +1101,6 @@ Escape            - 关闭对话框/面板
     // 设置生成状态并记录开始时间
     setGenerating(true);
 
-    // 清空当前消息内容
-    currentMessageContent.value = '';
-
     try {
       // 先创建一个空的助手消息用于显示流式内容
       const assistantMessageId = (Date.now() + 1).toString();
@@ -1145,16 +1109,32 @@ Escape            - 关闭对话框/面板
         role: 'assistant',
         content: '',
         timestamp: Date.now(),
-        thinking: '正在思考...',
       };
       addMessage(assistantMessage);
 
       // 监听 AI chunk 事件
       const unlistenChunk = await listen('ai-chunk', (event: any) => {
         const data = event.payload;
-        // 直接使用 full_content 避免重复累积
+        
+        // 更新思考过程
+        if (data.chunk) {
+          setThinking(data.full_content);
+          
+          // 自动滚动思考面板
+          if (thinkingDisplay.value) {
+            thinkingDisplay.value.scrollTop = thinkingDisplay.value.scrollHeight;
+          }
+        }
+        
+        // 直接修改消息对象，避免频繁触发响应式更新
         if (data.full_content) {
-          updateMessageThinking(assistantMessageId, data.full_content);
+          const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
+          if (conversation) {
+            const message = conversation.messages.find((m) => m.id === assistantMessageId);
+            if (message) {
+              message.content = data.full_content;
+            }
+          }
         }
       });
 
@@ -1180,6 +1160,7 @@ Escape            - 关闭对话框/面板
         });
 
         setGenerating(false);
+        clearThinking(); // 清除思考过程
 
         // 清理事件监听
         unlistenChunk();
@@ -1215,6 +1196,7 @@ Escape            - 关闭对话框/面板
         allMessages,
         maxTokens.value - 500, // 预留 500 tokens 给回复
         systemPrompt.value,
+        10, // 保留最近 10 轮对话
       );
 
       if (messagesForApi.length < allMessages.length) {
@@ -1250,6 +1232,9 @@ Escape            - 关闭对话框/面板
       if (conversation) {
         conversation.model = modelId;
         conversation.updatedAt = Date.now();
+        
+        // 自动保存
+        chatStore.saveToStorage();
       }
     }
   }

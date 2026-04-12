@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import type { Conversation, Message } from '../types';
 import { info, error as logError } from '../utils/logger';
+import { invoke } from '@tauri-apps/api/core';
 
 export const useChatStore = defineStore('chat', () => {
   // 状态
@@ -10,41 +11,26 @@ export const useChatStore = defineStore('chat', () => {
   const isGenerating = ref(false);
   const latestThinking = ref<string>('');
 
-  // 本地存储键名
-  const STORAGE_KEY = 'iflow_conversations';
-
-  // 从 localStorage 加载对话
-  function loadFromStorage() {
+  // 从 Rust 后端加载对话
+  async function loadFromStorage() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        conversations.value = data || [];
-        info('chatStore', `已加载 ${conversations.value.length} 个对话`);
-      }
+      const data = await invoke<Conversation[]>('load_conversations');
+      conversations.value = data || [];
+      info('chatStore', `已加载 ${conversations.value.length} 个对话`);
     } catch (error) {
       logError('chatStore', '加载对话历史失败:', error);
     }
   }
 
-  // 保存到 localStorage
-  function saveToStorage() {
+  // 保存到 Rust 后端
+  async function saveToStorage() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations.value));
+      await invoke('save_conversations', { conversations: conversations.value });
       info('chatStore', `已保存 ${conversations.value.length} 个对话`);
     } catch (error) {
       logError('chatStore', '保存对话历史失败:', error);
     }
   }
-
-  // 监听对话变化，自动保存
-  watch(
-    conversations,
-    () => {
-      saveToStorage();
-    },
-    { deep: true },
-  );
 
   // 计算属性
   const currentMessages = computed(() => {
@@ -69,6 +55,9 @@ export const useChatStore = defineStore('chat', () => {
     };
     conversations.value.unshift(newConversation);
     activeConversationId.value = newConversation.id;
+    
+    // 自动保存
+    saveToStorage();
     return newConversation;
   }
 
@@ -81,6 +70,9 @@ export const useChatStore = defineStore('chat', () => {
     if (activeConversationId.value === id) {
       activeConversationId.value = undefined;
     }
+    
+    // 自动保存
+    saveToStorage();
   }
 
   function addMessage(message: Message) {
@@ -95,6 +87,9 @@ export const useChatStore = defineStore('chat', () => {
       conversation.title =
         message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '');
     }
+    
+    // 自动保存
+    saveToStorage();
   }
 
   function updateConversationTitle(title: string) {
@@ -102,6 +97,7 @@ export const useChatStore = defineStore('chat', () => {
     if (conversation) {
       conversation.title = title;
       conversation.updatedAt = Date.now();
+      saveToStorage();
     }
   }
 
@@ -116,6 +112,7 @@ export const useChatStore = defineStore('chat', () => {
   function clearThinking() {
     latestThinking.value = '';
   }
+
 
   function loadConversations(data: Conversation[]) {
     conversations.value = data;
@@ -134,6 +131,7 @@ export const useChatStore = defineStore('chat', () => {
     if (!conversation.tags.includes(tag)) {
       conversation.tags.push(tag);
       conversation.updatedAt = Date.now();
+      saveToStorage();
     }
   }
 
@@ -143,6 +141,7 @@ export const useChatStore = defineStore('chat', () => {
 
     conversation.tags = conversation.tags.filter((t) => t !== tag);
     conversation.updatedAt = Date.now();
+    saveToStorage();
   }
 
   function getUniqueTags(): string[] {

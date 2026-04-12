@@ -198,10 +198,10 @@ async fn handle_stream_response(
                 if !content.is_empty() {
                     full_content.push_str(&content);
                     
-                    // 实时发送到前端
+                    // 实时发送到前端，只发送增量
                     let _ = window.emit("ai-chunk", serde_json::json!({
-                        "content": content,
-                        "full_content": full_content
+                        "chunk": content,
+                        "full_content": full_content.clone()
                     }));
                 }
             }

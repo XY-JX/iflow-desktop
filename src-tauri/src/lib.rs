@@ -40,6 +40,10 @@ pub fn run() {
             // 日志相关命令
             logging::get_log_file_path,
             logging::clean_old_logs,
+            // TOTP 相关命令
+            commands::totp::save_totp_secrets,
+            commands::totp::load_totp_secrets,
+            commands::totp::delete_totp_secrets,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

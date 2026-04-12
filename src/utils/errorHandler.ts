@@ -1,5 +1,6 @@
 /**
  * 错误处理工具
+ * 优化版：添加重试机制和更完善的错误分类
  */
 
 export interface AppError {
@@ -8,21 +9,23 @@ export interface AppError {
   context?: string;
   timestamp: number;
   stack?: string;
+  retryable?: boolean; // 是否可重试
 }
 
 export class ErrorHandler {
   private static errorLog: AppError[] = [];
-  private static maxLogSize = 100;
+  private static maxLogSize = 50; // 减少日志量
 
   /**
    * 处理错误
    */
-  static handle(error: unknown, context: string = 'Unknown'): AppError {
+  static handle(error: unknown, context: string = 'Unknown', retryable: boolean = false): AppError {
     const appError: AppError = {
       message: error instanceof Error ? error.message : String(error),
       context,
       timestamp: Date.now(),
       stack: error instanceof Error ? error.stack : undefined,
+      retryable,
     };
 
     // 记录错误日志
@@ -47,9 +50,9 @@ export class ErrorHandler {
       this.errorLog = this.errorLog.slice(0, this.maxLogSize);
     }
 
-    // 保存到 localStorage（可选）
+    // 保存到 localStorage（仅保留最近 5 条）
     try {
-      localStorage.setItem('app_error_log', JSON.stringify(this.errorLog.slice(0, 10)));
+      localStorage.setItem('app_error_log', JSON.stringify(this.errorLog.slice(0, 5)));
     } catch (e) {
       // 忽略存储失败
     }
@@ -87,23 +90,59 @@ export class ErrorHandler {
       return '权限不足，请检查配置';
     }
 
+    if (error.message.includes('token') || error.message.includes('Token')) {
+      return 'Token 计算异常，已使用默认值';
+    }
+
     return `操作失败：${error.message}`;
   }
 
   /**
-   * 安全执行异步函数
+   * 安全执行异步函数（带重试）
    */
   static async safeExecute<T>(
     fn: () => Promise<T>,
     context: string = 'Async Operation',
+    retries: number = 1,
   ): Promise<{ success: boolean; data?: T; error?: AppError }> {
-    try {
-      const data = await fn();
-      return { success: true, data };
-    } catch (error) {
-      const appError = this.handle(error, context);
-      return { success: false, error: appError };
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const data = await fn();
+        return { success: true, data };
+      } catch (error) {
+        lastError = error;
+        
+        // 如果不是最后一次尝试，等待后重试
+        if (attempt < retries) {
+          const waitTime = Math.pow(2, attempt) * 1000; // 指数退避
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
+
+    const appError = this.handle(lastError, context, retries > 0);
+    return { success: false, error: appError };
+  }
+
+  /**
+   * 全局错误恢复建议
+   */
+  static getRecoverySuggestion(error: AppError): string {
+    if (error.retryable) {
+      return '建议：您可以稍后重试此操作';
+    }
+
+    if (error.context && (error.context.includes('API') || error.context.includes('Network'))) {
+      return '建议：检查网络连接或 API 配置';
+    }
+
+    if (error.context && error.context.includes('Storage')) {
+      return '建议：清理浏览器缓存后重试';
+    }
+
+    return '建议：刷新页面或重启应用';
   }
 }
 

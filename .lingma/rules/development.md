@@ -14,6 +14,15 @@ description: 开发新功能时的完整指南（架构+规范+调试）
 → chatStore → ChatInterface.vue
 ```
 
+### 数据保存时机
+```
+添加消息 → 立即保存
+流式更新 → 不保存 (避免频繁IO)
+AI回复完成 → 立即保存
+切换模型 → 立即保存
+删除对话 → 立即保存
+```
+
 ### 关键文件映射
 
 | 功能 | 前端 | 后端 | Store |
@@ -51,6 +60,13 @@ pub fn do_something() -> Result<(), String> {
 
 // ✅ 函数引用（不要加括号）
 generate_handler![my_command]
+
+// ✅ 数据持久化 - 使用安装目录
+fn get_data_path(_app: &AppHandle) -> PathBuf {
+    let exe_path = std::env::current_exe().unwrap();
+    let install_dir = exe_path.parent().unwrap();
+    install_dir.join("data").join("data.json")
+}
 ```
 
 ### TypeScript/Vue 规范
@@ -80,6 +96,18 @@ emit('event-name', data);
 .color-text {
   color: var(--color-text);
 }
+
+// ✅ 数据持久化 - 调用 Rust 后端
+import { invoke } from '@tauri-apps/api/core';
+
+async function loadData() {
+  const data = await invoke<MyData[]>('load_my_data');
+  return data;
+}
+
+async function saveData(data: MyData[]) {
+  await invoke('save_my_data', { data });
+}
 ```
 
 ---
@@ -98,6 +126,24 @@ const { state } = storeToRefs(store);
 
 // ❌ 错误
 const { state } = store;
+```
+
+### 数据持久化问题？
+```typescript
+// ✅ chatStore - 使用 Rust 后端
+import { invoke } from '@tauri-apps/api/core';
+
+async function loadFromStorage() {
+  const data = await invoke<Conversation[]>('load_conversations');
+  conversations.value = data || [];
+}
+
+async function saveToStorage() {
+  await invoke('save_conversations', { conversations: conversations.value });
+}
+
+// ❌ 禁止使用 localStorage
+localStorage.setItem('data', JSON.stringify(data)); // ❌
 ```
 
 ### Rust 编译错误？
@@ -142,3 +188,8 @@ npm run tauri build  # 打包
 3. **考虑深色主题兼容性**
 4. **分阶段完成复杂任务**
 5. **即时反馈进度**
+6. **数据持久化规范**
+   - 所有业务数据通过 Rust 后端存储
+   - 配置文件存放在 `config/` 目录
+   - 用户数据存放在 `data/` 目录
+   - 禁止使用 localStorage 存储业务数据

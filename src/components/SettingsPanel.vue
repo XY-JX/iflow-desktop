@@ -69,6 +69,51 @@
         </div>
       </div>
 
+      <!-- 上下文压缩配置 -->
+      <div class="setting-section">
+        <label class="section-label">🗜️ 上下文压缩设置</label>
+        
+        <!-- 压缩级别 -->
+        <div class="context-config-item">
+          <label class="config-label">压缩级别</label>
+          <select v-model="contextConfig.compressionLevel" @change="updateSettings" class="config-select">
+            <option value="none">不压缩</option>
+            <option value="light">轻度压缩</option>
+            <option value="aggressive">激进压缩</option>
+          </select>
+        </div>
+
+        <!-- 保留最近轮数 -->
+        <div class="context-config-item">
+          <label class="config-label">保留最近对话轮数: {{ contextConfig.recentRounds }}</label>
+          <input
+            type="range"
+            v-model.number="contextConfig.recentRounds"
+            min="0"
+            max="20"
+            step="1"
+            class="slider"
+            @change="updateSettings"
+          />
+          <div class="slider-labels">
+            <span>不限 (0)</span>
+            <span>20 轮</span>
+          </div>
+        </div>
+
+        <!-- 保护选项 -->
+        <div class="context-config-item config-checkboxes">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="contextConfig.keepCodeBlocks" @change="updateSettings" />
+            <span>🔒 保护代码块</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="contextConfig.keepErrors" @change="updateSettings" />
+            <span>🔒 保护错误信息</span>
+          </label>
+        </div>
+      </div>
+
       <!-- 重置按钮 -->
       <div class="setting-actions">
         <button class="reset-btn" @click="resetToDefaults">🔄 恢复默认设置</button>
@@ -210,6 +255,7 @@
 <script setup lang="ts">
   import { ref, onMounted } from 'vue';
   import { invoke } from '@tauri-apps/api/core';
+  import type { ContextConfig } from '../types';
 
   interface SettingsPanelProps {
     systemPrompt?: string;
@@ -232,6 +278,15 @@
   const localSystemPrompt = ref(props.systemPrompt);
   const temperature = ref(props.temperature);
   const maxTokens = ref(props.maxTokens);
+  
+  // 上下文压缩配置
+  const contextConfig = ref<ContextConfig>({
+    maxTokens: 8192,
+    compressionLevel: 'light',
+    keepCodeBlocks: true,
+    keepErrors: true,
+    recentRounds: 10,
+  });
   const showAddRoleDialog = ref(false);
   const showEditRoleDialog = ref(false);
   const editingRoleIndex = ref(-1);
@@ -446,8 +501,43 @@
     localSystemPrompt.value = '你是一个有用的 AI 编程助手。';
     temperature.value = 0.7;
     maxTokens.value = 2048;
+    contextConfig.value = {
+      maxTokens: 8192,
+      compressionLevel: 'light',
+      keepCodeBlocks: true,
+      keepErrors: true,
+      recentRounds: 10,
+    };
     updateSettings();
   }
+
+  // 加载上下文配置
+  async function loadContextConfig() {
+    try {
+      const config: any = await invoke('load_app_config');
+      if (config.contextConfig) {
+        contextConfig.value = { ...contextConfig.value, ...config.contextConfig };
+      }
+    } catch (error) {
+      console.error('加载上下文配置失败:', error);
+    }
+  }
+
+  // 保存上下文配置
+  async function saveContextConfig() {
+    try {
+      const config: any = await invoke('load_app_config');
+      config.contextConfig = contextConfig.value;
+      await invoke('save_app_config', { config });
+    } catch (error) {
+      console.error('保存上下文配置失败:', error);
+    }
+  }
+
+  onMounted(() => {
+    loadCustomRoles();
+    loadContextConfig();
+  });
 </script>
 
 <style scoped>
@@ -612,6 +702,57 @@
     margin-top: 8px;
     font-size: 12px;
     color: var(--text-secondary, #999);
+  }
+
+  /* 上下文压缩配置样式 */
+  .context-config-item {
+    margin-bottom: 16px;
+  }
+
+  .config-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary, #333);
+    margin-bottom: 6px;
+  }
+
+  .config-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .config-select:focus {
+    outline: none;
+    border-color: var(--primary-color, #4a90e2);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+  }
+
+  .config-checkboxes {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-primary, #333);
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
   }
 
   .setting-actions {

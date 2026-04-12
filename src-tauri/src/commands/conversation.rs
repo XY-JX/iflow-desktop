@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use std::fs;
 use tracing::{info, debug, instrument};
 
-/// 获取配置目录
+/// 获取配置目录(使用安装目录)
 pub fn get_config_dir() -> Result<PathBuf, String> {
+    // 获取应用可执行文件所在目录
     let exe_path = std::env::current_exe()
         .map_err(|e| format!("无法获取可执行文件路径：{}", e))?;
     
@@ -11,13 +12,15 @@ pub fn get_config_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "无法获取安装目录".to_string())?
         .to_path_buf();
     
-    let config_dir = install_dir.join("config");
+    // 在安装目录下创建 data 文件夹
+    let config_dir = install_dir.join("data");
     
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)
             .map_err(|e| format!("无法创建配置目录：{}", e))?;
     }
     
+    info!("配置目录：{:?}", config_dir);
     Ok(config_dir)
 }
 

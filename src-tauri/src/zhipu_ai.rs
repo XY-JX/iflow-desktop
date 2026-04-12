@@ -1,6 +1,6 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tracing::{info, error};
+use tracing::{info, error, warn};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -223,54 +223,65 @@ impl ZhipuAiClient {
                             
                             // 处理可能的多行数据
                             let mut results = Vec::new();
-                            let mut last_newline_pos = 0;
                             let current_buf = buf.clone();
                             
                             // 按行处理
-                            for (i, byte) in current_buf.as_bytes().iter().enumerate() {
-                                if *byte == b'\n' {
-                                    let line = &current_buf[last_newline_pos..i];
-                                    last_newline_pos = i + 1;
-                                    
-                                    let line = line.trim();
-                                    if line.is_empty() {
-                                        continue;
-                                    }
-                                    
-                                    // SSE 格式：data: {...}
-                                    if let Some(data) = line.strip_prefix("data: ") {
-                                        if data.trim() == "[DONE]" {
-                                            continue;
-                                        }
-                                        
-                                        match serde_json::from_str::<StreamChunk>(data) {
-                                            Ok(chunk) => {
-                                                if let Some(choice) = chunk.choices.first() {
-                                                    // 只使用 reasoning_content (思考过程)
-                                                    if let Some(content) = &choice.delta.reasoning_content {
-                                                        if !content.is_empty() {
-                                                            results.push(content.clone());
-                                                        }
-                                                    } else if choice.delta.reasoning_content.is_none() {
-                                                        // 只有在没有 reasoning_content 时才使用 content
-                                                        if let Some(content) = &choice.delta.content {
-                                                            if !content.is_empty() {
-                                                                results.push(content.clone());
-                                                            }
-                                                        }
-                                                    }
+                            let lines: Vec<&str> = current_buf.split('\n').collect();
+                            let line_count = lines.len();
+                            
+                            for (i, line) in lines.iter().enumerate() {
+                                let line = line.trim();
+                                if line.is_empty() {
+                                    continue;
+                                }
+                                
+                                // 最后一行可能是不完整的，保留到 buffer
+                                if i == line_count - 1 && !current_buf.ends_with('\n') {
+                                    *buf = line.to_string();
+                                    break; // 跳出循环，不再处理
+                                }
+                                
+                                // SSE 格式：data: {...} 或 data:{...}
+                                let data = if let Some(d) = line.strip_prefix("data: ") {
+                                    d
+                                } else if let Some(d) = line.strip_prefix("data:") {
+                                    d
+                                } else {
+                                    continue;
+                                };
+                                
+                                let data = data.trim();
+                                if data == "[DONE]" {
+                                    continue;
+                                }
+                                
+                                match serde_json::from_str::<StreamChunk>(data) {
+                                    Ok(chunk) => {
+                                        if let Some(choice) = chunk.choices.first() {
+                                            // 优先使用 reasoning_content (思考过程)
+                                            if let Some(reasoning) = &choice.delta.reasoning_content {
+                                                if !reasoning.is_empty() {
+                                                    results.push(reasoning.clone());
+                                                }
+                                            } else if let Some(content) = &choice.delta.content {
+                                                // 没有思考过程时使用 content
+                                                if !content.is_empty() {
+                                                    results.push(content.clone());
                                                 }
                                             }
-                                            Err(_) => {
-                                                // 静默跳过无效数据块（通常是分片导致的）
-                                            }
                                         }
+                                    }
+                                    Err(e) => {
+                                        // 记录解析错误，但不中断流程
+                                        warn!("解析 chunk 失败: {}, data: {}", e, data);
                                     }
                                 }
                             }
                             
-                            // 保留未处理的部分（可能是不完整的行）
-                            *buf = current_buf[last_newline_pos..].to_string();
+                            // 如果所有行都处理完了，清空 buffer
+                            if current_buf.ends_with('\n') {
+                                buf.clear();
+                            }
                             
                             // 返回所有解析出的内容
                             Ok(results.join(""))
@@ -319,11 +330,57 @@ impl ZhipuAiClient {
 
         info!("成功获取 {} 个模型", models_response.data.len());
         
+        // 补充缺失的名称和描述
+        let mut enriched_models: Vec<ModelInfo> = models_response.data.iter().map(|model| {
+            let name = model.name.clone().or_else(|| {
+                // 根据 ID 生成友好的名称
+                match model.id.as_str() {
+                    "glm-4.5" => Some("GLM-4.5".to_string()),
+                    "glm-4.5-air" => Some("GLM-4.5 Air".to_string()),
+                    "glm-4.6" => Some("GLM-4.6".to_string()),
+                    "glm-4.7" => Some("GLM-4.7".to_string()),
+                    "glm-5" => Some("GLM-5".to_string()),
+                    "glm-5-turbo" => Some("GLM-5 Turbo".to_string()),
+                    "glm-5.1" => Some("GLM-5.1".to_string()),
+                    "glm-4.6v" => Some("GLM-4.6V".to_string()),
+                    "glm-4" => Some("GLM-4".to_string()),
+                    "glm-4-flash" => Some("GLM-4 Flash".to_string()),
+                    _ => None,
+                }
+            });
+            
+            let description = model.description.clone().or_else(|| {
+                // 根据 ID 生成描述
+                match model.id.as_str() {
+                    "glm-4.5" => Some("高性能通用模型".to_string()),
+                    "glm-4.5-air" => Some("轻量级高效模型".to_string()),
+                    "glm-4.6" => Some("最新通用模型".to_string()),
+                    "glm-4.7" => Some("增强版模型".to_string()),
+                    "glm-5" => Some("下一代旗舰模型".to_string()),
+                    "glm-5-turbo" => Some("快速响应版本".to_string()),
+                    "glm-5.1" => Some("优化版模型".to_string()),
+                    "glm-4.6v" => Some("视觉语言模型".to_string()),
+                    "glm-4" => Some("经典通用模型".to_string()),
+                    "glm-4-flash" => Some("极速响应模型".to_string()),
+                    _ => Some("智谱 AI 模型".to_string()),
+                }
+            });
+            
+            ModelInfo {
+                id: model.id.clone(),
+                name,
+                description,
+            }
+        }).collect();
+        
+        // 按 ID 排序，保持稳定性
+        enriched_models.sort_by(|a, b| a.id.cmp(&b.id));
+        
         // 更新全局缓存
         let mut cache = MODEL_CACHE.lock().await;
-        *cache = models_response.data.clone();
+        *cache = enriched_models.clone();
         
-        Ok(models_response.data)
+        Ok(enriched_models)
     }
 
     /// 获取缓存的模型列表

@@ -12,6 +12,11 @@
       </button>
     </div>
 
+    <!-- TOTP 验证码 -->
+    <div v-if="activeTab === 'totp'" class="tool-content totp-tab">
+      <TOTPPanel />
+    </div>
+
     <!-- 代码片段 -->
     <div v-if="activeTab === 'snippets'" class="tool-content">
       <div class="tool-header">
@@ -102,6 +107,7 @@
 </template>
 
 <script setup lang="ts">
+  import TOTPPanel from './TOTPPanel.vue';
   import type { CodeSnippet, QuickLink, QuickNote } from '../types';
 
   defineProps<{
@@ -211,10 +217,16 @@
 
   .snippets-list,
   .links-list,
-  .notes-list {
+  .notes-list,
+  .totp-container {
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .totp-container {
+    height: calc(100vh - 250px);
+    min-height: 400px;
   }
 
   .snippet-item {

@@ -51,14 +51,4 @@ describe('ChatStore', () => {
     expect(store.currentMessages.length).toBe(1);
     expect(store.currentMessages[0].content).toBe('你好');
   });
-
-  it('更新思考过程', () => {
-    const store = useChatStore();
-
-    store.setThinking('正在思考...');
-    expect(store.latestThinking).toBe('正在思考...');
-
-    store.setThinking('这是答案');
-    expect(store.latestThinking).toBe('这是答案');
-  });
 });
