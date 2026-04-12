@@ -29,7 +29,6 @@
       "varsIgnorePattern": "^_"
     }],
     "vue/multi-word-component-names": "off",
-    "vue/no-v-html": "warn",
     "prefer-const": "warn",
     "no-var": "error"
   },

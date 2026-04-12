@@ -11,7 +11,7 @@
 
 基于 Tauri 2.0 + Vue 3 + Rust 构建，提供智能对话、代码分析、文件管理等功能。
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [开发指南](#-开发指南) • [项目结构](#-项目结构) • [任务管理](#-任务管理)
+[功能特性](#-功能特性) • [快速开始](#-快速开始) • [开发指南](#-开发指南) • [项目结构](#-项目结构)
 
 </div>
 
@@ -307,34 +307,6 @@ A:
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
-
----
-
-## 📋 任务管理
-
-本项目包含一个轻量级的任务管理系统，帮助 AI 助手跟踪和管理待执行任务。
-
-### 快速使用
-
-```bash
-# 查看所有任务
-npm run task:list
-
-# 添加新任务
-npm run task:add "任务描述" --priority high
-
-# 完成任务
-npm run task:complete 1
-
-# 删除任务
-npm run task:delete 1
-```
-
-### 相关文档
-
-- **[AI 项目理解指南](.lingma/AI_PROJECT_GUIDE.md)** - 专为 AI 助手设计的项目说明
-- **[任务管理使用指南](TASK_MANAGEMENT_GUIDE.md)** - 详细的任务管理教程
-- **[AI 待执行任务清单](AI_TASKS.md)** - 当前未完成的任务列表
 
 ---
 

@@ -4,11 +4,13 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { info, error as logError } from './logger';
+import type { AppConfig, CustomRole, ApiCommandArgs, ZhipuModelInfo } from '../types';
 
 /**
  * API 调用结果类型
  */
-export interface ApiResult<T = any> {
+export interface ApiResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -20,23 +22,23 @@ export interface ApiResult<T = any> {
  * @param args 命令参数
  * @returns API 调用结果
  */
-export async function callCommand<T = any>(
+export async function callCommand<T = unknown>(
   command: string,
-  args: Record<string, any> = {}
+  args: ApiCommandArgs = {},
 ): Promise<ApiResult<T>> {
   try {
-    console.log(`[API] 调用命令: ${command}`, args);
+    info('API', `调用命令: ${command}`, args);
     const result = await invoke<T>(command, args);
-    console.log(`[API] 命令成功: ${command}`);
-    
+    info('API', `命令成功: ${command}`);
+
     return {
       success: true,
       data: result,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[API] 命令失败: ${command}`, errorMessage);
-    
+    logError('API', `命令失败: ${command}`, errorMessage);
+
     return {
       success: false,
       error: errorMessage,
@@ -50,16 +52,16 @@ export async function callCommand<T = any>(
  * @param args 命令参数
  * @returns 命令执行结果
  */
-export async function invokeCommand<T = any>(
+export async function invokeCommand<T = unknown>(
   command: string,
-  args: Record<string, any> = {}
+  args: ApiCommandArgs = {},
 ): Promise<T> {
   const result = await callCommand<T>(command, args);
-  
+
   if (!result.success) {
     throw new Error(result.error);
   }
-  
+
   return result.data as T;
 }
 
@@ -69,15 +71,15 @@ export async function invokeCommand<T = any>(
  * @returns 所有命令的结果
  */
 export async function batchInvoke(
-  commands: Array<{ command: string; args?: Record<string, any> }>
+  commands: Array<{ command: string; args?: ApiCommandArgs }>,
 ): Promise<ApiResult[]> {
   const results: ApiResult[] = [];
-  
+
   for (const { command, args } of commands) {
     const result = await callCommand(command, args || {});
     results.push(result);
   }
-  
+
   return results;
 }
 
@@ -86,42 +88,41 @@ export const api = {
   /**
    * 初始化智谱 AI 客户端
    */
-  initZhipuClient: (apiKey: string) => 
-    invokeCommand<string>('init_zhipu_client', { apiKey }),
-  
+  initZhipuClient: (apiKey: string) => invokeCommand<string>('init_zhipu_client', { apiKey }),
+
   /**
    * 检查智谱 AI 状态
    */
-  checkZhipuStatus: () => 
-    invokeCommand<boolean>('check_zhipu_status'),
-  
+  checkZhipuStatus: () => invokeCommand<boolean>('check_zhipu_status'),
+
   /**
    * 加载应用配置
    */
-  loadConfig: () => 
-    invokeCommand<any>('load_app_config'),
-  
+  loadConfig: () => invokeCommand<AppConfig>('load_app_config'),
+
   /**
    * 保存应用配置
    */
-  saveConfig: (config: any) => 
-    invokeCommand<void>('save_app_config', { config }),
-  
+  saveConfig: (config: AppConfig) => invokeCommand<void>('save_app_config', { config }),
+
   /**
    * 添加自定义角色
    */
-  addCustomRole: (role: any) => 
-    invokeCommand<void>('add_custom_role', { role }),
-  
+  addCustomRole: (role: CustomRole) => invokeCommand<void>('add_custom_role', { role }),
+
   /**
    * 删除自定义角色
    */
-  deleteCustomRole: (index: number) => 
-    invokeCommand<void>('delete_custom_role', { index }),
-  
+  deleteCustomRole: (index: number) => invokeCommand<void>('delete_custom_role', { index }),
+
   /**
    * 更新自定义角色
    */
-  updateCustomRole: (index: number, role: any) => 
+  updateCustomRole: (index: number, role: CustomRole) =>
     invokeCommand<void>('update_custom_role', { index, role }),
+
+  /**
+   * 获取智谱 AI 模型列表
+   */
+  fetchZhipuModels: () => invokeCommand<ZhipuModelInfo[]>('fetch_zhipu_models'),
 };

@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::info;
+use crate::zhipu_ai::ModelInfo;
 
 /// 角色数据结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +21,7 @@ pub struct AppConfig {
     pub current_model: Option<String>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<i32>,
+    pub cached_models: Vec<ModelInfo>, // 缓存的模型列表
 }
 
 impl Default for AppConfig {
@@ -30,6 +32,7 @@ impl Default for AppConfig {
             current_model: None,
             temperature: Some(0.7),
             max_tokens: Some(2048),
+            cached_models: Vec::new(),
         }
     }
 }

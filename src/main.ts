@@ -1,6 +1,6 @@
-import { createApp } from "vue";
+import { createApp } from 'vue';
 import { createPinia } from 'pinia';
-import App from "./App.vue";
+import App from './App.vue';
 import { initTheme } from './theme';
 import { ErrorHandler } from './utils/errorHandler';
 
@@ -30,6 +30,6 @@ window.addEventListener('error', (event) => {
 console.log('[main.ts] 应用开始初始化');
 
 app.use(pinia);
-app.mount("#app");
+app.mount('#app');
 
 console.log('[main.ts] 应用挂载成功');

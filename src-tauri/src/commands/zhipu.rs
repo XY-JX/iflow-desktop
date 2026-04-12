@@ -1,10 +1,12 @@
-use crate::zhipu_ai::{ZhipuAiClient, ChatMessage, ChatCompletionRequest, models};
+use crate::zhipu_ai::{ZhipuAiClient, ChatMessage, ChatCompletionRequest, models, ModelInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{info, error, instrument};
+use tracing::{info, warn, error, instrument};
 use tokio_stream::StreamExt;
 use tauri::Emitter;
+use futures_core::Stream;
+use std::pin;
 
 /// 消息请求结构
 #[derive(Debug, Deserialize)]
@@ -138,6 +140,94 @@ pub async fn check_zhipu_status() -> Result<bool, String> {
     Ok(client_guard.is_some())
 }
 
+/// 获取智谱 AI 模型列表（动态获取 + 缓存）
+#[tauri::command]
+#[instrument(skip())]
+pub async fn fetch_zhipu_models(window: tauri::Window, app_handle: tauri::AppHandle) -> Result<Vec<ModelInfo>, String> {
+    info!("请求获取智谱 AI 模型列表");
+    
+    let client_guard = ZHIPU_CLIENT.lock().await;
+    let client = client_guard.as_ref().ok_or_else(|| {
+        "智谱 AI 客户端未初始化，请先调用 init_zhipu_client".to_string()
+    })?;
+    
+    // 尝试从 API 获取最新模型列表
+    match client.fetch_models().await {
+        Ok(models) => {
+            info!("成功获取 {} 个模型", models.len());
+            
+            // 保存到配置文件
+            if let Ok(mut config) = crate::config::load_app_config(app_handle.clone()) {
+                config.cached_models = models.clone();
+                if let Err(e) = crate::config::save_app_config(app_handle.clone(), config) {
+                    warn!("保存模型列表到配置文件失败：{}", e);
+                } else {
+                    info!("模型列表已保存到配置文件");
+                }
+            }
+            
+            // 通知前端模型列表已更新
+            let _ = window.emit("models-updated", serde_json::json!({
+                "count": models.len(),
+                "models": models.iter().map(|m| &m.id).collect::<Vec<_>>()
+            }));
+            Ok(models)
+        }
+        Err(e) => {
+            warn!("获取模型列表失败，使用缓存数据：{}", e);
+            // 返回缓存的模型列表
+            let cached_models = ZhipuAiClient::get_cached_models().await;
+            info!("返回缓存的 {} 个模型", cached_models.len());
+            Ok(cached_models)
+        }
+    }
+}
+
+/// 处理流式响应（公共函数）
+async fn handle_stream_response(
+    mut stream: pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>,
+    window: tauri::Window,
+    selected_model: String,
+    start_time: std::time::Instant,
+) -> Result<(), String> {
+    let mut full_content = String::new();
+    
+    while let Some(chunk_result) = stream.next().await {
+        match chunk_result {
+            Ok(content) => {
+                if !content.is_empty() {
+                    full_content.push_str(&content);
+                    
+                    // 实时发送到前端
+                    let _ = window.emit("ai-chunk", serde_json::json!({
+                        "content": content,
+                        "full_content": full_content
+                    }));
+                }
+            }
+            Err(e) => {
+                error!("流式接收失败：{}", e);
+                let _ = window.emit("ai-error", serde_json::json!({
+                    "error": format!("流式接收失败：{}", e)
+                }));
+                return Err(e);
+            }
+        }
+    }
+    
+    let elapsed = start_time.elapsed().as_millis();
+    info!("流式完成 - 总内容长度：{}, 耗时：{}ms", full_content.len(), elapsed);
+    
+    // 发送完成事件
+    let _ = window.emit("ai-complete", serde_json::json!({
+        "content": full_content,
+        "model": selected_model,
+        "execution_time_ms": elapsed as i32
+    }));
+    
+    Ok(())
+}
+
 /// 发送流式消息到智谱 AI (带上下文)
 #[tauri::command]
 pub async fn send_message_to_zhipu_stream_with_context(
@@ -191,43 +281,7 @@ pub async fn send_message_to_zhipu_stream_with_context(
     // 发送流式请求
     match client.chat_stream(&request).await {
         Ok(stream) => {
-            let mut stream = Box::pin(stream);
-            let mut full_content = String::new();
-            
-            while let Some(chunk_result) = stream.next().await {
-                match chunk_result {
-                    Ok(content) => {
-                        if !content.is_empty() {
-                            full_content.push_str(&content);
-                            
-                            // 实时发送到前端
-                            let _ = window.emit("ai-chunk", serde_json::json!({
-                                "content": content,
-                                "full_content": full_content
-                            }));
-                        }
-                    }
-                    Err(e) => {
-                        error!("流式接收失败：{}", e);
-                        let _ = window.emit("ai-error", serde_json::json!({
-                            "error": format!("流式接收失败：{}", e)
-                        }));
-                        return Err(e);
-                    }
-                }
-            }
-            
-            let elapsed = start_time.elapsed().as_millis();
-            info!("流式完成 - 总内容长度：{}, 耗时：{}ms", full_content.len(), elapsed);
-            
-            // 发送完成事件
-            let _ = window.emit("ai-complete", serde_json::json!({
-                "content": full_content,
-                "model": selected_model,
-                "execution_time_ms": elapsed as i32
-            }));
-            
-            Ok(())
+            handle_stream_response(Box::pin(stream), window, selected_model, start_time).await
         }
         Err(e) => {
             error!("智谱 AI 流式调用失败：{}", e);
@@ -282,43 +336,7 @@ pub async fn send_message_to_zhipu_stream(
     // 发送流式请求
     match client.chat_stream(&request).await {
         Ok(stream) => {
-            let mut stream = Box::pin(stream);
-            let mut full_content = String::new();
-            
-            while let Some(chunk_result) = stream.next().await {
-                match chunk_result {
-                    Ok(content) => {
-                        if !content.is_empty() {
-                            full_content.push_str(&content);
-                            
-                            // 实时发送到前端
-                            let _ = window.emit("ai-chunk", serde_json::json!({
-                                "content": content,
-                                "full_content": full_content
-                            }));
-                        }
-                    }
-                    Err(e) => {
-                        error!("流式接收失败：{}", e);
-                        let _ = window.emit("ai-error", serde_json::json!({
-                            "error": format!("流式接收失败：{}", e)
-                        }));
-                        return Err(e);
-                    }
-                }
-            }
-            
-            let elapsed = start_time.elapsed().as_millis();
-            info!("流式完成 - 总内容长度：{}, 耗时：{}ms", full_content.len(), elapsed);
-            
-            // 发送完成事件
-            let _ = window.emit("ai-complete", serde_json::json!({
-                "content": full_content,
-                "model": selected_model,
-                "execution_time_ms": elapsed as i32
-            }));
-            
-            Ok(())
+            handle_stream_response(Box::pin(stream), window, selected_model, start_time).await
         }
         Err(e) => {
             error!("智谱 AI 流式调用失败：{}", e);

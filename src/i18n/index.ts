@@ -168,13 +168,23 @@ export function getLocale(): Locale {
   return 'zh-CN';
 }
 
-export function t(key: keyof Translation['common'] | keyof Translation['chat'] | keyof Translation['conversation'] | keyof Translation['settings']): string {
-  const keys = key.split('.') as any;
-  let value: any = translations[currentLocale];
-  
+export function t(
+  key:
+    | keyof Translation['common']
+    | keyof Translation['chat']
+    | keyof Translation['conversation']
+    | keyof Translation['settings'],
+): string {
+  const keys = key.split('.');
+  let value: unknown = translations[currentLocale];
+
   for (const k of keys) {
-    value = value[k];
+    if (value && typeof value === 'object' && k in value) {
+      value = (value as Record<string, unknown>)[k];
+    } else {
+      return key;
+    }
   }
-  
-  return value || key;
+
+  return typeof value === 'string' ? value : key;
 }

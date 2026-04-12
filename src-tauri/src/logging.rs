@@ -29,9 +29,9 @@ pub fn init_logging() {
     let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "iflow-desktop.log");
 
     // 配置日志级别过滤器
-    // 从环境变量 RUST_LOG 读取，默认为 info
+    // 只记录重要信息：warn 和 error
     let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+        .unwrap_or_else(|_| EnvFilter::new("warn"));
 
     // 配置控制台输出（彩色，仅显示 info 及以上级别）
     let console_layer = fmt::layer()
@@ -42,13 +42,13 @@ pub fn init_logging() {
         .with_level(true)
         .with_filter(EnvFilter::new("warn")); // 控制台只显示警告和错误
 
-    // 配置文件输出（详细，包含调试信息）
+    // 配置文件输出（简化，只记录重要信息）
     let file_layer = fmt::layer()
         .with_writer(file_appender)
-        .with_target(true)
-        .with_thread_ids(true)
-        .with_file(true)
-        .with_line_number(true)
+        .with_target(false)  // 不显示目标模块
+        .with_thread_ids(false)
+        .with_file(false)    // 不显示文件名
+        .with_line_number(false)  // 不显示行号
         .with_level(true)
         .with_ansi(false) // 文件输出不使用 ANSI 颜色
         .with_filter(env_filter);
@@ -131,7 +131,7 @@ pub fn get_log_file_path() -> Option<PathBuf> {
     }
 }
 
-/// 清理旧的日志文件（保留最近 7 天）
+/// 清理旧的日志文件（只保留当天的日志）
 #[tauri::command]
 pub fn clean_old_logs() -> Result<(), String> {
     let log_dir = get_log_directory();
@@ -141,7 +141,7 @@ pub fn clean_old_logs() -> Result<(), String> {
     }
 
     let now = std::time::SystemTime::now();
-    let duration_threshold = std::time::Duration::from_secs(7 * 24 * 60 * 60); // 7 天
+    let duration_threshold = std::time::Duration::from_secs(24 * 60 * 60); // 1 天
 
     let entries = match std::fs::read_dir(&log_dir) {
         Ok(entries) => entries,
@@ -175,7 +175,7 @@ pub fn clean_old_logs() -> Result<(), String> {
             Err(_) => continue, // 文件在未来时间，跳过
         };
 
-        // 删除超过 7 天的日志文件
+        // 删除超过 1 天的日志文件
         if age > duration_threshold {
             if let Err(e) = std::fs::remove_file(&path) {
                 tracing::warn!("无法删除旧日志文件 {:?}: {}", path, e);

@@ -17,7 +17,6 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
-.idea
 .DS_Store
 *.suo
 *.ntvs*
@@ -48,3 +47,6 @@ coverage
 *.rar
 packages/
 build-output/
+
+# Lingma AI
+.lingma/rules/*.md.backup

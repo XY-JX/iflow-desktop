@@ -95,7 +95,7 @@ export class ErrorHandler {
    */
   static async safeExecute<T>(
     fn: () => Promise<T>,
-    context: string = 'Async Operation'
+    context: string = 'Async Operation',
   ): Promise<{ success: boolean; data?: T; error?: AppError }> {
     try {
       const data = await fn();

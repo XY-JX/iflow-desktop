@@ -41,6 +41,13 @@ export interface Model {
   description?: string;
 }
 
+// 智谱 AI 模型信息
+export interface ZhipuModelInfo {
+  id: string;
+  name?: string;
+  description?: string;
+}
+
 // 文件项目类型
 export interface FileItem {
   name: string;
@@ -48,4 +55,46 @@ export interface FileItem {
   isDirectory: boolean;
   size?: number;
   modifiedTime?: number;
+}
+
+// 应用配置类型
+export interface AppConfig {
+  custom_roles: CustomRole[];
+  cached_models?: ZhipuModelInfo[]; // 缓存的模型列表
+  [key: string]: any;
+}
+
+// 自定义角色类型
+export interface CustomRole {
+  icon: string;
+  label: string;
+  value: string;
+}
+
+// API 调用参数类型
+export interface ApiCommandArgs {
+  apiKey?: string;
+  config?: AppConfig;
+  role?: CustomRole;
+  index?: number;
+  [key: string]: any;
+}
+
+// 代码片段类型
+export interface CodeSnippet {
+  name: string;
+  code: string;
+}
+
+// 快速链接类型
+export interface QuickLink {
+  name: string;
+  url: string;
+  icon: string;
+}
+
+// 快捷笔记类型
+export interface QuickNote {
+  content: string;
+  timestamp: number;
 }
