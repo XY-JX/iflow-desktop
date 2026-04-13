@@ -3,7 +3,7 @@ trigger: model_decision
 description: 开发新功能时的完整指南（架构+规范+调试）
 ---
 
-# 开发指南
+# 我的一个梦 - 开发指南
 
 ## 🏗️ 项目架构
 

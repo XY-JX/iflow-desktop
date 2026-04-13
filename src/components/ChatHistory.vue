@@ -56,7 +56,6 @@
 <script setup lang="ts">
   import { ref, computed } from 'vue';
   import type { Conversation } from '../types';
-  import { t } from '../i18n';
 
   const props = defineProps<{
     conversations: Conversation[];

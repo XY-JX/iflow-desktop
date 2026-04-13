@@ -1,4 +1,4 @@
-# iFlow Desktop
+# 我的一个梦
 
 <div align="center">
 
@@ -99,43 +99,50 @@ npm run tauri build
 ### 项目结构
 
 ```
-iflow-desktop/
-├── src/                      # Vue 前端源码
-│   ├── components/          # Vue 组件
-│   │   ├── MainLayout.vue      # 主布局组件
-│   │   ├── ChatInterface.vue   # 聊天界面
-│   │   ├── SettingsPanel.vue   # 设置面板
-│   │   ├── FileExplorer.vue    # 文件浏览器
-│   │   └── ...
-│   ├── stores/             # Pinia 状态管理
-│   │   ├── chatStore.ts        # 对话状态
-│   │   ├── fileStore.ts        # 文件状态
-│   │   └── iflowStore.ts       # iFlow 服务状态
-│   ├── types/              # TypeScript 类型定义
-│   ├── utils/              # 工具函数
-│   │   ├── api.ts              # API 调用封装
-│   │   └── tokenUtils.ts       # Token 计算工具
-│   ├── theme/              # 主题配置
-│   │   └── index.ts            # 全局主题系统
-│   ├── App.vue             # 根组件
-│   └── main.ts             # 应用入口
-├── src-tauri/               # Tauri 后端 (Rust)
+我的一个梦/
+├── src/                          # Vue 前端源码
+│   ├── components/              # Vue 组件
+│   │   ├── SplashScreen.vue     # 启动页
+│   │   ├── MainLayout.vue       # 主布局
+│   │   ├── ChatInterface.vue    # 聊天界面
+│   │   ├── ChatHistory.vue      # 聊天记录
+│   │   ├── FileEditor.vue       # 文件编辑器
+│   │   ├── FileExplorer.vue     # 文件浏览器
+│   │   ├── SettingsPanel.vue    # 设置面板
+│   │   └── ...                  # 其他组件
+│   ├── stores/                  # Pinia 状态管理
+│   │   ├── chatStore.ts         # 对话状态
+│   │   ├── fileStore.ts         # 文件状态
+│   │   └── iflowStore.ts        # iFlow 服务状态
+│   ├── utils/                   # 工具函数
+│   │   ├── api.ts               # API 调用封装
+│   │   ├── errorHandler.ts      # 错误处理
+│   │   ├── logger.ts            # 日志系统
+│   │   ├── tokenUtils.ts        # Token 计算工具
+│   │   └── totp.ts              # TOTP 生成器
+│   ├── types/                   # TypeScript 类型定义
+│   ├── theme/                   # 主题配置
+│   │   └── index.ts             # 全局主题系统
+│   ├── App.vue                  # 根组件
+│   └── main.ts                  # 应用入口
+├── src-tauri/                   # Tauri 后端 (Rust)
 │   ├── src/
-│   │   ├── commands/        # Tauri 命令
-│   │   │   ├── zhipu.rs        # 智谱 AI 相关命令
-│   │   │   └── conversation.rs # 对话管理命令
-│   │   ├── config.rs        # 配置管理
-│   │   ├── logging.rs       # 日志系统
-│   │   ├── lib.rs           # 库入口
-│   │   └── main.rs          # 主入口
-│   ├── capabilities/        # 权限配置
-│   ├── icons/              # 应用图标
-│   ├── Cargo.toml          # Rust 依赖
-│   └── tauri.conf.json     # Tauri 配置
-├── public/                  # 静态资源
-├── package.json             # Node.js 依赖
-├── tsconfig.json            # TypeScript 配置
-└── vite.config.ts           # Vite 配置
+│   │   ├── commands/            # Tauri 命令
+│   │   │   ├── zhipu.rs         # 智谱 AI 相关命令
+│   │   │   ├── conversation.rs  # 对话管理命令
+│   │   │   └── totp.rs          # TOTP 相关命令
+│   │   ├── config.rs            # 配置管理
+│   │   ├── logging.rs           # 日志系统
+│   │   ├── lib.rs               # 库入口
+│   │   └── main.rs              # 主入口
+│   ├── capabilities/            # 权限配置
+│   ├── icons/                   # 应用图标
+│   ├── Cargo.toml               # Rust 依赖
+│   └── tauri.conf.json          # Tauri 配置
+├── .env*                        # 环境变量配置
+├── package.json                 # Node.js 依赖
+├── tsconfig.json                # TypeScript 配置
+└── vite.config.ts               # Vite 配置
 ```
 
 ### 常用命令
@@ -280,8 +287,9 @@ fn my_command() { /* ... */ } // 缺少属性和返回类型
 创建 `.env` 文件（可选）：
 
 ```env
-VITE_APP_TITLE=iFlow Desktop
-VITE_API_BASE_URL=http://localhost:3000
+VITE_APP_NAME=我的一个梦
+VITE_APP_TITLE=我的一个梦 - Desktop
+VITE_APP_VERSION=1.8.1
 ```
 
 ---

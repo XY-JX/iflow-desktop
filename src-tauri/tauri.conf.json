@@ -1,1 +1,52 @@
-{"$schema": "https://schema.tauri.app/config/2", "productName": "iFlow Desktop", "version": "1.7.1", "identifier": "com.iflow.desktop", "build": {"beforeDevCommand": "npm run dev", "devUrl": "http://localhost:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist"}, "app": {"windows": [{"label": "main", "title": "iFlow Desktop - AI 编程助手", "width": 1400, "height": 900, "minWidth": 1000, "minHeight": 600, "resizable": true}], "security": {"csp": null}, "withGlobalTauri": false}, "bundle": {"active": true, "targets": ["nsis"], "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"], "windows": {"wix": {"language": "zh-CN"}, "nsis": {"displayLanguageSelector": true, "installerHooks": "nsis-installer.nsh"}}}, "plugins": {}}
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "height": 900,
+        "label": "main",
+        "minHeight": 600,
+        "minWidth": 1000,
+        "resizable": true,
+        "title": "我的一个梦 - Desktop",
+        "width": 1400
+      }
+    ],
+    "withGlobalTauri": false
+  },
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": [
+      "nsis"
+    ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true,
+        "installerHooks": "nsis-installer.nsh"
+      },
+      "wix": {
+        "language": "zh-CN"
+      }
+    }
+  },
+  "identifier": "com.iflow.desktop",
+  "plugins": {},
+  "productName": "我的一个梦",
+  "version": "1.8.1"
+}

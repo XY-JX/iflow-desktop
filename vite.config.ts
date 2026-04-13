@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import viteCompression from 'vite-plugin-compression';
+import path from 'path';
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -18,6 +19,24 @@ export default defineConfig(async () => ({
       ext: '.gz'
     })
   ],
+
+  // 路径别名配置
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@components': path.resolve(__dirname, './src/components'),
+      '@stores': path.resolve(__dirname, './src/stores'),
+      '@utils': path.resolve(__dirname, './src/utils'),
+      '@types': path.resolve(__dirname, './src/types'),
+      '@theme': path.resolve(__dirname, './src/theme')
+    }
+  },
+
+  // 定义全局常量替换
+  define: {
+    __APP_NAME__: JSON.stringify(process.env.VITE_APP_NAME || '我的一个梦'),
+    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || '1.8.1')
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

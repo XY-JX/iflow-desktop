@@ -1,8 +1,20 @@
 <script setup lang="ts">
-  import MainLayout from './components/MainLayout.vue';
+  import { ref, onMounted } from 'vue';
+  import MainLayout from '@components/MainLayout.vue';
+  import SplashScreen from '@components/SplashScreen.vue';
+
+  const splashRef = ref<InstanceType<typeof SplashScreen> | null>(null);
+
+  onMounted(() => {
+    // 应用加载完成后隐藏启动屏
+    setTimeout(() => {
+      splashRef.value?.hide();
+    }, 500);
+  });
 </script>
 
 <template>
+  <SplashScreen ref="splashRef" />
   <MainLayout />
 </template>
 

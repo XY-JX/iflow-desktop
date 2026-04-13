@@ -25,12 +25,11 @@ dist-ssr
 *.sln
 *.sw?
 
-# Build outputs
+# Rust build outputs
 target
 **/target/
 
-# Environment variables
-.env
+# Environment variables (保留示例文件)
 .env.local
 .env.*.local
 
@@ -40,6 +39,7 @@ coverage
 # Temporary files
 *.tmp
 *.temp
+.cache
 
 # Packaged files
 *.zip
@@ -49,5 +49,8 @@ coverage
 packages/
 build-output/
 
-# Lingma AI
-.lingma/rules/*.md.backup
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
