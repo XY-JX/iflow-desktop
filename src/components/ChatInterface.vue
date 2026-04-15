@@ -8,12 +8,7 @@
           @model-change="handleModelChange"
         />
         
-        <!-- 多 Agent 模式开关 -->
-        <label class="agent-mode-toggle" title="开启后自动调用多个 AI 协作">
-          <input type="checkbox" v-model="isMultiAgentMode" />
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">🤖 多 Agent</span>
-        </label>
+
       </div>
     </div>
 
@@ -121,12 +116,10 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, nextTick, watch, onMounted, computed } from 'vue';
+  import { ref, nextTick, watch, onMounted } from 'vue';
   import ModelSelector from './ModelSelector.vue';
   import MarkdownIt from 'markdown-it';
   import type { Message, Model } from '../types';
-  import { useAgentStore } from '../stores/agentStore';
-  import { multiAgentWorkflow } from '../utils/agentManager';
 
   // 初始化 Markdown 解析器
   const md = new MarkdownIt({
@@ -152,17 +145,12 @@
     'copy-last-answer': [];
     'apply-template': [type: string];
     'save-code-snippet': [code: string, language: string];
-    'multi-agent-complete': [result: { analysis: string; code?: string; review?: string }];
   }>();
 
   const inputText = ref('');
   const inputRef = ref<HTMLTextAreaElement>();
   const messagesContainer = ref<HTMLDivElement>();
   const replyToMessage = ref<Message | null>(null); // 当前引用的消息
-  
-  // Agent Store
-  const agentStore = useAgentStore();
-  const isMultiAgentMode = ref(false);
 
   async function sendMessage() {
     const content = inputText.value.trim();
@@ -175,13 +163,8 @@
       cancelReply();
     }
 
-    // 检查是否启用多 Agent 模式
-    if (isMultiAgentMode.value && agentStore.isConfigured) {
-      await sendWithMultiAgent(finalContent);
-    } else {
-      // 普通模式
-      emit('send-message', finalContent);
-    }
+    // 普通模式发送消息
+    emit('send-message', finalContent);
 
     // 清空输入框并触发视图更新
     inputText.value = '';
@@ -196,23 +179,7 @@
     await scrollToBottom();
   }
 
-  // 多 Agent 模式发送
-  async function sendWithMultiAgent(userMessage: string) {
-    try {
-      // 先显示用户消息
-      emit('send-message', userMessage);
-      
-      // 调用多 Agent 工作流(后台执行)
-      const result = await multiAgentWorkflow(userMessage);
-      
-      // 通过专用事件发送结果,由父组件处理
-      emit('multi-agent-complete', result);
-    } catch (error) {
-      console.error('多 Agent 工作流失败:', error);
-      // 错误也通过普通消息显示
-      emit('send-message', `❌ 多 Agent 协作失败: ${error}`);
-    }
-  }
+
 
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -377,63 +344,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  /* Agent 模式开关 */
-  .agent-mode-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: var(--bg-primary, white);
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 13px;
-    color: var(--text-secondary, #666);
-  }
-
-  .agent-mode-toggle:hover {
-    border-color: var(--primary-color, #4a90e2);
-    color: var(--primary-color, #4a90e2);
-  }
-
-  .agent-mode-toggle input[type="checkbox"] {
-    display: none;
-  }
-
-  .toggle-slider {
-    position: relative;
-    width: 36px;
-    height: 18px;
-    background: var(--border-color, #ddd);
-    border-radius: 9px;
-    transition: all 0.3s;
-  }
-
-  .toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    left: 2px;
-    top: 2px;
-    background: white;
-    border-radius: 50%;
-    transition: all 0.3s;
-  }
-
-  .agent-mode-toggle input:checked + .toggle-slider {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-
-  .agent-mode-toggle input:checked + .toggle-slider::before {
-    transform: translateX(18px);
-  }
-
-  .toggle-label {
-    font-weight: 500;
   }
 
   toggle-btn {

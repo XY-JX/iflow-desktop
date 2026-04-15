@@ -72,6 +72,25 @@ pub async fn send_message_to_zhipu(
     message: String,
     model: Option<String>,
 ) -> Result<SendMessageResponse, String> {
+    send_message_to_zhipu_with_messages(
+        vec![ChatMessageData {
+            role: "user".to_string(),
+            content: message,
+        }],
+        None,
+        model,
+    )
+    .await
+}
+
+/// 发送消息到智谱 AI (支持完整消息数组)
+#[tauri::command]
+#[instrument(skip())]
+pub async fn send_message_to_zhipu_with_messages(
+    messages: Vec<ChatMessageData>,
+    system_prompt: Option<String>,
+    model: Option<String>,
+) -> Result<SendMessageResponse, String> {
     info!("发送消息到智谱 AI，模型：{:?}", model);
     
     let client_guard = ZHIPU_CLIENT.lock().await;
@@ -79,24 +98,31 @@ pub async fn send_message_to_zhipu(
         "智谱 AI 客户端未初始化，请先调用 init_zhipu_client".to_string()
     })?;
     
-    // 构建消息历史 (简单实现，只包含当前消息)
-    let messages = vec![
-        ChatMessage {
-            role: "system".to_string(),
-            content: "你是一个有用的 AI 编程助手。".to_string(),
-        },
-        ChatMessage {
-            role: "user".to_string(),
-            content: message.clone(),
-        },
-    ];
+    // 构建消息历史
+    let mut messages_vec = Vec::new();
+    
+    // 添加系统提示词
+    let system_content = system_prompt
+        .unwrap_or_else(|| "你是一个有用的 AI 编程助手。".to_string());
+    messages_vec.push(ChatMessage {
+        role: "system".to_string(),
+        content: system_content,
+    });
+    
+    // 添加对话历史
+    for msg in messages {
+        messages_vec.push(ChatMessage {
+            role: msg.role,
+            content: msg.content,
+        });
+    }
     
     // 选择模型
     let selected_model = model.unwrap_or_else(|| models::GLM_4.to_string());
     
     let request = ChatCompletionRequest {
         model: selected_model.clone(),
-        messages,
+        messages: messages_vec,
         temperature: Some(0.7),
         max_tokens: Some(2048),
         stream: Some(false),

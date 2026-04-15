@@ -6,6 +6,7 @@
     },
     "windows": [
       {
+        "devtools": true,
         "height": 900,
         "label": "main",
         "minHeight": 600,

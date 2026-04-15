@@ -23,6 +23,7 @@ pub fn run() {
             // 智谱 AI 相关命令
             commands::zhipu::init_zhipu_client,
             commands::zhipu::send_message_to_zhipu,
+            commands::zhipu::send_message_to_zhipu_with_messages,
             commands::zhipu::send_message_to_zhipu_stream,
             commands::zhipu::send_message_to_zhipu_stream_with_context,
             commands::zhipu::check_zhipu_status,
@@ -37,8 +38,6 @@ pub fn run() {
             config::delete_custom_role,
             config::get_api_key,
             config::save_api_key,
-            config::save_agent_configs,
-            config::get_agent_configs,
             // 日志相关命令
             logging::get_log_file_path,
             logging::clean_old_logs,

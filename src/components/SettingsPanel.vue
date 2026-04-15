@@ -117,15 +117,10 @@
       <!-- 重置按钮 -->
       <div class="setting-actions">
         <button class="reset-btn" @click="resetToDefaults">🔄 恢复默认设置</button>
+        <button class="debug-btn" @click="openDevTools">🐛 打开调试工具</button>
       </div>
 
-      <!-- 多模型协作配置入口 -->
-      <div class="setting-section">
-        <label class="section-label">🤖 多模型协作</label>
-        <button @click="showAgentConfig = true" class="btn-agent-config">
-          ⚙️ 配置 Agent 协作系统
-        </button>
-      </div>
+
 
       <!-- 自定义角色管理 -->
       <div class="setting-section">
@@ -257,13 +252,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Agent 配置对话框 -->
-    <div v-if="showAgentConfig" class="dialog-overlay dialog-agent-config" @click.self="showAgentConfig = false">
-      <div class="dialog-content" @click.stop>
-        <AgentConfigPanel />
-      </div>
-    </div>
   </div>
 </template>
 
@@ -271,7 +259,6 @@
   import { ref, onMounted } from 'vue';
   import { invoke } from '@tauri-apps/api/core';
   import type { ContextConfig } from '../types';
-  import AgentConfigPanel from './AgentConfigPanel.vue';
 
   interface SettingsPanelProps {
     systemPrompt?: string;
@@ -305,7 +292,6 @@
   });
   const showAddRoleDialog = ref(false);
   const showEditRoleDialog = ref(false);
-  const showAgentConfig = ref(false);
   const editingRoleIndex = ref(-1);
   const newRole = ref({
     icon: '🚀',
@@ -526,6 +512,20 @@
       recentRounds: 10,
     };
     updateSettings();
+  }
+
+  // 打开开发者工具
+  async function openDevTools() {
+    try {
+      const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+      const webview = getCurrentWebview();
+      // @ts-ignore - Tauri 2.0 API
+      await webview.openDevTools();
+      console.log('开发者工具已打开');
+    } catch (error) {
+      console.error('打开开发者工具失败:', error);
+      alert('无法打开开发者工具: ' + error);
+    }
   }
 
   // 加载上下文配置
@@ -795,6 +795,27 @@
     border-color: var(--border-color, #ccc);
   }
 
+  /* 调试按钮 */
+  .debug-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+
+  .debug-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+  }
+
   /* 角色管理 */
   .btn-add-role-panel {
     padding: 6px 14px;
@@ -1060,31 +1081,24 @@
     transform: translateY(-1px);
   }
 
-  /* Agent 配置按钮 */
-  .btn-agent-config {
-    width: 100%;
-    padding: 12px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-agent-config:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  }
-
   /* Agent 配置对话框 */
-  .dialog-agent-config .dialog-content {
-    max-width: 800px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
+  .dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .dialog-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   }
 </style>

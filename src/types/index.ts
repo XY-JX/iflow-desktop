@@ -60,6 +60,10 @@ export interface FileItem {
 // 应用配置类型
 export interface AppConfig {
   custom_roles: CustomRole[];
+  api_key?: string;
+  current_model?: string;
+  temperature?: number;
+  max_tokens?: number;
   cached_models?: ZhipuModelInfo[]; // 缓存的模型列表
   
   // 上下文压缩配置
