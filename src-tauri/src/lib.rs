@@ -37,6 +37,8 @@ pub fn run() {
             config::delete_custom_role,
             config::get_api_key,
             config::save_api_key,
+            config::save_agent_configs,
+            config::get_agent_configs,
             // 日志相关命令
             logging::get_log_file_path,
             logging::clean_old_logs,

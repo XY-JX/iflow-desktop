@@ -119,6 +119,14 @@
         <button class="reset-btn" @click="resetToDefaults">🔄 恢复默认设置</button>
       </div>
 
+      <!-- 多模型协作配置入口 -->
+      <div class="setting-section">
+        <label class="section-label">🤖 多模型协作</label>
+        <button @click="showAgentConfig = true" class="btn-agent-config">
+          ⚙️ 配置 Agent 协作系统
+        </button>
+      </div>
+
       <!-- 自定义角色管理 -->
       <div class="setting-section">
         <div class="section-header">
@@ -249,6 +257,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Agent 配置对话框 -->
+    <div v-if="showAgentConfig" class="dialog-overlay dialog-agent-config" @click.self="showAgentConfig = false">
+      <div class="dialog-content" @click.stop>
+        <AgentConfigPanel />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -256,6 +271,7 @@
   import { ref, onMounted } from 'vue';
   import { invoke } from '@tauri-apps/api/core';
   import type { ContextConfig } from '../types';
+  import AgentConfigPanel from './AgentConfigPanel.vue';
 
   interface SettingsPanelProps {
     systemPrompt?: string;
@@ -289,6 +305,7 @@
   });
   const showAddRoleDialog = ref(false);
   const showEditRoleDialog = ref(false);
+  const showAgentConfig = ref(false);
   const editingRoleIndex = ref(-1);
   const newRole = ref({
     icon: '🚀',
@@ -1041,5 +1058,33 @@
   .btn-dialog-confirm:hover {
     opacity: 0.9;
     transform: translateY(-1px);
+  }
+
+  /* Agent 配置按钮 */
+  .btn-agent-config {
+    width: 100%;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-agent-config:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  /* Agent 配置对话框 */
+  .dialog-agent-config .dialog-content {
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 </style>

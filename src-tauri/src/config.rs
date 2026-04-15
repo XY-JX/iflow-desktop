@@ -22,6 +22,19 @@ pub struct AppConfig {
     pub temperature: Option<f32>,
     pub max_tokens: Option<i32>,
     pub cached_models: Vec<ModelInfo>, // 缓存的模型列表
+    
+    // 多模型协作配置
+    pub agent_configs: Option<AgentConfigs>,
+}
+
+/// Agent 配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfigs {
+    pub commander_api_key: Option<String>,      // 指挥官 AI (任务分析)
+    pub code_expert_api_key: Option<String>,    // 代码专家 AI (代码生成)
+    pub reviewer_api_key: Option<String>,       // 审查 AI (代码审查)
+    pub default_commander_model: Option<String>, // 默认指挥官模型
+    pub default_code_model: Option<String>,      // 默认代码模型
 }
 
 impl Default for AppConfig {
@@ -33,6 +46,7 @@ impl Default for AppConfig {
             temperature: Some(0.7),
             max_tokens: Some(2048),
             cached_models: Vec::new(),
+            agent_configs: None,
         }
     }
 }
@@ -147,4 +161,21 @@ pub fn save_api_key(app_handle: AppHandle, api_key: String) -> Result<(), String
     config.api_key = Some(api_key);
     save_app_config(app_handle, config)?;
     Ok(())
+}
+
+/// 保存 Agent 配置
+#[tauri::command]
+pub fn save_agent_configs(app_handle: AppHandle, configs: AgentConfigs) -> Result<(), String> {
+    let mut config = load_app_config(app_handle.clone())?;
+    config.agent_configs = Some(configs);
+    save_app_config(app_handle, config)?;
+    info!("Agent 配置已保存");
+    Ok(())
+}
+
+/// 获取 Agent 配置
+#[tauri::command]
+pub fn get_agent_configs(app_handle: AppHandle) -> Result<Option<AgentConfigs>, String> {
+    let config = load_app_config(app_handle)?;
+    Ok(config.agent_configs)
 }
