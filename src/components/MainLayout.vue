@@ -69,6 +69,7 @@
         :available-models="availableModels"
         :current-model="currentModel"
         @send-message="handleSendMessage"
+        @multi-agent-complete="handleMultiAgentComplete"
         @model-change="handleModelChange"
         @clear-conversation="handleClearConversation"
         @export-conversation="handleExportConversation"
@@ -1222,6 +1223,38 @@ Escape            - 关闭对话框/面板
       addMessage(errorMessage);
       setGenerating(false);
     }
+  }
+
+  // 处理多 Agent 完成事件
+  async function handleMultiAgentComplete(result: { analysis: string; code?: string; review?: string }) {
+    if (!activeConversationId.value) return;
+
+    // 组合适 Agent 的响应
+    const combinedResponse = `
+## 🎯 任务分析
+
+${result.analysis}
+
+---
+
+## 💻 生成的代码
+
+${result.code || '*未生成代码*'}
+
+---
+
+## 🔍 代码审查
+
+${result.review || '*未进行审查*'}`;
+
+    // 创建助手消息
+    const assistantMessage: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: combinedResponse,
+      timestamp: Date.now(),
+    };
+    addMessage(assistantMessage);
   }
 
   // 切换模型

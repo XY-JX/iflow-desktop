@@ -152,6 +152,7 @@
     'copy-last-answer': [];
     'apply-template': [type: string];
     'save-code-snippet': [code: string, language: string];
+    'multi-agent-complete': [result: { analysis: string; code?: string; review?: string }];
   }>();
 
   const inputText = ref('');
@@ -198,34 +199,17 @@
   // 多 Agent 模式发送
   async function sendWithMultiAgent(userMessage: string) {
     try {
-      // 显示用户消息
+      // 先显示用户消息
       emit('send-message', userMessage);
       
-      // 调用多 Agent 工作流
+      // 调用多 Agent 工作流(后台执行)
       const result = await multiAgentWorkflow(userMessage);
       
-      // 组合适 Agent 的响应
-      const combinedResponse = `
-## 🎯 任务分析
-
-${result.analysis}
-
----
-
-## 💻 生成的代码
-
-${result.code || '*未生成代码*'}
-
----
-
-## 🔍 代码审查
-
-${result.review || '*未进行审查*'}`;
-      
-      // 发送组合结果
-      emit('send-message', combinedResponse);
+      // 通过专用事件发送结果,由父组件处理
+      emit('multi-agent-complete', result);
     } catch (error) {
       console.error('多 Agent 工作流失败:', error);
+      // 错误也通过普通消息显示
       emit('send-message', `❌ 多 Agent 协作失败: ${error}`);
     }
   }
