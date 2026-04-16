@@ -257,8 +257,9 @@
 
 <script setup lang="ts">
   import { ref, onMounted } from 'vue';
-  import { invoke } from '@tauri-apps/api/core';
-  import type { ContextConfig } from '../types';
+  import type { ContextConfig, CustomRole } from '../types';
+  import { loadCustomRoles as fetchCustomRoles, addCustomRole, deleteCustomRole, loadAppConfig, saveAppConfig } from '../utils/configUtils';
+  import { error as logError } from '../utils/logger';
 
   interface SettingsPanelProps {
     systemPrompt?: string;
@@ -300,30 +301,12 @@
   });
 
   // 自定义角色存储
-  const customRoles = ref<any[]>([]);
+  const customRoles = ref<CustomRole[]>([]);
 
   // 加载自定义角色 (从本地文件)
   async function loadCustomRoles() {
-    try {
-      const config: any = await invoke('load_app_config');
-      customRoles.value = config.custom_roles || [];
-      console.log(`已加载 ${customRoles.value.length} 个自定义角色`);
-    } catch (error) {
-      console.error('加载自定义角色失败:', error);
-    }
+    customRoles.value = await fetchCustomRoles();
   }
-
-  // 保存自定义角色 (到本地文件)
-  // async function saveCustomRoles() {
-  //   try {
-  //     const config: any = await invoke('load_app_config');
-  //     config.custom_roles = customRoles.value;
-  //     await invoke('save_app_config', { config });
-  //     console.log(`已保存 ${customRoles.value.length} 个自定义角色`);
-  //   } catch (error) {
-  //     console.error('保存自定义角色失败:', error);
-  //   }
-  // }
 
   // 临时保存原始数据（用于取消时恢复）
   const tempRoleBackup = ref({
@@ -340,12 +323,10 @@
     }
 
     try {
-      await invoke('add_custom_role', {
-        role: {
-          icon: newRole.value.icon,
-          label: newRole.value.label,
-          value: newRole.value.value,
-        },
+      await addCustomRole({
+        icon: newRole.value.icon,
+        label: newRole.value.label,
+        value: newRole.value.value,
       });
 
       // 重新加载角色列表
@@ -363,7 +344,6 @@
       // 通知父组件角色已添加
       emit('role-added');
     } catch (error) {
-      console.error('添加角色失败:', error);
       alert('添加角色失败：' + error);
     }
   }
@@ -375,7 +355,7 @@
   }
 
   // 选择自定义角色
-  function selectCustomRole(role: any) {
+  function selectCustomRole(role: CustomRole) {
     localSystemPrompt.value = role.value;
     updateSettings();
   }
@@ -393,12 +373,11 @@
     }
 
     try {
-      await invoke('delete_custom_role', { index });
+      await deleteCustomRole(index);
       // 重新加载角色列表
       await loadCustomRoles();
       alert(`角色 "${role.icon} ${role.label}" 已删除`);
     } catch (error) {
-      console.error('删除角色失败:', error);
       alert('删除角色失败：' + error);
     }
   }
@@ -442,12 +421,10 @@
     }
 
     try {
-      await invoke('add_custom_role', {
-        role: {
-          icon: newRole.value.icon,
-          label: newRole.value.label,
-          value: newRole.value.value,
-        },
+      await addCustomRole({
+        icon: newRole.value.icon,
+        label: newRole.value.label,
+        value: newRole.value.value,
       });
 
       // 重新加载角色列表
@@ -464,7 +441,6 @@
 
       alert('角色已更新');
     } catch (error) {
-      console.error('更新角色失败:', error);
       alert('更新角色失败：' + error);
     }
   }
@@ -521,9 +497,8 @@
       const webview = getCurrentWebview();
       // @ts-ignore - Tauri 2.0 API
       await webview.openDevTools();
-      console.log('开发者工具已打开');
     } catch (error) {
-      console.error('打开开发者工具失败:', error);
+      logError('SettingsPanel', '打开开发者工具失败:', error);
       alert('无法打开开发者工具: ' + error);
     }
   }
@@ -531,23 +506,23 @@
   // 加载上下文配置
   async function loadContextConfig() {
     try {
-      const config: any = await invoke('load_app_config');
+      const config = await loadAppConfig();
       if (config.contextConfig) {
         contextConfig.value = { ...contextConfig.value, ...config.contextConfig };
       }
     } catch (error) {
-      console.error('加载上下文配置失败:', error);
+      logError('SettingsPanel', '加载上下文配置失败:', error);
     }
   }
 
   // 保存上下文配置
   async function saveContextConfig() {
     try {
-      const config: any = await invoke('load_app_config');
+      const config = await loadAppConfig();
       config.contextConfig = contextConfig.value;
-      await invoke('save_app_config', { config });
+      await saveAppConfig(config);
     } catch (error) {
-      console.error('保存上下文配置失败:', error);
+      logError('SettingsPanel', '保存上下文配置失败:', error);
     }
   }
 
@@ -565,20 +540,7 @@
     background: var(--bg-primary, white);
   }
 
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
-    background: var(--bg-secondary, #f8f9fa);
-  }
 
-  .panel-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary, #333);
-  }
 
   .close-btn {
     width: 28px;

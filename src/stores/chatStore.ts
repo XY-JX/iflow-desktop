@@ -113,11 +113,6 @@ export const useChatStore = defineStore('chat', () => {
     latestThinking.value = '';
   }
 
-
-  function loadConversations(data: Conversation[]) {
-    conversations.value = data;
-  }
-
   // 标签管理
   function addTag(conversationId: string, tag: string) {
     const conversation = conversations.value.find((c) => c.id === conversationId);
@@ -174,7 +169,6 @@ export const useChatStore = defineStore('chat', () => {
     setGenerating,
     setThinking,
     clearThinking,
-    loadConversations,
     loadFromStorage,
     saveToStorage,
     // 标签管理

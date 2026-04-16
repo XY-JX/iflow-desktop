@@ -154,21 +154,7 @@ onUnmounted(() => {
   background: transparent;
 }
 
-.panel-header {
-  padding: 8px 12px;
-  background: transparent;
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-}
 
-.panel-title {
-  font-weight: 500;
-  font-size: 14px;
-  color: var(--text-primary, #333);
-}
 
 .btn-add {
   width: 28px;
@@ -310,61 +296,7 @@ onUnmounted(() => {
 }
 
 /* 对话框样式 */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
 
-.dialog-content {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  min-width: 350px;
-  max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.dialog-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary, #333);
-  margin: 0 0 20px 0;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary, #555);
-  margin-bottom: 6px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color, #d9d9d9);
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary-color, #4a90e2);
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
-}
 
 .secret-input-group {
   display: flex;

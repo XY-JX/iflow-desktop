@@ -49,13 +49,6 @@ export class ErrorHandler {
     if (this.errorLog.length > this.maxLogSize) {
       this.errorLog = this.errorLog.slice(0, this.maxLogSize);
     }
-
-    // 保存到 localStorage（仅保留最近 5 条）
-    try {
-      localStorage.setItem('app_error_log', JSON.stringify(this.errorLog.slice(0, 5)));
-    } catch (e) {
-      // 忽略存储失败
-    }
   }
 
   /**
@@ -70,7 +63,6 @@ export class ErrorHandler {
    */
   static clearErrorLog(): void {
     this.errorLog = [];
-    localStorage.removeItem('app_error_log');
   }
 
   /**

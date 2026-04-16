@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import { initTheme } from './theme';
 import { ErrorHandler } from './utils/errorHandler';
+import './styles/components.css'; // 引入公共组件样式
 
 const app = createApp(App);
 const pinia = createPinia();

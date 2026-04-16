@@ -5,6 +5,9 @@ description: 开发新功能时的完整指南（架构+规范+调试）
 
 # 我的一个梦 - 开发指南
 
+> **版本**: 1.9.1  
+> **最后更新**: 2026-04-17
+
 ## 🏗️ 项目架构
 
 ### 消息发送流程
@@ -22,6 +25,13 @@ AI回复完成 → 立即保存
 切换模型 → 立即保存
 删除对话 → 立即保存
 ```
+
+### 数据存储规范
+- ✅ **所有业务数据通过 Rust 后端存储**
+- ✅ **配置文件存放在 `config/` 目录**
+- ✅ **用户数据存放在 `data/` 目录**
+- ❌ **禁止使用 localStorage 存储业务数据**
+- ❌ **禁止在 errorHandler 中使用 localStorage**
 
 ### 关键文件映射
 
@@ -108,6 +118,56 @@ async function loadData() {
 async function saveData(data: MyData[]) {
   await invoke('save_my_data', { data });
 }
+
+// ✅ 日志记录 - 使用统一的 logger
+import { info, error as logError } from '../utils/logger';
+
+info('Module', '操作成功');
+logError('Module', '错误信息:', error);
+
+// ✅ 代码复用 - 优先使用 composables
+import { useKeyboardShortcuts } from '../composables';
+const { registerShortcut } = useKeyboardShortcuts();
+registerShortcut('ctrl+n', () => handleNewChat());
+
+// ✅ 工具函数 - 从 common.ts 导入
+import { formatTime, debounce } from '../utils/common';
+formatTime(timestamp); // 格式化时间
+debounce(fn, 300); // 防抖
+```
+
+### 架构规范
+
+#### 1. CSS与JS分离原则
+
+**✅ 推荐做法:**
+- 公共样式提取到 `src/styles/components.css`
+- 可复用逻辑提取到 `src/composables/`
+- 工具函数提取到 `src/utils/`
+- 组件特有样式保留在 `<style scoped>`
+
+**❌ 避免做法:**
+- 在多个组件中重复定义相同样式
+- 在每个组件中重复编写相同逻辑
+- 硬编码颜色值（应使用CSS变量）
+
+**公共样式库包含:**
+- 按钮样式 (`.btn-primary`, `.btn-secondary`, `.btn-icon`, `.btn-close`)
+- 对话框样式 (`.dialog-overlay`, `.dialog-content`, `.dialog-title`, `.dialog-footer`)
+- 表单样式 (`.form-group`, `.form-input`, `.form-textarea`)
+- 面板样式 (`.panel-header`, `.panel-title`)
+- 卡片、标签、列表项、状态指示器等通用组件
+- 动画关键帧 (`@keyframes dialog-fade-in`, `@keyframes slideDown`)
+
+#### 2. 代码复用层级
+
+```
+优先级从高到低:
+1. composables/     - 组件级逻辑复用 (useXxx)
+2. utils/           - 纯函数工具 (formatXxx)
+3. styles/          - 公共CSS类 (.btn-primary)
+4. theme/           - CSS变量系统 (--color-*)
+5. <style scoped>   - 组件特有样式
 ```
 
 ---
@@ -126,6 +186,18 @@ const { state } = storeToRefs(store);
 
 // ❌ 错误
 const { state } = store;
+```
+
+### 使用了 console.log？
+```typescript
+// ✅ 正确 - 使用统一 logger
+import { info, error as logError } from '../utils/logger';
+info('Module', '信息');
+logError('Module', '错误:', error);
+
+// ❌ 错误 - 直接使用 console
+console.log('信息'); // ❌
+console.error('错误'); // ❌
 ```
 
 ### 数据持久化问题？
@@ -193,3 +265,11 @@ npm run tauri build  # 打包
    - 配置文件存放在 `config/` 目录
    - 用户数据存放在 `data/` 目录
    - 禁止使用 localStorage 存储业务数据
+7. **日志记录规范**
+   - 使用统一的 logger 工具 (`src/utils/logger.ts`)
+   - 禁止直接使用 `console.log/console.error`
+   - 生产环境自动过滤 DEBUG/INFO 级别日志
+8. **代码清理原则**
+   - 及时删除注释掉的代码
+   - 移除未使用的函数和变量
+   - 修复乱码注释

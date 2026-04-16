@@ -214,7 +214,51 @@ export function toggleTheme() {
 
 // 应用主题到 DOM
 export function applyTheme() {
-  document.documentElement.setAttribute('data-theme', currentTheme.value);
+  const theme = currentTheme.value === 'dark' ? darkTheme : lightTheme;
+  
+  // 设置 CSS 变量
+  const root = document.documentElement;
+  root.setAttribute('data-theme', currentTheme.value);
+  
+  // 颜色变量
+  root.style.setProperty('--color-primary', theme.colors.primary.main);
+  root.style.setProperty('--color-primary-light', theme.colors.primary.light);
+  root.style.setProperty('--color-primary-dark', theme.colors.primary.dark);
+  root.style.setProperty('--gradient-primary', theme.colors.primary.gradient);
+  
+  root.style.setProperty('--color-success', theme.colors.success.main);
+  root.style.setProperty('--color-warning', theme.colors.warning.main);
+  root.style.setProperty('--color-error', theme.colors.error.main);
+  
+  root.style.setProperty('--bg-primary', theme.colors.background.primary);
+  root.style.setProperty('--bg-secondary', theme.colors.background.secondary);
+  root.style.setProperty('--bg-tertiary', theme.colors.background.tertiary);
+  root.style.setProperty('--bg-hover', theme.colors.neutral.gray100);
+  
+  root.style.setProperty('--text-primary', theme.colors.text.primary);
+  root.style.setProperty('--text-secondary', theme.colors.text.secondary);
+  root.style.setProperty('--text-tertiary', theme.colors.text.tertiary);
+  
+  root.style.setProperty('--border-color', theme.colors.border);
+  
+  // 间距变量
+  root.style.setProperty('--spacing-xs', theme.spacing.xs);
+  root.style.setProperty('--spacing-sm', theme.spacing.sm);
+  root.style.setProperty('--spacing-md', theme.spacing.md);
+  root.style.setProperty('--spacing-lg', theme.spacing.lg);
+  root.style.setProperty('--spacing-xl', theme.spacing.xl);
+  
+  // 圆角变量
+  root.style.setProperty('--radius-sm', theme.borderRadius.sm);
+  root.style.setProperty('--radius-md', theme.borderRadius.md);
+  root.style.setProperty('--radius-lg', theme.borderRadius.lg);
+  root.style.setProperty('--radius-xl', theme.borderRadius.xl);
+  
+  // 阴影变量
+  root.style.setProperty('--shadow-sm', theme.shadows.sm);
+  root.style.setProperty('--shadow-md', theme.shadows.md);
+  root.style.setProperty('--shadow-lg', theme.shadows.lg);
+  
   localStorage.setItem('app_theme', currentTheme.value);
 }
 

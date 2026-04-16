@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
   import { ref, computed } from 'vue';
+  import { formatTime } from '../utils/common';
   import type { Conversation } from '../types';
 
   const props = defineProps<{
@@ -104,23 +105,6 @@
     const keyword = searchKeyword.value.trim();
     const regex = new RegExp(`(${keyword})`, 'gi');
     return text.replace(regex, '<mark>$1</mark>');
-  }
-
-  function formatTime(timestamp: number): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-      return '昨天';
-    } else if (days < 7) {
-      return `${days}天前`;
-    } else {
-      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-    }
   }
 </script>
 
@@ -232,7 +216,7 @@
 
   /* 高亮文本 */
   :deep(mark) {
-    background: #fff3cd;
+    background: var(--color-warning);
     color: #856404;
     padding: 1px 2px;
     border-radius: 2px;
@@ -388,7 +372,7 @@
 
     :deep(mark) {
       background: #5c4b1e;
-      color: #ffd97d;
+      color: var(--color-warning);
     }
 
     /* 深色主题 - 标签 */

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.8.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg)
@@ -27,8 +27,9 @@
 
 ### 💬 对话管理
 - **历史管理**：创建、切换、删除对话历史
-- **上下文保持**：自动保存对话状态
+- **上下文保持**：自动保存对话状态到本地
 - **Token 优化**：智能截断超长对话，避免超出限制
+- **标签系统**：支持为对话添加和管理标签
 
 ### 📁 文件管理
 - **文件浏览器**：可视化浏览本地文件系统
@@ -45,6 +46,7 @@
 - **深色模式**：自动适配系统主题
 - **响应式布局**：适配不同屏幕尺寸
 - **流畅动画**：优雅的交互动画效果
+- **启动页**：精美的应用启动动画
 
 ---
 
@@ -116,10 +118,16 @@ npm run tauri build
 │   │   └── iflowStore.ts        # iFlow 服务状态
 │   ├── utils/                   # 工具函数
 │   │   ├── api.ts               # API 调用封装
+│   │   ├── common.ts            # 通用工具函数 ✨
+│   │   ├── configUtils.ts       # 配置管理工具 ✨
 │   │   ├── errorHandler.ts      # 错误处理
 │   │   ├── logger.ts            # 日志系统
 │   │   ├── tokenUtils.ts        # Token 计算工具
 │   │   └── totp.ts              # TOTP 生成器
+│   ├── composables/             # 可复用组合式函数 ✨
+│   │   └── index.ts             # Composables集合
+│   ├── styles/                  # 公共样式库 ✨
+│   │   └── components.css       # 组件样式库
 │   ├── types/                   # TypeScript 类型定义
 │   ├── theme/                   # 主题配置
 │   │   └── index.ts             # 全局主题系统
@@ -171,13 +179,25 @@ npm run format             # 代码格式化
 2. **状态管理**：使用 Pinia store 管理全局状态
 3. **类型安全**：所有变量和函数必须有明确的类型
 4. **响应式解构**：使用 `storeToRefs` 保持响应式
+5. **代码复用**：优先使用 composables 和公共工具函数
+6. **样式规范**：使用 CSS 变量，避免硬编码颜色
 
 ```typescript
-// ✅ 正确
+// ✅ 正确 - 使用 storeToRefs
 const { state } = storeToRefs(myStore);
 
-// ❌ 错误
-const { state } = myStore; // 失去响应式
+// ✅ 正确 - 使用 composable
+import { useKeyboardShortcuts } from '../composables';
+const { registerShortcut } = useKeyboardShortcuts();
+
+// ✅ 正确 - 使用公共工具
+import { formatTime } from '../utils/common';
+
+// ❌ 错误 - 失去响应式
+const { state } = myStore;
+
+// ❌ 错误 - 硬编码颜色
+background: #667eea; // 应使用 var(--color-primary)
 ```
 
 #### Rust 后端
@@ -227,6 +247,7 @@ fn my_command() { /* ... */ } // 缺少属性和返回类型
 | **后端语言** | Rust | 高性能、内存安全的系统编程语言 |
 | **类型系统** | TypeScript | 静态类型检查，提高代码质量 |
 | **测试框架** | Vitest | 快速的单元测试框架 |
+| **样式系统** | CSS Variables | 基于变量的主题系统和公共样式库 |
 
 ### 核心模块
 
@@ -257,6 +278,15 @@ fn my_command() { /* ... */ } // 缺少属性和返回类型
 - 颜色、间距、圆角等常量
 - 统一的视觉风格
 - 易于维护和扩展
+
+#### 5. 公共样式库 (`styles/components.css`)
+
+可复用的基础组件样式：
+- 按钮、输入框、卡片等通用组件
+- 对话框、表单、面板等布局组件
+- 状态指示器、加载动画等交互反馈
+- 响应式工具类（flex、gap等）
+- 统一的主题变量支持
 
 ---
 
@@ -289,7 +319,7 @@ fn my_command() { /* ... */ } // 缺少属性和返回类型
 ```env
 VITE_APP_NAME=我的一个梦
 VITE_APP_TITLE=我的一个梦 - Desktop
-VITE_APP_VERSION=1.8.1
+VITE_APP_VERSION=1.9.1
 ```
 
 ---

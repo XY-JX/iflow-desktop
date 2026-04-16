@@ -180,19 +180,23 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, watch, computed } from 'vue';
+  import { ref, onMounted, watch, computed, defineAsyncComponent } from 'vue';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
   import { useChatStore } from '../stores/chatStore';
   import { useFileStore } from '../stores/fileStore';
+  import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
+  import { formatTime } from '../utils/common';
+  import { useKeyboardShortcuts } from '../composables';
   import ChatHistory from './ChatHistory.vue';
   import ChatInterface from './ChatInterface.vue';
   import FileExplorer from './FileExplorer.vue';
   import FileEditor from './FileEditor.vue';
-  import SettingsPanel from './SettingsPanel.vue';
-  import StatsPanel from './StatsPanel.vue';
-  import QuickToolsPanel from './QuickToolsPanel.vue';
+  // 懒加载大型组件
+  const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'));
+  const StatsPanel = defineAsyncComponent(() => import('./StatsPanel.vue'));
+  const QuickToolsPanel = defineAsyncComponent(() => import('./QuickToolsPanel.vue'));
   import { truncateConversation, estimateTokenCount } from '../utils/tokenUtils';
   import { toggleTheme, currentTheme } from '../theme';
   import { info, error as logError } from '../utils/logger';
@@ -609,19 +613,6 @@
         logError('MainLayout', '加载笔记失败', e);
       }
     }
-  }
-
-  // 格式化时间
-  function formatTime(timestamp: number): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-
-    return date.toLocaleDateString();
   }
 
   // 计算属性：当前对话消息数
@@ -1189,7 +1180,6 @@ Escape            - 关闭对话框/面板
 
       // 计算当前 Token 数
       const currentTokens = estimateTokenCount(allMessages.map((m) => m.content).join('\n'));
-      console.log(`当前对话 Token 数：${currentTokens}, 限制：${maxTokens.value}`);
 
       // 自动截断超出限制的对话历史
       const messagesForApi = truncateConversation(
@@ -1198,10 +1188,6 @@ Escape            - 关闭对话框/面板
         systemPrompt.value,
         10, // 保留最近 10 轮对话
       );
-
-      if (messagesForApi.length < allMessages.length) {
-        console.log(`已截断对话历史：${allMessages.length} -> ${messagesForApi.length} 条消息`);
-      }
 
       // 调用带上下文的流式 API
       await invoke('send_message_to_zhipu_stream_with_context', {
@@ -1258,13 +1244,10 @@ Escape            - 关闭对话框/面板
 
   // 从 SettingsPanel 接收角色添加事件
   async function handleRoleAdded() {
-    console.log('[MainLayout] 收到角色添加通知，重新加载角色');
     try {
-      const config: any = await invoke('load_app_config');
-      customRoles.value = config.custom_roles || [];
-      console.log(`[MainLayout] 已加载 ${customRoles.value.length} 个自定义角色`);
+      customRoles.value = await fetchCustomRoles();
     } catch (error) {
-      console.error('[MainLayout] 加载角色失败:', error);
+      logError('MainLayout', '加载角色失败:', error);
     }
   }
 
@@ -1278,7 +1261,6 @@ Escape            - 关闭对话框/面板
   // 保存快速角色 (当系统提示变化时)
   function saveQuickRoles() {
     // 这里可以记录用户偏好
-    console.log('角色已切换:', systemPrompt.value);
   }
 
   /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -1290,8 +1272,27 @@ Escape            - 关闭对话框/面板
 
   // 文件保存成功
   function handleFileSaved() {
-    console.log('文件保存成功');
+    // 文件保存成功处理
   }
+
+  // ========== 快捷键支持 ==========
+  const { registerShortcut } = useKeyboardShortcuts();
+  
+  // 注册 Ctrl/Cmd + N: 新建对话
+  registerShortcut('ctrl+n', () => {
+    handleNewChat();
+  });
+  
+  // 注册 Esc: 关闭面板
+  registerShortcut('escape', () => {
+    if (showSettingsPanel.value) {
+      showSettingsPanel.value = false;
+    } else if (showStatsPanel.value) {
+      showStatsPanel.value = false;
+    } else if (showApiKeyDialog.value) {
+      closeApiKeyDialog();
+    }
+  });
 </script>
 
 <style scoped>
@@ -1344,21 +1345,15 @@ Escape            - 关闭对话框/面板
     background: var(--bg-hover);
   }
 
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-  }
-
+  /* 状态指示器 - 使用组件特定名称避免冲突 */
   .status-dot.running {
-    background: #52c41a;
+    background: var(--color-success);
     box-shadow: 0 0 6px rgba(82, 196, 26, 0.5);
     animation: pulse 2s infinite;
   }
 
   .status-dot.stopped {
-    background: #ff4d4f;
+    background: var(--color-error);
     box-shadow: 0 0 6px rgba(255, 77, 79, 0.5);
   }
 
@@ -1390,7 +1385,7 @@ Escape            - 关闭对话框/面板
   }
 
   .btn-start {
-    background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+    background: linear-gradient(135deg, var(--color-success) 0%, #389e0d 100%);
     color: white;
     box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
   }
@@ -1401,7 +1396,7 @@ Escape            - 关闭对话框/面板
   }
 
   .btn-stop {
-    background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
+    background: linear-gradient(135deg, var(--color-error) 0%, #cf1322 100%);
     color: white;
     box-shadow: 0 2px 4px rgba(255, 77, 79, 0.3);
   }
@@ -1415,27 +1410,7 @@ Escape            - 关闭对话框/面板
     transform: translateY(0);
   }
 
-  .btn-primary {
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-  }
 
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
-  }
-
-  .btn-primary:active {
-    transform: translateY(0);
-  }
 
   .status-message {
     font-size: 13px;
@@ -1482,9 +1457,9 @@ Escape            - 关闭对话框/面板
     align-items: center;
     gap: 6px;
     padding: 6px 14px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--gradient-primary);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: white;
     font-size: 13px;
     font-weight: 500;
@@ -1510,7 +1485,7 @@ Escape            - 关闭对话框/面板
     padding: 6px 14px;
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: white;
     font-size: 13px;
     font-weight: 500;
@@ -1562,97 +1537,7 @@ Escape            - 关闭对话框/面板
   }
 
   /* 对话框 */
-  .dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    backdrop-filter: blur(4px);
-  }
 
-  .dialog-content {
-    background: var(--bg-primary);
-    border-radius: 12px;
-    padding: 24px;
-    min-width: 420px;
-    max-width: 500px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    animation: dialog-fade-in 0.2s ease-out;
-  }
-
-  @keyframes dialog-fade-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .dialog-title {
-    margin: 0 0 20px;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-primary, #333);
-  }
-
-  .dialog-body {
-    margin-bottom: 20px;
-  }
-
-  .form-group {
-    margin-bottom: 16px;
-  }
-
-  .form-label {
-    display: block;
-    margin-bottom: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary, #333);
-  }
-
-  .form-input,
-  .form-textarea {
-    width: 100%;
-    padding: 10px 12px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 14px;
-    color: var(--text-primary);
-    transition: all 0.2s ease;
-    outline: none;
-    box-sizing: border-box;
-  }
-
-  .form-input:focus,
-  .form-textarea:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
-    background: var(--bg-primary);
-  }
-
-  .form-textarea {
-    resize: vertical;
-    min-height: 100px;
-    font-family: inherit;
-  }
-
-  .dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-  }
 
   .btn-dialog-cancel,
   .btn-dialog-confirm {
@@ -1737,21 +1622,7 @@ Escape            - 关闭对话框/面板
     min-height: 0;
   }
 
-  .panel-header {
-    padding: 12px 16px;
-    background: var(--bg-secondary, #f8f9fa);
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
-    font-weight: 500;
-    font-size: 14px;
-    color: var(--text-primary, #333);
-    flex-shrink: 0;
-  }
 
-  .panel-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
 
   .thinking-display {
     flex: 1;
@@ -2060,17 +1931,7 @@ Escape            - 关闭对话框/面板
     border-radius: 8px;
   }
 
-  .stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #667eea;
-    margin-bottom: 4px;
-  }
 
-  .stat-label {
-    font-size: 11px;
-    color: #999;
-  }
 
   .menu-divider {
     height: 1px;
@@ -2220,16 +2081,7 @@ Escape            - 关闭对话框/面板
     gap: 4px;
   }
 
-  .snippet-code {
-    font-size: 11px;
-    color: #666;
-    background: white;
-    padding: 8px;
-    border-radius: 4px;
-    overflow-x: auto;
-    margin: 0;
-    font-family: 'Courier New', monospace;
-  }
+
 
   /* 链接样式 */
   .links-list {
@@ -2346,38 +2198,7 @@ Escape            - 关闭对话框/面板
   }
 
   /* 空状态 */
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: #999;
-  }
 
-  .empty-state p {
-    margin: 8px 0;
-  }
-
-  .empty-state .hint {
-    font-size: 12px;
-    color: #bbb;
-  }
-
-  /* 图标按钮 */
-  .btn-icon {
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-    opacity: 0.6;
-  }
-
-  .btn-icon:hover {
-    opacity: 1;
-    transform: scale(1.1);
-  }
 
   @media (prefers-color-scheme: dark) {
     .sidebar-left {

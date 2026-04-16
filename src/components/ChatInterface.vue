@@ -119,6 +119,7 @@
   import { ref, nextTick, watch, onMounted } from 'vue';
   import ModelSelector from './ModelSelector.vue';
   import MarkdownIt from 'markdown-it';
+  import { formatTime } from '../utils/common';
   import type { Message, Model } from '../types';
 
   // 初始化 Markdown 解析器
@@ -190,13 +191,6 @@
 
   function handleModelChange(modelId: string) {
     emit('model-change', modelId);
-  }
-
-  function formatTime(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   }
 
   function formatNumber(num: number): string {
@@ -757,8 +751,8 @@
   }
 
   .action-btn:hover {
-    background: #f0f5ff;
-    border-color: #667eea;
+    background: var(--bg-hover);
+    border-color: var(--color-primary);
     transform: translateY(-2px);
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
   }

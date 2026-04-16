@@ -72,6 +72,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
+  import { formatTime } from '../utils/common';
   import type { Conversation } from '../types';
 
   const props = defineProps<{
@@ -145,24 +146,6 @@
     }
     return num.toString();
   }
-
-  // 格式化时间
-  function formatTime(timestamp: number): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-      return '昨天';
-    } else if (days < 7) {
-      return `${days}天前`;
-    } else {
-      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-    }
-  }
 </script>
 
 <style scoped>
@@ -173,36 +156,7 @@
     background: var(--bg-primary, white);
   }
 
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
-  }
 
-  .panel-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary, #333);
-  }
-
-  .btn-close {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary, #666);
-    font-size: 24px;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.2s;
-  }
-
-  .btn-close:hover {
-    background: var(--bg-hover, #f0f0f0);
-    color: var(--text-primary, #333);
-  }
 
   .stats-content {
     flex: 1;

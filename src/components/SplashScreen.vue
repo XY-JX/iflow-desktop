@@ -1,25 +1,25 @@
 <template>
   <div v-if="visible" class="splash-screen" :class="{ hidden: !visible }">
-    <!-- 鍔ㄦ€佽儗鏅�矑瀛?-->
+    <!-- 动态背景粒子 -->
     <div class="splash-particles">
       <div v-for="i in 10" :key="i" class="particle" :style="getParticleStyle(i)"></div>
     </div>
 
-    <!-- Logo 瀹瑰櫒 -->
+    <!-- Logo 容器 -->
     <div class="splash-logo">
       <div class="logo-ring"></div>
     </div>
 
-    <!-- 椤圭洰鍚嶇О -->
+    <!-- 项目名称 -->
     <div class="splash-title">{{ appName }}</div>
     <div class="splash-subtitle">Desktop</div>
 
-    <!-- 鍔犺浇杩涘害鏉?-->
+    <!-- 加载进度条 -->
     <div class="splash-progress">
       <div class="splash-progress-bar"></div>
     </div>
 
-    <!-- 鐗堟湰淇℃伅 -->
+    <!-- 版本信息 -->
     <div class="splash-version">v{{ appVersion }}</div>
   </div>
 </template>
@@ -75,7 +75,7 @@ defineExpose({
   pointer-events: none;
 }
 
-/* 鍔ㄦ€佽儗鏅�矑瀛?*/
+/* 动态背景粒子 */
 .splash-particles {
   position: absolute;
   width: 100%;
@@ -109,14 +109,14 @@ defineExpose({
   }
 }
 
-/* Logo 瀹瑰櫒 */
+/* Logo 容器 */
 .splash-logo {
   position: relative;
   z-index: 10;
   margin-bottom: 40px;
 }
 
-/* 鍙戝厜鍦嗙幆 */
+/* 发光圆环 */
 .logo-ring {
   width: 120px;
   height: 120px;
@@ -133,7 +133,7 @@ defineExpose({
   }
 }
 
-/* 椤圭洰鍚嶇О */
+/* 项目名称 */
 .splash-title {
   position: relative;
   z-index: 10;
@@ -169,7 +169,7 @@ defineExpose({
   }
 }
 
-/* 鍔犺浇杩涘害鏉?*/
+/* 加载进度条 */
 .splash-progress {
   position: relative;
   z-index: 10;
@@ -205,7 +205,7 @@ defineExpose({
   }
 }
 
-/* 鐗堟湰淇℃伅 */
+/* 版本信息 */
 .splash-version {
   position: absolute;
   bottom: 30px;

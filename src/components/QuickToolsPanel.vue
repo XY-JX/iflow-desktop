@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
   import TOTPPanel from './TOTPPanel.vue';
+  import { formatTime } from '../utils/common';
   import type { CodeSnippet, QuickLink, QuickNote } from '../types';
 
   defineProps<{
@@ -129,18 +130,6 @@
     'save-notes': [];
     'delete-note': [index: number];
   }>();
-
-  function formatTime(timestamp: number): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-
-    return date.toLocaleDateString();
-  }
 </script>
 
 <style scoped>
@@ -254,33 +243,9 @@
     gap: 4px;
   }
 
-  .btn-icon {
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 14px;
-  }
 
-  .btn-icon:hover {
-    background: var(--bg-hover, #f0f0f0);
-  }
 
-  .snippet-code {
-    margin: 0;
-    padding: 8px;
-    background: var(--code-bg, #1e1e1e);
-    color: var(--code-text, #d4d4d4);
-    border-radius: 4px;
-    font-size: 11px;
-    font-family: 'Consolas', 'Monaco', monospace;
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
+
 
   .link-item {
     display: flex;
@@ -378,18 +343,5 @@
     color: var(--text-secondary, #999);
   }
 
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-secondary, #999);
-  }
 
-  .empty-state p {
-    margin: 4px 0;
-  }
-
-  .empty-state .hint {
-    font-size: 12px;
-    color: var(--text-secondary, #bbb);
-  }
 </style>

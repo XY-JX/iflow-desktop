@@ -162,8 +162,8 @@
   }
 
   .close-btn:hover {
-    background: #fee;
-    color: #d32f2f;
+    background: rgba(255, 77, 79, 0.1);
+    color: var(--color-error);
   }
 
   .editor-content {
@@ -236,8 +236,8 @@
     }
 
     .close-btn:hover {
-      background: #5a2a2a;
-      color: #ff6b6b;
+      background: rgba(255, 77, 79, 0.2);
+      color: var(--color-error);
     }
 
     .editor-content textarea {
