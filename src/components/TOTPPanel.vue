@@ -76,10 +76,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { getAllCodes, addSecret, deleteSecret, generateSecret } from '../utils/totp';
+import { useDialog } from '../composables';
 import type { TOTPCode } from '../utils/totp';
 
 const codes = ref<TOTPCode[]>([]);
-const showAddDialog = ref(false);
+const { show: showAddDialog, close: closeDialog } = useDialog();
 const newSecret = ref({ name: '', secret: '' });
 let timer: number | null = null;
 
@@ -116,6 +117,7 @@ async function handleAdd() {
   await addSecret(newSecret.value.name.trim(), newSecret.value.secret.trim());
   await updateCodes();
   closeDialog();
+  newSecret.value = { name: '', secret: '' };
 }
 
 // 删除密钥
@@ -124,12 +126,6 @@ async function handleDelete(id: string) {
     await deleteSecret(id);
     await updateCodes();
   }
-}
-
-// 关闭对话框
-function closeDialog() {
-  showAddDialog.value = false;
-  newSecret.value = { name: '', secret: '' };
 }
 
 // 启动定时器
@@ -296,8 +292,6 @@ onUnmounted(() => {
 }
 
 /* 对话框样式 */
-
-
 .secret-input-group {
   display: flex;
   gap: 8px;
@@ -387,15 +381,6 @@ onUnmounted(() => {
     background: var(--bg-primary, #1a1a1a);
   }
 
-  .panel-header {
-    background: var(--bg-secondary, #2d2d2d);
-    border-bottom-color: var(--border-color, #404040);
-  }
-
-  .panel-title {
-    color: var(--text-primary, #f0f0f0);
-  }
-
   .code-item {
     background: var(--bg-secondary, #2d2d2d);
     border-color: var(--border-color, #404040);
@@ -407,28 +392,6 @@ onUnmounted(() => {
 
   .code-name {
     color: var(--text-primary, #f0f0f0);
-  }
-
-  .dialog-content {
-    background: var(--bg-primary, #1a1a1a);
-  }
-
-  .dialog-title {
-    color: var(--text-primary, #f0f0f0);
-  }
-
-  .form-group label {
-    color: var(--text-primary, #ccc);
-  }
-
-  .form-input {
-    background: var(--bg-secondary, #2d2d2d);
-    border-color: var(--border-color, #404040);
-    color: var(--text-primary, #f0f0f0);
-  }
-
-  .form-input:focus {
-    border-color: var(--primary-color, #4a90e2);
   }
 
   .btn-generate {

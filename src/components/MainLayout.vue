@@ -2133,22 +2133,6 @@ Escape            - 关闭对话框/面板
     white-space: nowrap;
   }
 
-  .btn-icon-delete {
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    color: #999;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-icon-delete:hover {
-    color: #ff4d4f;
-  }
-
   /* 笔记样式 */
   .notes-list {
     display: flex;
@@ -2196,9 +2180,6 @@ Escape            - 关闭对话框/面板
     font-size: 11px;
     color: #999;
   }
-
-  /* 空状态 */
-
 
   @media (prefers-color-scheme: dark) {
     .sidebar-left {

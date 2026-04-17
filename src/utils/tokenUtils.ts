@@ -2,6 +2,8 @@
  * 估算文本的 Token 数量
  * 优化版：基于 Unicode 范围和常见模式提高精度
  */
+import { error as logError } from './logger';
+
 export function estimateTokenCount(text: string): number {
   if (!text || typeof text !== 'string') return 0;
 
@@ -57,7 +59,7 @@ export function estimateTokenCount(text: string): number {
       }
     }
   } catch (error) {
-    console.error('Token 计算失败:', error);
+    logError('tokenUtils', 'Token 计算失败:', error);
     return Math.ceil(text.length * 0.5); // 降级方案
   }
 

@@ -166,7 +166,7 @@
     </div>
 
     <!-- 添加角色对话框 -->
-    <div v-if="showAddRoleDialog" class="dialog-overlay" @click.self="cancelAddRole">
+    <div v-if="showAddRoleDialog" class="dialog-overlay" @click.self="cancelAddRoleHandler">
       <div class="dialog-content dialog-add-role" @click.stop>
         <h3 class="dialog-title">➕ 添加自定义角色</h3>
         <div class="dialog-body">
@@ -203,14 +203,14 @@
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="cancelAddRole" class="btn-dialog-cancel">取消</button>
+          <button @click="cancelAddRoleHandler" class="btn-dialog-cancel">取消</button>
           <button @click="handleAddRole" class="btn-dialog-confirm">确定添加</button>
         </div>
       </div>
     </div>
 
     <!-- 编辑角色对话框 -->
-    <div v-if="showEditRoleDialog" class="dialog-overlay" @click.self="cancelEditRole">
+    <div v-if="showEditRoleDialog" class="dialog-overlay" @click.self="cancelEditRoleHandler">
       <div class="dialog-content dialog-add-role" @click.stop>
         <h3 class="dialog-title">✏️ 编辑自定义角色</h3>
         <div class="dialog-body">
@@ -247,7 +247,7 @@
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="cancelEditRole" class="btn-dialog-cancel">取消</button>
+          <button @click="cancelEditRoleHandler" class="btn-dialog-cancel">取消</button>
           <button @click="saveEditedRole" class="btn-dialog-confirm">保存修改</button>
         </div>
       </div>
@@ -258,7 +258,8 @@
 <script setup lang="ts">
   import { ref, onMounted } from 'vue';
   import type { ContextConfig, CustomRole } from '../types';
-  import { loadCustomRoles as fetchCustomRoles, addCustomRole, deleteCustomRole, loadAppConfig, saveAppConfig } from '../utils/configUtils';
+  import { loadCustomRoles as fetchCustomRoles, addCustomRole, deleteCustomRole as deleteCustomRoleUtil, loadAppConfig, saveAppConfig } from '../utils/configUtils';
+  import { useDialog } from '../composables';
   import { error as logError } from '../utils/logger';
 
   interface SettingsPanelProps {
@@ -291,8 +292,8 @@
     keepErrors: true,
     recentRounds: 10,
   });
-  const showAddRoleDialog = ref(false);
-  const showEditRoleDialog = ref(false);
+  const { show: showAddRoleDialog, close: cancelAddRole } = useDialog();
+  const { show: showEditRoleDialog, close: cancelEditRole } = useDialog();
   const editingRoleIndex = ref(-1);
   const newRole = ref({
     icon: '🚀',
@@ -339,7 +340,7 @@
         value: '',
       };
 
-      showAddRoleDialog.value = false;
+      cancelAddRole();
 
       // 通知父组件角色已添加
       emit('role-added');
@@ -349,8 +350,8 @@
   }
 
   // 取消添加角色
-  function cancelAddRole() {
-    showAddRoleDialog.value = false;
+  function cancelAddRoleHandler() {
+    cancelAddRole();
     // 不重置表单，保留用户输入
   }
 
@@ -373,7 +374,7 @@
     }
 
     try {
-      await deleteCustomRole(index);
+      await deleteCustomRoleUtil(index);
       // 重新加载角色列表
       await loadCustomRoles();
       alert(`角色 "${role.icon} ${role.label}" 已删除`);
@@ -406,8 +407,8 @@
   }
 
   // 取消编辑角色
-  function cancelEditRole() {
-    showEditRoleDialog.value = false;
+  function cancelEditRoleHandler() {
+    cancelEditRole();
     editingRoleIndex.value = -1;
     // 恢复原始数据
     newRole.value = { ...tempRoleBackup.value };
@@ -437,7 +438,7 @@
         value: '',
       };
       editingRoleIndex.value = -1;
-      showEditRoleDialog.value = false;
+      cancelEditRole();
 
       alert('角色已更新');
     } catch (error) {
@@ -915,17 +916,6 @@
   /* 对话框优化 */
   .dialog-add-role {
     max-width: 520px;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  }
-
-  .dialog-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-primary, #333);
-    margin: 0 0 20px 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #f0f0f0;
   }
 
   .form-row {
@@ -954,59 +944,6 @@
   .input-icon:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-  }
-
-  .form-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #555;
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d9d9d9;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: all 0.2s;
-    background: white;
-  }
-
-  .form-input:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-  }
-
-  .form-textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #d9d9d9;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 14px;
-    resize: vertical;
-    transition: all 0.2s;
-    line-height: 1.6;
-    background: white;
-    min-height: 100px;
-  }
-
-  .form-textarea:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-  }
-
-  .dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid #f0f0f0;
   }
 
   .btn-dialog-cancel {
@@ -1041,26 +978,5 @@
   .btn-dialog-confirm:hover {
     opacity: 0.9;
     transform: translateY(-1px);
-  }
-
-  /* Agent 配置对话框 */
-  .dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-
-  .dialog-content {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   }
 </style>

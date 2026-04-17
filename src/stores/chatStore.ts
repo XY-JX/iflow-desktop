@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Conversation, Message } from '../types';
 import { info, error as logError } from '../utils/logger';
-import { invoke } from '@tauri-apps/api/core';
+import conversationApi from '../utils/api/conversation';
 
 export const useChatStore = defineStore('chat', () => {
   // 状态
@@ -14,7 +14,7 @@ export const useChatStore = defineStore('chat', () => {
   // 从 Rust 后端加载对话
   async function loadFromStorage() {
     try {
-      const data = await invoke<Conversation[]>('load_conversations');
+      const data = await conversationApi.loadConversations();
       conversations.value = data || [];
       info('chatStore', `已加载 ${conversations.value.length} 个对话`);
     } catch (error) {
@@ -25,7 +25,7 @@ export const useChatStore = defineStore('chat', () => {
   // 保存到 Rust 后端
   async function saveToStorage() {
     try {
-      await invoke('save_conversations', { conversations: conversations.value });
+      await conversationApi.saveConversations(conversations.value);
       info('chatStore', `已保存 ${conversations.value.length} 个对话`);
     } catch (error) {
       logError('chatStore', '保存对话历史失败:', error);

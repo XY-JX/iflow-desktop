@@ -1,5 +1,6 @@
 import * as OTPAuth from 'otpauth';
-import { invoke } from '@tauri-apps/api/core';
+import { error as logError } from './logger';
+import totpApi from './api/totp';
 
 const STORAGE_KEY = 'iflow_totp_secrets';
 
@@ -54,9 +55,9 @@ export function getTimeLeft(): number {
  */
 export async function saveSecrets(secrets: TOTPSecret[]): Promise<void> {
   try {
-    await invoke('save_totp_secrets', { secrets });
+    await totpApi.saveSecrets(secrets);
   } catch (error) {
-    console.error('保存TOTP密钥失败:', error);
+    logError('totp', '保存TOTP密钥失败:', error);
     throw error;
   }
 }
@@ -66,10 +67,10 @@ export async function saveSecrets(secrets: TOTPSecret[]): Promise<void> {
  */
 export async function loadSecrets(): Promise<TOTPSecret[]> {
   try {
-    const secrets = await invoke<TOTPSecret[]>('load_totp_secrets');
+    const secrets = await totpApi.loadSecrets();
     return secrets;
   } catch (error) {
-    console.error('加载TOTP密钥失败:', error);
+    logError('totp', '加载TOTP密钥失败:', error);
     return [];
   }
 }

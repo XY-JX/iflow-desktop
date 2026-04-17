@@ -20,7 +20,7 @@
           {{ file.isDirectory ? '📁' : '📄' }}
         </span>
         <span class="file-name">{{ file.name }}</span>
-        <span class="file-meta" v-if="!file.isDirectory">
+        <span class="file-meta" v-if="!file.isDirectory && file.size">
           {{ formatFileSize(file.size) }}
         </span>
       </div>
@@ -39,6 +39,7 @@
   import { open } from '@tauri-apps/plugin-dialog';
   import { readDir } from '@tauri-apps/plugin-fs';
   import { error as logError } from '../utils/logger';
+  import { formatFileSize } from '../utils/common';
   import type { FileItem } from '../types';
 
   const emit = defineEmits<{
@@ -99,20 +100,6 @@
       loadFiles(file.path);
       currentPath.value = file.path;
     }
-  }
-
-  function formatFileSize(bytes?: number): string {
-    if (!bytes) return '';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 </script>
 

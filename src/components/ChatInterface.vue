@@ -118,17 +118,11 @@
 <script setup lang="ts">
   import { ref, nextTick, watch, onMounted } from 'vue';
   import ModelSelector from './ModelSelector.vue';
-  import MarkdownIt from 'markdown-it';
   import { formatTime } from '../utils/common';
+  import { useMarkdown } from '../composables';
   import type { Message, Model } from '../types';
 
-  // 初始化 Markdown 解析器
-  const md = new MarkdownIt({
-    html: true,
-    linkify: true,
-    typographer: true,
-    breaks: true,
-  });
+  const { renderMarkdown } = useMarkdown();
 
   const props = defineProps<{
     messages: Message[];
@@ -195,12 +189,6 @@
 
   function formatNumber(num: number): string {
     return num.toLocaleString('zh-CN');
-  }
-
-  // 渲染 Markdown
-  function renderMarkdown(content: string): string {
-    if (!content) return '';
-    return md.render(content);
   }
 
   function scrollToBottom() {

@@ -290,23 +290,6 @@
     white-space: nowrap;
   }
 
-  .btn-icon-delete {
-    width: 20px;
-    height: 20px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary, #999);
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.2s;
-  }
-
-  .btn-icon-delete:hover {
-    background: #fee;
-    color: #d32f2f;
-  }
-
   .note-item {
     padding: 10px;
     background: var(--bg-secondary, #f8f9fa);

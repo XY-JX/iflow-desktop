@@ -4,6 +4,7 @@
  */
 
 import { ref, onMounted, onUnmounted } from 'vue';
+import { error as logError } from '../utils/logger';
 
 /**
  * 键盘快捷键管理
@@ -87,7 +88,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
         data.value = JSON.parse(stored);
       }
     } catch (error) {
-      console.error(`Failed to load ${key} from localStorage:`, error);
+      logError('useLocalStorage', `Failed to load ${key} from localStorage:`, error);
     }
   }
 
@@ -96,7 +97,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
     try {
       localStorage.setItem(key, JSON.stringify(data.value));
     } catch (error) {
-      console.error(`Failed to save ${key} to localStorage:`, error);
+      logError('useLocalStorage', `Failed to save ${key} to localStorage:`, error);
     }
   }
 
@@ -106,7 +107,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
       localStorage.removeItem(key);
       data.value = defaultValue;
     } catch (error) {
-      console.error(`Failed to clear ${key} from localStorage:`, error);
+      logError('useLocalStorage', `Failed to clear ${key} from localStorage:`, error);
     }
   }
 
@@ -138,7 +139,7 @@ export function useClipboard() {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
+      logError('useClipboard', 'Failed to copy to clipboard:', error);
       return false;
     }
   }
@@ -151,7 +152,7 @@ export function useClipboard() {
     try {
       return await navigator.clipboard.readText();
     } catch (error) {
-      console.error('Failed to read from clipboard:', error);
+      logError('useClipboard', 'Failed to read from clipboard:', error);
       return '';
     }
   }
@@ -242,3 +243,7 @@ export function useDarkMode() {
     isDark,
   };
 }
+
+// 导出所有 composables
+export { useMarkdown } from './useMarkdown';
+export { useDialog } from './useDialog';
