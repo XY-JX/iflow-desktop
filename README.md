@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.9.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg)
@@ -35,6 +35,11 @@
 - **文件浏览器**：可视化浏览本地文件系统
 - **代码编辑器**：内置编辑器，支持语法高亮
 - **即时保存**：编辑后直接保存到文件系统
+
+### 🔐 TOTP验证
+- **双因素认证**：支持TOTP验证码生成
+- **多账户管理**：同时管理多个TOTP密钥
+- **实时刷新**：30秒自动更新验证码
 
 ### ⚙️ 系统配置
 - **API Key 管理**：安全的密钥配置和管理
@@ -116,14 +121,24 @@ npm run tauri build
 │   │   ├── chatStore.ts         # 对话状态
 │   │   ├── fileStore.ts         # 文件状态
 │   │   └── iflowStore.ts        # iFlow 服务状态
-│   ├── utils/                   # 工具函数
-│   │   ├── api.ts               # API 调用封装
-│   │   ├── common.ts            # 通用工具函数 ✨
-│   │   ├── configUtils.ts       # 配置管理工具 ✨
+│   ├── utils/                   # 工具函数（模块化）
+│   │   ├── api/                 # API封装层 ✨
+│   │   │   ├── zhipu.ts         # 智谱AI API
+│   │   │   ├── conversation.ts  # 对话API
+│   │   │   ├── totp.ts          # TOTP API
+│   │   │   └── index.ts         # 统一导出
+│   │   ├── helpers/             # 辅助函数 ✨
+│   │   │   ├── format.ts        # 格式化工具
+│   │   │   ├── validation.ts    # 验证工具
+│   │   │   └── index.ts
+│   │   ├── common.ts            # 通用工具函数
+│   │   ├── configUtils.ts       # 配置管理工具
 │   │   ├── errorHandler.ts      # 错误处理
 │   │   ├── logger.ts            # 日志系统
 │   │   ├── tokenUtils.ts        # Token 计算工具
 │   │   └── totp.ts              # TOTP 生成器
+│   ├── constants/               # 常量定义 ✨
+│   │   └── index.ts             # APP_CONSTANTS, STORAGE_KEYS
 │   ├── composables/             # 可复用组合式函数 ✨
 │   │   └── index.ts             # Composables集合
 │   ├── styles/                  # 公共样式库 ✨
@@ -181,6 +196,8 @@ npm run format             # 代码格式化
 4. **响应式解构**：使用 `storeToRefs` 保持响应式
 5. **代码复用**：优先使用 composables 和公共工具函数
 6. **样式规范**：使用 CSS 变量，避免硬编码颜色
+7. **API调用**：使用统一的 API 层封装（推荐）
+8. **错误处理**：使用 AppError 类和 ErrorHandler
 
 ```typescript
 // ✅ 正确 - 使用 storeToRefs
@@ -190,11 +207,19 @@ const { state } = storeToRefs(myStore);
 import { useKeyboardShortcuts } from '../composables';
 const { registerShortcut } = useKeyboardShortcuts();
 
-// ✅ 正确 - 使用公共工具
-import { formatTime } from '../utils/common';
+// ✅ 正确 - 使用 API 层
+import { zhipuApi, conversationApi } from '../utils/api';
+await zhipuApi.sendMessage(apiKey, content);
+
+// ✅ 正确 - 使用常量
+import { APP_CONSTANTS } from '../constants';
+const maxTokens = APP_CONSTANTS.MAX_TOKENS;
 
 // ❌ 错误 - 失去响应式
 const { state } = myStore;
+
+// ❌ 错误 - 直接调用 invoke
+await invoke('send_message', { ... }); // 应使用 API 层
 
 // ❌ 错误 - 硬编码颜色
 background: #667eea; // 应使用 var(--color-primary)

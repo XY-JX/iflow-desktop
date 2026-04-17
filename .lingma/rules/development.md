@@ -5,8 +5,9 @@ description: 开发新功能时的完整指南（架构+规范+调试）
 
 # 我的一个梦 - 开发指南
 
-> **版本**: 1.9.1  
-> **最后更新**: 2026-04-17
+> **版本**: 2.0.0  
+> **最后更新**: 2026-04-17  
+> **更新说明**: 新增API层规范化、错误处理标准化、模块细分
 
 ## 🏗️ 项目架构
 
@@ -41,6 +42,81 @@ AI回复完成 → 立即保存
 | 对话历史 | `ChatHistory.vue` | `conversation.rs` | `chatStore.ts` |
 | 文件操作 | `FileExplorer.vue` / `FileEditor.vue` | - | `fileStore.ts` |
 | 设置面板 | `SettingsPanel.vue` | `config.rs` | - |
+| TOTP验证 | `TOTPPanel.vue` | `totp.rs` | - |
+
+---
+
+## 📁 项目结构
+
+### 目录组织
+
+```
+src/
+├── components/          # Vue组件（按功能分组）
+│   ├── chat/           # 聊天相关
+│   ├── file/           # 文件管理
+│   ├── settings/       # 设置相关
+│   ├── tools/          # 工具面板
+│   └── layout/         # 布局组件
+├── composables/        # 可复用组合式函数
+│   ├── useDialog.ts    # 对话框管理
+│   ├── useMarkdown.ts  # Markdown渲染
+│   └── index.ts        # 统一导出
+├── stores/             # Pinia状态管理
+│   ├── chatStore.ts
+│   ├── fileStore.ts
+│   └── iflowStore.ts
+├── utils/              # 工具函数（模块化）
+│   ├── api/            # API封装层
+│   │   ├── zhipu.ts    # 智谱AI API
+│   │   ├── conversation.ts  # 对话API
+│   │   ├── totp.ts     # TOTP API
+│   │   └── index.ts    # 统一导出
+│   ├── helpers/        # 辅助函数
+│   │   ├── format.ts   # 格式化工具
+│   │   ├── validation.ts  # 验证工具
+│   │   └── index.ts
+│   ├── core/           # 核心工具
+│   │   ├── logger.ts   # 日志系统
+│   │   └── errorHandler.ts  # 错误处理
+│   └── ai/             # AI相关
+│       └── tokenUtils.ts  # Token计算
+├── constants/          # 常量定义
+│   └── index.ts        # APP_CONSTANTS, STORAGE_KEYS
+├── types/              # TypeScript类型
+├── styles/             # 公共样式
+│   └── components.css  # 全局组件样式
+└── theme/              # 主题系统
+```
+
+### 架构分层
+
+```
+┌─────────────────────────────────────┐
+│         Components (UI层)           │
+│  ChatInterface, SettingsPanel...    │
+└──────────────┬──────────────────────┘
+               │ 调用
+┌──────────────▼──────────────────────┐
+│      Composables (逻辑层)           │
+│  useDialog, useMarkdown...          │
+└──────────────┬──────────────────────┘
+               │ 调用
+┌──────────────▼──────────────────────┐
+│         Stores (状态层)             │
+│  chatStore, fileStore...            │
+└──────────────┬──────────────────────┘
+               │ 调用
+┌──────────────▼──────────────────────┐
+│          API Layer (接口层)         │
+│  zhipuApi, conversationApi...       │
+└──────────────┬──────────────────────┘
+               │ invoke
+┌──────────────▼──────────────────────┐
+│      Rust Backend (后端层)          │
+│  zhipu.rs, conversation.rs...       │
+└─────────────────────────────────────┘
+```
 
 ---
 
@@ -119,6 +195,30 @@ async function saveData(data: MyData[]) {
   await invoke('save_my_data', { data });
 }
 
+// ✅ API层使用 - 统一API封装（推荐）
+import { zhipuApi, conversationApi } from '../utils/api';
+
+// 发送消息
+await zhipuApi.sendMessage(apiKey, content, model);
+
+// 加载对话
+const conversations = await conversationApi.loadConversations();
+
+// 保存对话
+await conversationApi.saveConversations(conversations);
+
+// ✅ 常量使用
+import { APP_CONSTANTS, STORAGE_KEYS } from '../constants';
+
+const maxTokens = APP_CONSTANTS.MAX_TOKENS; // 8192
+const snippets = localStorage.getItem(STORAGE_KEYS.CODE_SNIPPETS);
+
+// ✅ 格式化工具
+import { formatFileSize, formatRelativeTime } from '../utils/helpers';
+
+formatFileSize(1024); // "1 KB"
+formatRelativeTime(Date.now() - 3600000); // "1小时前"
+
 // ✅ 日志记录 - 使用统一的 logger
 import { info, error as logError } from '../utils/logger';
 
@@ -164,10 +264,45 @@ debounce(fn, 300); // 防抖
 ```
 优先级从高到低:
 1. composables/     - 组件级逻辑复用 (useXxx)
-2. utils/           - 纯函数工具 (formatXxx)
-3. styles/          - 公共CSS类 (.btn-primary)
-4. theme/           - CSS变量系统 (--color-*)
-5. <style scoped>   - 组件特有样式
+2. utils/api/       - API封装层 (zhipuApi, conversationApi)
+3. utils/helpers/   - 辅助函数 (formatFileSize, validation)
+4. constants/       - 常量定义 (APP_CONSTANTS)
+5. styles/          - 公共CSS类 (.btn-primary)
+6. theme/           - CSS变量系统 (--color-*)
+7. <style scoped>   - 组件特有样式
+```
+
+#### 3. 错误处理规范
+
+```typescript
+// ✅ 使用AppError类（结构化错误）
+import { AppError, ErrorCodes } from '../utils/errorHandler';
+
+throw new AppError(
+  ErrorCodes.API_KEY_MISSING,
+  'API Key未配置',
+  { module: 'zhipu' }
+);
+
+// ✅ 安全执行异步函数（带重试）
+import { ErrorHandler } from '../utils/errorHandler';
+
+const result = await ErrorHandler.safeExecute(
+  () => fetchData(),
+  'API Request',
+  2 // 重试次数
+);
+
+if (!result.success) {
+  console.error(result.error?.message);
+}
+
+// ❌ 避免直接使用try-catch而不记录错误
+try {
+  await fetchData();
+} catch (error) {
+  // 空catch块 ❌
+}
 ```
 
 ---
