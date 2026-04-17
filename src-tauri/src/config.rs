@@ -5,6 +5,42 @@ use tauri::AppHandle;
 use tracing::info;
 use crate::zhipu_ai::ModelInfo;
 
+/// 获取安装目录
+pub fn get_install_dir() -> Result<PathBuf, String> {
+    let exe_path = std::env::current_exe()
+        .map_err(|e| format!("无法获取可执行文件路径：{}", e))?;
+    
+    exe_path.parent()
+        .ok_or_else(|| "无法获取安装目录".to_string())
+        .map(|p| p.to_path_buf())
+}
+
+/// 获取配置目录 (config/)
+pub fn get_config_dir() -> Result<PathBuf, String> {
+    let install_dir = get_install_dir()?;
+    let config_dir = install_dir.join("config");
+    
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir)
+            .map_err(|e| format!("无法创建配置目录：{}", e))?;
+    }
+    
+    Ok(config_dir)
+}
+
+/// 获取数据目录 (data/)
+pub fn get_data_dir() -> Result<PathBuf, String> {
+    let install_dir = get_install_dir()?;
+    let data_dir = install_dir.join("data");
+    
+    if !data_dir.exists() {
+        fs::create_dir_all(&data_dir)
+            .map_err(|e| format!("无法创建数据目录：{}", e))?;
+    }
+    
+    Ok(data_dir)
+}
+
 /// 角色数据结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoleConfig {

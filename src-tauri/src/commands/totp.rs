@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
 use tauri::AppHandle;
+use crate::config::get_config_dir;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TotpSecret {
@@ -13,24 +13,15 @@ pub struct TotpSecret {
 }
 
 /// 获取TOTP数据文件路径
-fn get_totp_file_path(_app: &AppHandle) -> PathBuf {
-    // 使用安装目录下的 config 文件夹
-    let exe_path = std::env::current_exe()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."));
-    
-    let install_dir = exe_path.parent()
-        .unwrap_or_else(|| std::path::Path::new("."))
-        .to_path_buf();
-    
-    let config_dir = install_dir.join("config");
-    
-    config_dir.join("totp_secrets.json")
+fn get_totp_file_path(_app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    let config_dir = get_config_dir()?;
+    Ok(config_dir.join("totp_secrets.json"))
 }
 
 /// 保存TOTP密钥
 #[tauri::command]
 pub fn save_totp_secrets(app: AppHandle, secrets: Vec<TotpSecret>) -> Result<(), String> {
-    let file_path = get_totp_file_path(&app);
+    let file_path = get_totp_file_path(&app)?;
     
     // 确保目录存在
     if let Some(parent) = file_path.parent() {
@@ -49,7 +40,7 @@ pub fn save_totp_secrets(app: AppHandle, secrets: Vec<TotpSecret>) -> Result<(),
 /// 加载TOTP密钥
 #[tauri::command]
 pub fn load_totp_secrets(app: AppHandle) -> Result<Vec<TotpSecret>, String> {
-    let file_path = get_totp_file_path(&app);
+    let file_path = get_totp_file_path(&app)?;
     
     // 文件不存在时返回空列表
     if !file_path.exists() {
@@ -69,7 +60,7 @@ pub fn load_totp_secrets(app: AppHandle) -> Result<Vec<TotpSecret>, String> {
 /// 删除TOTP密钥文件
 #[tauri::command]
 pub fn delete_totp_secrets(app: AppHandle) -> Result<(), String> {
-    let file_path = get_totp_file_path(&app);
+    let file_path = get_totp_file_path(&app)?;
     
     if file_path.exists() {
         fs::remove_file(&file_path).map_err(|e| format!("删除文件失败: {}", e))?;

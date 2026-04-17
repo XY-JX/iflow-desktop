@@ -1,28 +1,6 @@
-use std::path::PathBuf;
 use std::fs;
 use tracing::{info, debug, instrument};
-
-/// 获取配置目录(使用安装目录)
-pub fn get_config_dir() -> Result<PathBuf, String> {
-    // 获取应用可执行文件所在目录
-    let exe_path = std::env::current_exe()
-        .map_err(|e| format!("无法获取可执行文件路径：{}", e))?;
-    
-    let install_dir = exe_path.parent()
-        .ok_or_else(|| "无法获取安装目录".to_string())?
-        .to_path_buf();
-    
-    // 在安装目录下创建 data 文件夹
-    let config_dir = install_dir.join("data");
-    
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)
-            .map_err(|e| format!("无法创建配置目录：{}", e))?;
-    }
-    
-    info!("配置目录：{:?}", config_dir);
-    Ok(config_dir)
-}
+use crate::config::get_data_dir;
 
 /// 加载对话历史
 #[tauri::command]
@@ -30,8 +8,8 @@ pub fn get_config_dir() -> Result<PathBuf, String> {
 pub async fn load_conversations() -> Result<Vec<serde_json::Value>, String> {
     info!("加载对话历史");
     
-    let config_dir = get_config_dir()?;
-    let conversations_file = config_dir.join("conversations.json");
+    let data_dir = get_data_dir()?;
+    let conversations_file = data_dir.join("conversations.json");
     
     if !conversations_file.exists() {
         info!("对话历史文件不存在，返回空列表");
@@ -55,8 +33,8 @@ pub async fn save_conversations(_conversations: Vec<serde_json::Value>) -> Resul
     info!("保存对话历史");
     debug!("对话数量：{}", _conversations.len());
     
-    let config_dir = get_config_dir()?;
-    let conversations_file = config_dir.join("conversations.json");
+    let data_dir = get_data_dir()?;
+    let conversations_file = data_dir.join("conversations.json");
     
     let content = serde_json::to_string_pretty(&_conversations)
         .map_err(|e| format!("序列化对话历史失败：{}", e))?;
