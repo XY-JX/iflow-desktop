@@ -247,3 +247,5 @@ export function useDarkMode() {
 // 导出所有 composables
 export { useMarkdown } from './useMarkdown';
 export { useDialog } from './useDialog';
+export { useApiKey } from './useApiKey';
+export { useConversationExport } from './useConversationExport';

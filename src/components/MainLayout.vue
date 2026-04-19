@@ -12,55 +12,17 @@
     </div>
 
     <div class="main-content">
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <n-tag :type="zhipuReady ? 'success' : 'error'" size="small" round>
-            <template #icon>
-              <span>{{ zhipuReady ? '✅' : '⚠️' }}</span>
-            </template>
-            智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
-          </n-tag>
-          <n-button
-            @click="openApiKeyDialog"
-            :type="zhipuReady ? 'warning' : 'primary'"
-            size="small"
-          >
-            {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
-          </n-button>
-        </div>
-
-        <!-- 快速角色选择 -->
-        <div class="quick-role-selector">
-          <n-select
-            v-model:value="systemPrompt"
-            class="role-select"
-            @update:value="saveQuickRoles"
-            :options="quickRoleOptions"
-            :title="systemPrompt"
-            :menu-props="{ style: { minWidth: '200px' } }"
-          />
-        </div>
-
-        <div class="toolbar-right">
-          <n-button @click="showSettingsPanel = !showSettingsPanel" size="small" quaternary>
-            ⚙️ 高级设置
-          </n-button>
-
-          <n-button @click="showStatsPanel = !showStatsPanel" size="small" quaternary>📊 统计</n-button>
-
-          <!-- 对话统计 -->
-          <n-space size="small">
-            <n-statistic label="消息" :value="currentMessageCount" size="tiny">
-              <template #prefix>💬</template>
-            </n-statistic>
-            <n-statistic label="Token" :value="estimatedTokens" size="tiny">
-              <template #prefix>🔢</template>
-            </n-statistic>
-          </n-space>
-        </div>
-
-        <span v-if="zhipuStatus" class="status-message">{{ zhipuStatus }}</span>
-      </div>
+      <TopToolbar
+        :zhipu-ready="zhipuReady"
+        :zhipu-status="zhipuStatus"
+        v-model:system-prompt="systemPrompt"
+        :role-options="quickRoleOptions"
+        :message-count="currentMessageCount"
+        :token-count="estimatedTokens"
+        @open-api-key-dialog="openApiKeyDialog"
+        @toggle-settings="showSettingsPanel = !showSettingsPanel"
+        @toggle-stats="showStatsPanel = !showStatsPanel"
+      />
       <ChatInterface
         :messages="currentMessages"
         :is-generating="isGenerating"
@@ -129,12 +91,12 @@
             @tab-change="activeToolTab = $event"
             @add-snippet="addNewSnippet"
             @copy-snippet="copySnippet"
-            @delete-snippet="deleteSnippet"
+            @delete-snippet="deleteSnippetWrapper"
             @add-link="addNewLink"
-            @delete-link="deleteLink"
+            @delete-link="deleteLinkWrapper"
             @add-note="addNewNote"
             @save-notes="saveNotes"
-            @delete-note="deleteNote"
+            @delete-note="deleteNoteWrapper"
           />
         </div>
 
@@ -155,55 +117,24 @@
     </div>
 
     <!-- API Key 管理对话框 -->
-    <n-modal 
-      v-model:show="showApiKeyDialog" 
-      preset="card" 
-      :title="zhipuReady ? '⚙️ API Key 管理' : '🔑 配置 API Key'" 
-      style="max-width: 450px;"
-      :mask-closable="false"
-    >
-      <div class="api-key-dialog-content">
-        <div v-if="zhipuReady" class="status-info success">
-          <span class="status-icon">✅</span>
-          <span class="status-text">已配置并可用</span>
-        </div>
-        <div v-else class="status-info warning">
-          <span class="status-icon">⚠️</span>
-          <span class="status-text">未配置</span>
-        </div>
-
-        <div class="input-section">
-          <n-input
-            v-model:value="apiKeyInput"
-            type="password"
-            placeholder="请输入智谱 AI API Key"
-            show-password-on="click"
-            size="large"
-          />
-          <p class="input-hint">如果没有 API Key，可以留空直接关闭</p>
-        </div>
-
-        <div class="dialog-actions">
-          <n-button @click="handleClearKey" :disabled="!zhipuReady" type="error" block>
-            🗑️ 清除配置
-          </n-button>
-          <n-button @click="handleSaveKey" type="primary" block>
-            💾 保存配置
-          </n-button>
-        </div>
-      </div>
-    </n-modal>
+    <ApiKeyDialog
+      ref="apiKeyDialogRef"
+      v-model:visible="showApiKeyDialog"
+      :zhipu-ready="zhipuReady"
+      @clear-key="handleClearKey"
+      @save-key="handleSaveKey"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, onMounted, watch, computed, defineAsyncComponent, Suspense } from 'vue';
-  import { NButton, NInput, NSelect, NModal, NSkeleton, NTag, NSpace, NStatistic } from 'naive-ui';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
   import { useChatStore } from '../stores/chatStore';
   import { useFileStore } from '../stores/fileStore';
+  import { useQuickToolsStore } from '../stores/quickToolsStore';
   import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
   import { formatTime } from '../utils/common';
   import { useKeyboardShortcuts } from '../composables';
@@ -211,6 +142,8 @@
   import ChatHistory from './ChatHistory.vue';
   import ChatInterface from './ChatInterface.vue';
   import FileEditor from './FileEditor.vue';
+  import TopToolbar from './TopToolbar.vue';
+  import ApiKeyDialog from './ApiKeyDialog.vue';
   // 懒加载大型组件
   const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'));
   const StatsPanel = defineAsyncComponent(() => import('./StatsPanel.vue'));
@@ -223,6 +156,7 @@
   // 初始化 Store
   const chatStore = useChatStore();
   const fileStore = useFileStore();
+  const quickToolsStore = useQuickToolsStore();
 
   // 解构状态 (使用 storeToRefs 保持响应式)
   const { conversations, activeConversationId, currentMessages, isGenerating, latestThinking } =
@@ -259,7 +193,7 @@
   const zhipuReady = ref(false);
   const zhipuStatus = ref('');
   const showApiKeyDialog = ref(false); // 显示 API Key 管理对话框
-  const apiKeyInput = ref(''); // API Key 输入框
+  const apiKeyDialogRef = ref<InstanceType<typeof ApiKeyDialog>>();
 
   // 主题状态
   const isDarkMode = computed(() => currentTheme.value === 'dark');
@@ -283,50 +217,9 @@
     { id: 'notes', icon: '📝', label: '快捷笔记' },
   ];
 
-  // 代码片段
-  interface CodeSnippet {
-    name: string;
-    code: string;
-  }
-
-  const codeSnippets = ref([] as CodeSnippet[]);
-  codeSnippets.value = [
-    {
-      name: 'Vue3 模板',
-      code:
-        '<' +
-        'template>\n  <div>\n    <!-- 内容 -->\n  </div>\n</' +
-        'template>\n\n<' +
-        'script setup lang="ts">\n// 代码\n</' +
-        'script>',
-    },
-    {
-      name: 'TypeScript 接口',
-      code: 'interface UserData {\n  id: string;\n  name: string;\n  email?: string;\n}',
-    },
-  ];
-
-  // 快速链接
-  interface QuickLink {
-    name: string;
-    url: string;
-    icon: string;
-  }
-
-  const quickLinks = ref([] as QuickLink[]);
-  quickLinks.value = [
-    { name: 'Vue 文档', url: 'https://vuejs.org/', icon: '💚' },
-    { name: 'Tauri 文档', url: 'https://tauri.app/', icon: '🦀' },
-    { name: '智谱 AI', url: 'https://open.bigmodel.cn/', icon: '🤖' },
-  ];
-
-  // 快捷笔记
-  interface QuickNote {
-    content: string;
-    timestamp: number;
-  }
-
-  const quickNotes = ref([] as QuickNote[]);
+  // 从 Store 获取数据
+  const { codeSnippets, quickLinks, quickNotes } = storeToRefs(quickToolsStore);
+  const { addSnippet, deleteSnippet, addLink, deleteLink, addNote, updateNote, deleteNote } = quickToolsStore;
 
   // 本地存储键名（已废弃，改用 Rust 后端配置）
   // const API_KEY_STORAGE_KEY = 'zhipu_api_key';
@@ -342,16 +235,6 @@
 
   // 思考过程显示引用
   const thinkingDisplay = ref<HTMLDivElement>();
-
-  // async function checkZhipuStatus() {
-  //   try {
-  //     const isReady = await invoke<boolean>('check_zhipu_status');
-  //     zhipuReady.value = isReady;
-  //   } catch (error) {
-  //     console.error('检查智谱 AI 状态失败:', error);
-  //     zhipuReady.value = false;
-  //   }
-  // }
 
   // 初始化智谱 AI 客户端
   async function initZhipuClient(apiKey: string) {
@@ -448,15 +331,14 @@
 
     zhipuReady.value = false;
     zhipuStatus.value = '';
-    apiKeyInput.value = '';
     info('MainLayout', 'API Key 已清除');
   }
 
   // 保存 API Key
-  async function handleSaveKey() {
-    const apiKey = apiKeyInput.value.trim();
+  async function handleSaveKey(apiKey: string) {
+    const trimmedKey = apiKey.trim();
 
-    if (!apiKey) {
+    if (!trimmedKey) {
       // 如果输入为空且已配置，询问是否清除
       if (zhipuReady.value) {
         const confirm = window.confirm('输入为空，是否清除当前配置？');
@@ -466,13 +348,13 @@
         return;
       }
       // 未配置时直接关闭
-      closeApiKeyDialog();
+      showApiKeyDialog.value = false;
       return;
     }
 
     // 保存并初始化
-    await initZhipuClient(apiKey);
-    closeApiKeyDialog();
+    await initZhipuClient(trimmedKey);
+    showApiKeyDialog.value = false;
   }
 
   // 打开 API Key 对话框
@@ -480,23 +362,14 @@
     // 从 Rust 后端配置加载当前 key
     try {
       const savedKey = await invoke<string | null>('get_api_key');
-      if (savedKey) {
-        apiKeyInput.value = savedKey;
+      if (savedKey && apiKeyDialogRef.value) {
+        apiKeyDialogRef.value.setApiKey(savedKey);
         info('MainLayout', '已从配置文件加载 API Key');
-      } else {
-        apiKeyInput.value = '';
       }
     } catch (error) {
       logError('MainLayout', '加载 API Key 失败:', error);
-      apiKeyInput.value = '';
     }
     showApiKeyDialog.value = true;
-  }
-
-  // 关闭 API Key 对话框
-  function closeApiKeyDialog() {
-    showApiKeyDialog.value = false;
-    apiKeyInput.value = '';
   }
 
   // ========== 快捷工具相关函数 ==========
@@ -509,8 +382,7 @@
     const code = prompt('请输入代码内容：');
     if (!code) return;
 
-    codeSnippets.value.push({ name, code });
-    saveSnippets();
+    addSnippet(name, code);
   }
 
   // 复制代码片段
@@ -526,29 +398,11 @@
   }
 
   // 删除代码片段
-  function deleteSnippet(index: number) {
+  function deleteSnippetWrapper(index: number) {
     showDeleteConfirm('代码片段', () => {
-      codeSnippets.value.splice(index, 1);
-      saveSnippets();
+      deleteSnippet(index);
       showSuccess('代码片段已删除');
     });
-  }
-
-  // 保存代码片段
-  function saveSnippets() {
-    localStorage.setItem('code_snippets', JSON.stringify(codeSnippets.value));
-  }
-
-  // 加载代码片段
-  function loadSnippets() {
-    const saved = localStorage.getItem('code_snippets');
-    if (saved) {
-      try {
-        codeSnippets.value = JSON.parse(saved);
-      } catch (e) {
-        logError('MainLayout', '加载代码片段失败', e);
-      }
-    }
   }
 
   // 从对话中收藏代码片段
@@ -556,8 +410,7 @@
     const name = prompt(`请输入代码片段名称（语言：${language}）：`);
     if (!name) return;
 
-    codeSnippets.value.unshift({ name, code });
-    saveSnippets();
+    addSnippet(name, code);
     showSuccess('✅ 代码片段已收藏');
   }
 
@@ -571,70 +424,34 @@
 
     const icon = prompt('请输入图标 emoji（可选）：') || '🔗';
 
-    quickLinks.value.push({ name, url, icon });
-    saveLinks();
+    addLink(name, url, icon);
   }
 
   // 删除链接
-  function deleteLink(index: number) {
+  function deleteLinkWrapper(index: number) {
     const link = quickLinks.value[index];
     showDeleteConfirm(link.name, () => {
-      quickLinks.value.splice(index, 1);
-      saveLinks();
+      deleteLink(index);
       showSuccess('链接已删除');
     });
   }
 
-  // 保存链接
-  function saveLinks() {
-    localStorage.setItem('quick_links', JSON.stringify(quickLinks.value));
-  }
-
-  // 加载链接
-  function loadLinks() {
-    const saved = localStorage.getItem('quick_links');
-    if (saved) {
-      try {
-        quickLinks.value = JSON.parse(saved);
-      } catch (e) {
-        logError('MainLayout', '加载链接失败', e);
-      }
-    }
-  }
-
   // 添加新笔记
   function addNewNote() {
-    quickNotes.value.unshift({
-      content: '',
-      timestamp: Date.now(),
-    });
-    saveNotes();
+    addNote('');
   }
 
   // 删除笔记
-  function deleteNote(index: number) {
+  function deleteNoteWrapper(index: number) {
     showDeleteConfirm('笔记', () => {
-      quickNotes.value.splice(index, 1);
-      saveNotes();
+      deleteNote(index);
       showSuccess('笔记已删除');
     });
   }
 
-  // 保存笔记
+  // 保存笔记（从 QuickToolsPanel 触发）
   function saveNotes() {
-    localStorage.setItem('quick_notes', JSON.stringify(quickNotes.value));
-  }
-
-  // 加载笔记
-  function loadNotes() {
-    const saved = localStorage.getItem('quick_notes');
-    if (saved) {
-      try {
-        quickNotes.value = JSON.parse(saved);
-      } catch (e) {
-        logError('MainLayout', '加载笔记失败', e);
-      }
-    }
+    quickToolsStore.saveToStorage();
   }
 
   // 计算属性：当前对话消息数
@@ -914,7 +731,7 @@ ${msg.content}
       // Escape: 关闭对话框/面板
       if (event.key === 'Escape') {
         if (showApiKeyDialog.value) {
-          closeApiKeyDialog();
+          showApiKeyDialog.value = false;
         } else if (showSettingsPanel.value) {
           showSettingsPanel.value = false;
         }
@@ -953,9 +770,7 @@ Escape            - 关闭对话框/面板
       }
 
       // 加载快捷工具数据
-      loadSnippets();
-      loadLinks();
-      loadNotes();
+      quickToolsStore.loadFromStorage();
 
       // 尝试从 Rust 后端配置加载 API Key
       try {
@@ -1324,7 +1139,7 @@ Escape            - 关闭对话框/面板
     } else if (showStatsPanel.value) {
       showStatsPanel.value = false;
     } else if (showApiKeyDialog.value) {
-      closeApiKeyDialog();
+      showApiKeyDialog.value = false;
     }
   });
 </script>

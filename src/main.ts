@@ -30,6 +30,30 @@ window.addEventListener('error', (event) => {
 
 console.log('[main.ts] 应用开始初始化');
 
+// 全局复制代码函数
+(window as any).copyCode = function(btn: HTMLButtonElement) {
+  const codeBlock = btn.closest('.code-block');
+  if (!codeBlock) return;
+  
+  const codeContent = codeBlock.querySelector('.code-content code');
+  if (!codeContent) return;
+  
+  const code = codeContent.textContent || '';
+  
+  navigator.clipboard.writeText(code).then(() => {
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '✅ 已复制';
+    btn.classList.add('copied');
+    
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    console.error('复制失败');
+  });
+};
+
 app.use(pinia);
 app.mount('#app');
 

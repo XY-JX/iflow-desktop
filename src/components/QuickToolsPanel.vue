@@ -172,18 +172,20 @@
     padding: 12px;
   }
 
+  .totp-tab {
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
   .snippets-list,
   .links-list,
-  .notes-list,
-  .totp-container {
+  .notes-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-
-  .totp-container {
-    height: calc(100vh - 250px);
-    min-height: 400px;
   }
 
   .snippet-header {

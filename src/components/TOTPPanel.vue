@@ -18,10 +18,20 @@
       </n-empty>
 
       <n-card v-for="code in codes" :key="code.id" class="code-item" size="small">
-        <div class="code-info">
-          <div class="code-name">{{ code.name }}</div>
+        <div class="code-content">
+          <div class="code-header">
+            <div class="code-name">{{ code.name }}</div>
+            <div class="code-actions">
+              <n-button @click="copyCode(code.code)" quaternary circle size="tiny" title="复制">
+                <template #icon><span>📋</span></template>
+              </n-button>
+              <n-button @click="handleDelete(code.id)" quaternary circle size="tiny" type="error" title="删除">
+                <template #icon><span>×</span></template>
+              </n-button>
+            </div>
+          </div>
           <div class="code-value">{{ code.code }}</div>
-          <div class="code-timer">
+          <div class="code-footer">
             <n-progress
               type="line"
               :percentage="(code.timeLeft / 30 * 100)"
@@ -33,9 +43,6 @@
             <span class="timer-text">{{ code.timeLeft }}s</span>
           </div>
         </div>
-        <n-button @click="handleDelete(code.id)" quaternary circle size="small" type="error" title="删除">
-          ×
-        </n-button>
       </n-card>
     </div>
 
@@ -137,6 +144,15 @@ async function handleDelete(id: string) {
   });
 }
 
+// 复制验证码
+function copyCode(code: string) {
+  navigator.clipboard.writeText(code).then(() => {
+    // 可以添加成功提示
+  }).catch(() => {
+    console.error('复制失败');
+  });
+}
+
 // 启动定时器
 onMounted(() => {
   updateCodes();
@@ -156,51 +172,89 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--n-border-color);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .codes-container {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px;
   min-height: 0;
 }
 
 .code-item {
+  margin-bottom: 12px;
+  transition: all 0.2s;
+  border-radius: 8px;
+}
+
+.code-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.code-content {
+  width: 100%;
+  padding: 4px 0;
+}
+
+.code-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
-}
-
-.code-info {
-  flex: 1;
+  margin-bottom: 12px;
 }
 
 .code-name {
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-size: 14px;
+  color: var(--n-text-color-1);
+  font-weight: 600;
+}
+
+.code-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .code-value {
-  font-size: 20px;
-  font-weight: 600;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-  color: var(--n-primary-color);
+  font-size: 28px;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: normal;
+  margin-bottom: 12px;
+  color: var(--n-text-color-1);
+  text-align: center;
+  user-select: all;
+  cursor: pointer;
 }
 
-.code-timer {
-  position: relative;
-  height: 4px;
+.code-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .timer-text {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--n-text-color-3);
+  white-space: nowrap;
+  min-width: 35px;
+  text-align: right;
+  font-family: monospace;
 }
 </style>

@@ -10,22 +10,35 @@ export const useChatStore = defineStore('chat', () => {
   const activeConversationId = ref<string | undefined>();
   const isGenerating = ref(false);
   const latestThinking = ref<string>('');
+  const isLoading = ref(false); // 加载状态
+  const lastSaveTime = ref<number>(0); // 上次保存时间
+  const SAVE_THROTTLE = 1000; // 保存节流: 1秒
 
   // 从 Rust 后端加载对话
   async function loadFromStorage() {
+    isLoading.value = true;
     try {
       const data = await conversationApi.loadConversations();
       conversations.value = data || [];
       info('chatStore', `已加载 ${conversations.value.length} 个对话`);
     } catch (error) {
       logError('chatStore', '加载对话历史失败:', error);
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  // 保存到 Rust 后端
+  // 保存到 Rust 后端 (带节流)
   async function saveToStorage() {
+    const now = Date.now();
+    // 节流: 如果距离上次保存不足 1 秒,跳过
+    if (now - lastSaveTime.value < SAVE_THROTTLE) {
+      return;
+    }
+
     try {
       await conversationApi.saveConversations(conversations.value);
+      lastSaveTime.value = now;
       info('chatStore', `已保存 ${conversations.value.length} 个对话`);
     } catch (error) {
       logError('chatStore', '保存对话历史失败:', error);
@@ -157,6 +170,7 @@ export const useChatStore = defineStore('chat', () => {
     activeConversationId,
     isGenerating,
     latestThinking,
+    isLoading,
     // 计算属性
     currentMessages,
     activeConversation,
