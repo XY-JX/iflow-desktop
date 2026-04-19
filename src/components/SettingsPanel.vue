@@ -647,37 +647,6 @@
     color: var(--text-success, #389e0d);
   }
 
-  .slider {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: linear-gradient(
-      to right,
-      var(--primary-color, #4a90e2) 0%,
-      var(--primary-color, #4a90e2) var(--value, 70%),
-      var(--border-color, #ddd) var(--value, 70%),
-      var(--border-color, #ddd) 100%
-    );
-    outline: none;
-    -webkit-appearance: none;
-  }
-
-  .slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--primary-color, #4a90e2);
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s;
-  }
-
-  .slider::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  }
-
   .slider-labels {
     display: flex;
     justify-content: space-between;
@@ -697,23 +666,6 @@
     font-weight: 500;
     color: var(--text-primary, #333);
     margin-bottom: 6px;
-  }
-
-  .config-select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    font-size: 13px;
-    background: white;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .config-select:focus {
-    outline: none;
-    border-color: var(--primary-color, #4a90e2);
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
   }
 
   .config-checkboxes {

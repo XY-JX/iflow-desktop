@@ -35,6 +35,7 @@
             @update:value="saveQuickRoles"
             :options="quickRoleOptions"
             :title="systemPrompt"
+            :menu-props="{ style: { minWidth: '200px' } }"
           />
         </div>
 
@@ -136,50 +137,44 @@
     </div>
 
     <!-- API Key 管理对话框 -->
-    <div v-if="showApiKeyDialog" class="dialog-overlay" @click.self="closeApiKeyDialog">
-      <div class="api-key-dialog" @click.stop>
-        <h3 class="dialog-title">{{ zhipuReady ? '⚙️ API Key 管理' : '🔑 配置 API Key' }}</h3>
-
-        <div v-if="zhipuReady" class="current-key-info">
-          <div class="info-label">当前状态</div>
-          <div class="info-value success">✅ 已配置并可用</div>
+    <n-modal v-model:show="showApiKeyDialog" preset="card" :title="zhipuReady ? '⚙️ API Key 管理' : '🔑 配置 API Key'" style="max-width: 450px;">
+      <div class="api-key-dialog-content">
+        <div v-if="zhipuReady" class="status-info success">
+          <span class="status-icon">✅</span>
+          <span class="status-text">已配置并可用</span>
         </div>
-
-        <div v-else class="current-key-info warning">
-          <div class="info-label">当前状态</div>
-          <div class="info-value warn">⚠️ 未配置</div>
+        <div v-else class="status-info warning">
+          <span class="status-icon">⚠️</span>
+          <span class="status-text">未配置</span>
         </div>
 
         <div class="input-section">
-          <label class="input-label">API Key</label>
           <n-input
             v-model:value="apiKeyInput"
             type="password"
-            class="api-key-input"
             placeholder="请输入智谱 AI API Key"
             show-password-on="click"
+            size="large"
           />
           <p class="input-hint">如果没有 API Key，可以留空直接关闭</p>
         </div>
 
         <div class="dialog-actions">
-          <n-button @click="handleClearKey" class="btn-action btn-clear" :disabled="!zhipuReady">
+          <n-button @click="handleClearKey" :disabled="!zhipuReady" type="error" block>
             🗑️ 清除配置
           </n-button>
-          <n-button @click="handleSaveKey" class="btn-action btn-save" type="primary">💾 保存配置</n-button>
-        </div>
-
-        <div class="dialog-footer">
-          <n-button @click="closeApiKeyDialog" class="btn-close">关闭</n-button>
+          <n-button @click="handleSaveKey" type="primary" block>
+            💾 保存配置
+          </n-button>
         </div>
       </div>
-    </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, onMounted, watch, computed, defineAsyncComponent } from 'vue';
-  import { NButton, NInput, NSelect } from 'naive-ui';
+  import { NButton, NInput, NSelect, NModal } from 'naive-ui';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
@@ -188,7 +183,7 @@
   import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
   import { formatTime } from '../utils/common';
   import { useKeyboardShortcuts } from '../composables';
-  import { showSuccess, showError, showConfirm, showDeleteConfirm } from '../utils/message';
+  import { showSuccess, showError, showConfirm, showDeleteConfirm, showWarning } from '../utils/message';
   import ChatHistory from './ChatHistory.vue';
   import ChatInterface from './ChatInterface.vue';
   import FileExplorer from './FileExplorer.vue';
@@ -1588,89 +1583,36 @@ Escape            - 关闭对话框/面板
     z-index: 1000;
   }
 
-  /* 确认对话框样式 */
-  .dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+  /* API Key 对话框样式 */
+  .api-key-dialog-content {
+    padding: 8px 0;
+  }
+
+  .status-info {
     display: flex;
     align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-
-  .api-key-dialog {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    min-width: 400px;
-    max-width: 450px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .current-key-info {
-    background: #f6ffed;
-    border: 1px solid #b7eb8f;
+    gap: 8px;
+    padding: 12px 16px;
     border-radius: 8px;
-    padding: 16px;
     margin-bottom: 20px;
-  }
-
-  .current-key-info.warning {
-    background: #fff7e6;
-    border-color: #ffd591;
-  }
-
-  .info-label {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-
-  .info-value {
     font-size: 14px;
     font-weight: 600;
   }
 
-  .info-value.success {
+  .status-info.success {
+    background: #f6ffed;
     color: #52c41a;
+    border: 1px solid #b7eb8f;
   }
 
-  .info-value.warn {
+  .status-info.warning {
+    background: #fff7e6;
     color: #fa8c16;
+    border: 1px solid #ffd591;
   }
 
   .input-section {
-    margin-bottom: 20px;
-  }
-
-  .input-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #555;
-    margin-bottom: 8px;
-  }
-
-  .api-key-input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #d9d9d9;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: 'Courier New', monospace;
-    transition: all 0.2s;
-    background: white;
-  }
-
-  .api-key-input:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    margin-bottom: 24px;
   }
 
   .input-hint {
@@ -1683,85 +1625,6 @@ Escape            - 关闭对话框/面板
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .btn-action {
-    padding: 12px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .btn-clear {
-    background: #fff1f0;
-    color: #ff4d4f;
-    border: 1px solid #ffccc7;
-  }
-
-  .btn-clear:hover {
-    background: #ffccc7;
-    transform: translateY(-1px);
-  }
-
-  .btn-reconfigure {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-  }
-
-  .btn-save {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-  }
-
-  .btn-save:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  .btn-clear:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-clear:disabled:hover {
-    background: #fff1f0;
-    transform: none;
-  }
-
-  .btn-reconfigure:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  .dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 16px;
-    border-top: 1px solid #f0f0f0;
-  }
-
-  .btn-close {
-    padding: 8px 20px;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 6px;
-    font-size: 14px;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-close:hover {
-    color: #667eea;
-    border-color: #667eea;
   }
 
   /* 快捷操作菜单 */

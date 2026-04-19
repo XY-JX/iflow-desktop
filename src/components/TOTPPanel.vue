@@ -2,81 +2,88 @@
   <div class="totp-panel">
     <div class="panel-header">
       <span class="panel-title">🔐 谷歌验证码</span>
-      <button @click="showAddDialog = true" class="btn-add" title="添加新密钥">+</button>
+      <n-button @click="showAddDialog = true" circle size="small" type="primary" title="添加新密钥">
+        +
+      </n-button>
     </div>
 
     <div class="codes-container">
-      <div v-if="codes.length === 0" class="empty-state">
-        <div class="empty-icon">🔑</div>
-        <div class="empty-text">暂无验证码</div>
-        <div class="empty-hint">点击右上角 + 添加</div>
-      </div>
+      <n-empty v-if="codes.length === 0" description="暂无验证码">
+        <template #icon>
+          <span style="font-size: 48px">🔑</span>
+        </template>
+        <template #extra>
+          <n-text depth="3" style="font-size: 12px">点击右上角 + 添加</n-text>
+        </template>
+      </n-empty>
 
-      <div v-for="code in codes" :key="code.id" class="code-item">
+      <n-card v-for="code in codes" :key="code.id" class="code-item" size="small">
         <div class="code-info">
           <div class="code-name">{{ code.name }}</div>
           <div class="code-value">{{ code.code }}</div>
           <div class="code-timer">
-            <div 
-              class="timer-bar" 
-              :style="{ width: (code.timeLeft / 30 * 100) + '%' }"
-              :class="{ 'timer-warning': code.timeLeft <= 5 }"
-            ></div>
+            <n-progress
+              type="line"
+              :percentage="(code.timeLeft / 30 * 100)"
+              :height="4"
+              :show-indicator="false"
+              :color="code.timeLeft <= 5 ? '#ff4d4f' : '#4a90e2'"
+              :rail-color="'#e0e0e0'"
+            />
             <span class="timer-text">{{ code.timeLeft }}s</span>
           </div>
         </div>
-        <button @click="handleDelete(code.id)" class="btn-delete" title="删除">×</button>
-      </div>
+        <n-button @click="handleDelete(code.id)" quaternary circle size="small" type="error" title="删除">
+          ×
+        </n-button>
+      </n-card>
     </div>
 
     <!-- 添加密钥对话框 -->
-    <div v-if="showAddDialog" class="dialog-overlay" @click.self="closeDialog">
-      <div class="dialog-content" @click.stop>
-        <h3 class="dialog-title">添加验证码</h3>
-        
-        <div class="form-group">
-          <label>名称</label>
-          <input 
-            v-model="newSecret.name" 
-            type="text" 
+    <n-modal v-model:show="showAddDialog" preset="card" title="添加验证码" style="max-width: 450px;">
+      <n-form label-placement="left" label-width="100">
+        <n-form-item label="名称">
+          <n-input 
+            v-model:value="newSecret.name" 
             placeholder="例如: GitHub"
-            class="form-input"
           />
-        </div>
+        </n-form-item>
 
-        <div class="form-group">
-          <label>密钥 (Base32)</label>
-          <div class="secret-input-group">
-            <input 
-              v-model="newSecret.secret" 
-              type="text" 
+        <n-form-item label="密钥 (Base32)">
+          <n-input-group>
+            <n-input 
+              v-model:value="newSecret.secret" 
               placeholder="输入或生成密钥"
-              class="form-input"
             />
-            <button @click="generateNewSecret" class="btn-generate" title="生成随机密钥">
+            <n-button @click="generateNewSecret" type="primary" title="生成随机密钥">
               🎲
-            </button>
-          </div>
-        </div>
+            </n-button>
+          </n-input-group>
+        </n-form-item>
+      </n-form>
 
-        <div class="qr-section" v-if="qrCodeUrl">
-          <div class="qr-label">扫描二维码:</div>
-          <img :src="qrCodeUrl" alt="QR Code" class="qr-code" />
+      <n-alert v-if="qrCodeUrl" type="info" title="扫描二维码:" style="margin-top: 16px;">
+        <div style="text-align: center; margin-top: 12px;">
+          <img :src="qrCodeUrl" alt="QR Code" style="width: 200px; height: 200px;" />
         </div>
+      </n-alert>
 
-        <div class="dialog-actions">
-          <button @click="closeDialog" class="btn-cancel">取消</button>
-          <button @click="handleAdd" class="btn-confirm" :disabled="!isValid">确认</button>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <n-button @click="closeDialog">取消</n-button>
+          <n-button @click="handleAdd" type="primary" :disabled="!isValid">确认</n-button>
         </div>
-      </div>
-    </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { NButton, NCard, NEmpty, NModal, NForm, NFormItem, NInput, NInputGroup, NAlert, NProgress, NText } from 'naive-ui';
 import { getAllCodes, addSecret, deleteSecret, generateSecret } from '../utils/totp';
 import { useDialog } from '../composables';
+import { showConfirm } from '../utils/message';
 import type { TOTPCode } from '../utils/totp';
 
 const codes = ref<TOTPCode[]>([]);
@@ -122,10 +129,10 @@ async function handleAdd() {
 
 // 删除密钥
 async function handleDelete(id: string) {
-  if (confirm('确定要删除这个验证码吗?')) {
+  showConfirm('确认删除', '确定要删除这个验证码吗?', async () => {
     await deleteSecret(id);
     await updateCodes();
-  }
+  });
 }
 
 // 启动定时器
@@ -150,28 +157,6 @@ onUnmounted(() => {
   background: transparent;
 }
 
-
-
-.btn-add {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: none;
-  background: var(--primary-color, #4a90e2);
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.btn-add:hover {
-  background: var(--primary-dark, #357abd);
-  transform: scale(1.1);
-}
-
 .codes-container {
   flex: 1;
   overflow-y: auto;
@@ -179,46 +164,11 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-secondary, #999);
-  gap: 8px;
-}
-
-.empty-icon {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-.empty-text {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.empty-hint {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
 .code-item {
-  background: var(--bg-secondary, #f8f9fa);
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 6px;
-  padding: 10px;
-  margin-bottom: 6px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: all 0.2s;
-}
-
-.code-item:hover {
-  border-color: var(--primary-color, #4a90e2);
-  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.1);
+  margin-bottom: 6px;
 }
 
 .code-info {
@@ -244,22 +194,6 @@ onUnmounted(() => {
 .code-timer {
   position: relative;
   height: 4px;
-  background: var(--border-color, #e0e0e0);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.timer-bar {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: var(--primary-color, #4a90e2);
-  transition: width 1s linear;
-}
-
-.timer-bar.timer-warning {
-  background: #ff4d4f;
 }
 
 .timer-text {
@@ -268,149 +202,5 @@ onUnmounted(() => {
   top: -18px;
   font-size: 11px;
   color: var(--text-secondary, #999);
-}
-
-.btn-delete {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary, #999);
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  margin-left: 8px;
-}
-
-.btn-delete:hover {
-  background: #ff4d4f;
-  color: white;
-}
-
-/* 对话框样式 */
-.secret-input-group {
-  display: flex;
-  gap: 8px;
-}
-
-.secret-input-group .form-input {
-  flex: 1;
-}
-
-.btn-generate {
-  padding: 10px 12px;
-  border: 1px solid var(--border-color, #d9d9d9);
-  border-radius: 6px;
-  background: white;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s;
-}
-
-.btn-generate:hover {
-  background: var(--bg-secondary, #f8f9fa);
-  border-color: var(--primary-color, #4a90e2);
-}
-
-.qr-section {
-  margin: 16px 0;
-  text-align: center;
-}
-
-.qr-label {
-  font-size: 13px;
-  color: var(--text-secondary, #666);
-  margin-bottom: 8px;
-}
-
-.qr-code {
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 8px;
-  padding: 8px;
-  background: white;
-}
-
-.dialog-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.btn-cancel,
-.btn-confirm {
-  flex: 1;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background: var(--bg-secondary, #f5f5f5);
-  color: var(--text-primary, #666);
-}
-
-.btn-cancel:hover {
-  background: var(--border-color, #e0e0e0);
-}
-
-.btn-confirm {
-  background: var(--primary-color, #4a90e2);
-  color: white;
-}
-
-.btn-confirm:hover:not(:disabled) {
-  background: var(--primary-dark, #357abd);
-}
-
-.btn-confirm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 深色主题 */
-@media (prefers-color-scheme: dark) {
-  .totp-panel {
-    background: var(--bg-primary, #1a1a1a);
-  }
-
-  .code-item {
-    background: var(--bg-secondary, #2d2d2d);
-    border-color: var(--border-color, #404040);
-  }
-
-  .code-item:hover {
-    border-color: var(--primary-color, #4a90e2);
-  }
-
-  .code-name {
-    color: var(--text-primary, #f0f0f0);
-  }
-
-  .btn-generate {
-    background: var(--bg-secondary, #2d2d2d);
-    border-color: var(--border-color, #404040);
-    color: var(--text-primary, #f0f0f0);
-  }
-
-  .btn-generate:hover {
-    background: var(--bg-hover, #3d3d3d);
-  }
-
-  .btn-cancel {
-    background: var(--bg-secondary, #2d2d2d);
-    color: var(--text-primary, #ccc);
-  }
-
-  .btn-cancel:hover {
-    background: var(--bg-hover, #3d3d3d);
-  }
 }
 </style>

@@ -1,20 +1,11 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
-import { initTheme } from './theme';
 import { ErrorHandler } from './utils/errorHandler';
-import { getNaiveUITheme } from './theme/naive';
-import { NConfigProvider } from 'naive-ui';
 import './styles/components.css'; // 引入公共组件样式
 
 const app = createApp(App);
 const pinia = createPinia();
-
-// 初始化主题
-initTheme();
-
-// 配置 Naive UI 主题
-const naiveTheme = getNaiveUITheme();
 
 // 全局错误处理
 app.config.errorHandler = (err, _instance, info) => {

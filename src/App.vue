@@ -1,34 +1,15 @@
 <script setup lang="ts">
-  import { ref, onMounted, computed } from 'vue';
-  import { NConfigProvider, NMessageProvider, NDialogProvider, NNotificationProvider, darkTheme, useMessage, useDialog, useNotification } from 'naive-ui';
-  import MainLayout from '@components/MainLayout.vue';
-  import SplashScreen from '@components/SplashScreen.vue';
+  import { computed } from 'vue';
+  import { NConfigProvider, NMessageProvider, NDialogProvider, NNotificationProvider, darkTheme } from 'naive-ui';
+  import AppContent from './components/AppContent.vue';
   import { generateNaiveThemeOverrides } from './theme/naive';
   import { currentTheme } from './theme';
-  import { initMessageAPI } from './utils/message';
-
-  const splashRef = ref<InstanceType<typeof SplashScreen> | null>(null);
   
-  // 响应式主题配置（只使用 overrides）
+  // 响应式主题配置
   const naiveThemeOverrides = computed(() => generateNaiveThemeOverrides());
   
   // Naive UI 基础主题
   const naiveBaseTheme = computed(() => currentTheme.value === 'dark' ? darkTheme : null);
-  
-  // 初始化消息 API
-  const message = useMessage();
-  const dialog = useDialog();
-  const notification = useNotification();
-  
-  onMounted(() => {
-    // 初始化全局消息 API
-    initMessageAPI(message, dialog, notification);
-    
-    // 应用加载完成后隐藏启动屏
-    setTimeout(() => {
-      splashRef.value?.hide();
-    }, 500);
-  });
 </script>
 
 <template>
@@ -36,8 +17,7 @@
     <NMessageProvider>
       <NDialogProvider>
         <NNotificationProvider>
-          <SplashScreen ref="splashRef" />
-          <MainLayout />
+          <AppContent />
         </NNotificationProvider>
       </NDialogProvider>
     </NMessageProvider>

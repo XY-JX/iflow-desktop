@@ -27,7 +27,7 @@
         <n-button @click="$emit('add-snippet')" size="tiny" circle title="添加新片段">+</n-button>
       </div>
       <div class="snippets-list">
-        <div v-for="(snippet, index) in snippets" :key="index" class="snippet-item">
+        <n-card v-for="(snippet, index) in snippets" :key="index" class="snippet-item" size="small">
           <div class="snippet-header">
             <span class="snippet-name">{{ snippet.name }}</span>
             <div class="snippet-actions">
@@ -42,11 +42,12 @@
           <pre class="snippet-code"
             >{{ snippet.code.substring(0, 100) }}{{ snippet.code.length > 100 ? '...' : '' }}</pre
           >
-        </div>
-        <div v-if="snippets.length === 0" class="empty-state">
-          <p>暂无代码片段</p>
-          <p class="hint">点击 + 添加常用代码</p>
-        </div>
+        </n-card>
+        <n-empty v-if="snippets.length === 0" description="暂无代码片段">
+          <template #extra>
+            <n-text depth="3" style="font-size: 12px">点击 + 添加常用代码</n-text>
+          </template>
+        </n-empty>
       </div>
     </div>
 
@@ -57,26 +58,33 @@
         <n-button @click="$emit('add-link')" size="tiny" circle title="添加链接">+</n-button>
       </div>
       <div class="links-list">
-        <a
+        <n-card
           v-for="(link, index) in links"
           :key="index"
-          :href="link.url"
-          target="_blank"
           class="link-item"
+          size="small"
+          hoverable
+          @click="openLink(link.url)"
+          style="cursor: pointer;"
         >
-          <span class="link-icon">{{ link.icon }}</span>
-          <div class="link-info">
-            <span class="link-name">{{ link.name }}</span>
-            <span class="link-url">{{ link.url }}</span>
+          <div class="link-content">
+            <span class="link-icon">{{ link.icon }}</span>
+            <div class="link-info">
+              <span class="link-name">{{ link.name }}</span>
+              <span class="link-url">{{ link.url }}</span>
+            </div>
           </div>
-          <n-button @click.prevent="$emit('delete-link', index)" size="tiny" text title="删除">
-            ×
-          </n-button>
-        </a>
-        <div v-if="links.length === 0" class="empty-state">
-          <p>暂无收藏链接</p>
-          <p class="hint">点击 + 添加常用网站</p>
-        </div>
+          <template #footer>
+            <n-button @click.stop="$emit('delete-link', index)" size="tiny" text title="删除" style="float: right;">
+              ×
+            </n-button>
+          </template>
+        </n-card>
+        <n-empty v-if="links.length === 0" description="暂无收藏链接">
+          <template #extra>
+            <n-text depth="3" style="font-size: 12px">点击 + 添加常用网站</n-text>
+          </template>
+        </n-empty>
       </div>
     </div>
 
@@ -87,7 +95,7 @@
         <n-button @click="$emit('add-note')" size="tiny" circle title="添加笔记">+</n-button>
       </div>
       <div class="notes-list">
-        <div v-for="(note, index) in notes" :key="index" class="note-item">
+        <n-card v-for="(note, index) in notes" :key="index" class="note-item" size="small">
           <n-input
             v-model:value="note.content"
             @update:value="$emit('save-notes')"
@@ -96,27 +104,30 @@
             placeholder="输入笔记内容..."
             :autosize="{ minRows: 3, maxRows: 6 }"
           />
-          <div class="note-footer">
-            <span class="note-time">{{ formatTime(note.timestamp) }}</span>
-            <n-button @click="$emit('delete-note', index)" size="tiny" quaternary title="删除">🗑️</n-button>
-          </div>
-        </div>
-        <div v-if="notes.length === 0" class="empty-state">
-          <p>暂无笔记</p>
-          <p class="hint">点击 + 添加临时笔记</p>
-        </div>
+          <template #footer>
+            <div class="note-footer">
+              <span class="note-time">{{ formatTime(note.timestamp) }}</span>
+              <n-button @click="$emit('delete-note', index)" size="tiny" quaternary title="删除">🗑️</n-button>
+            </div>
+          </template>
+        </n-card>
+        <n-empty v-if="notes.length === 0" description="暂无笔记">
+          <template #extra>
+            <n-text depth="3" style="font-size: 12px">点击 + 添加临时笔记</n-text>
+          </template>
+        </n-empty>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { NButton, NInput } from 'naive-ui';
+  import { NButton, NInput, NCard, NEmpty, NText } from 'naive-ui';
   import TOTPPanel from './TOTPPanel.vue';
   import { formatTime } from '../utils/common';
   import type { CodeSnippet, QuickLink, QuickNote } from '../types';
 
-  defineProps<{
+  const props = defineProps<{
     activeTab: string;
     tabs: Array<{ id: string; icon: string; label: string }>;
     snippets: CodeSnippet[];
@@ -135,6 +146,10 @@
     'save-notes': [];
     'delete-note': [index: number];
   }>();
+
+  const openLink = (url: string) => {
+    window.open(url, '_blank');
+  };
 </script>
 
 <style scoped>
@@ -182,13 +197,6 @@
     min-height: 400px;
   }
 
-  .snippet-item {
-    padding: 10px;
-    background: var(--bg-secondary, #f8f9fa);
-    border-radius: 6px;
-    border: 1px solid var(--border-color, #e0e0e0);
-  }
-
   .snippet-header {
     display: flex;
     justify-content: space-between;
@@ -207,25 +215,22 @@
     gap: 4px;
   }
 
+  .snippet-code {
+    background: var(--bg-secondary, #f0f0f0);
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-primary, #333);
+    overflow-x: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
 
-
-
-
-  .link-item {
+  .link-content {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px;
-    background: var(--bg-secondary, #f8f9fa);
-    border-radius: 6px;
-    text-decoration: none;
-    transition: all 0.2s;
-    border: 1px solid var(--border-color, #e0e0e0);
-  }
-
-  .link-item:hover {
-    background: var(--bg-hover, #f0f0f0);
-    transform: translateX(2px);
   }
 
   .link-icon {
@@ -254,13 +259,6 @@
     white-space: nowrap;
   }
 
-  .note-item {
-    padding: 10px;
-    background: var(--bg-secondary, #f8f9fa);
-    border-radius: 6px;
-    border: 1px solid var(--border-color, #e0e0e0);
-  }
-
   .note-footer {
     display: flex;
     justify-content: space-between;
@@ -271,6 +269,4 @@
     font-size: 11px;
     color: var(--text-secondary, #999);
   }
-
-
 </style>

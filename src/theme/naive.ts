@@ -94,8 +94,16 @@ export function generateNaiveThemeOverrides(): GlobalThemeOverrides {
     
     // Slider 组件定制
     Slider: {
-      railHeight: '4px',
-      handleSize: '16px',
+      railHeight: '6px',
+      handleSize: '18px',
+      railColor: '#e0e0e0',
+      railColorHover: '#d0d0d0',
+      fillColor: '#4a90e2',
+      fillColorHover: '#357abd',
+      handleColor: '#4a90e2',
+      handleColorHover: '#357abd',
+      handleBoxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+      handleBoxShadowHover: '0 4px 8px rgba(0, 0, 0, 0.3)',
     },
     
     // Message 组件定制

@@ -6,6 +6,7 @@
       :options="modelOptions"
       @update:value="$emit('model-change', $event)"
       placeholder="选择模型"
+      :menu-props="{ style: { minWidth: '200px' } }"
     />
   </div>
 </template>
@@ -44,5 +45,6 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--text-primary, #333);
+    white-space: nowrap;
   }
 </style>

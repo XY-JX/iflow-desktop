@@ -26,7 +26,7 @@
         :class="{ active: activeConversationId === conversation.id }"
         @click="$emit('select-conversation', conversation.id)"
       >
-        <div class="conversation-title">{{ highlightText(conversation.title) }}</div>
+        <div class="conversation-title">{{ conversation.title }}</div>
 
         <!-- 标签显示 -->
         <div v-if="conversation.tags && conversation.tags.length > 0" class="tags-container">
