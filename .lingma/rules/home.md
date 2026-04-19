@@ -68,11 +68,17 @@ Components → Composables → Stores → API Layer → Rust Backend
 
 ### 组件开发
 
-- ✅ 优先使用 Naive UI 组件
-- ✅ 使用消息提示系统 (`showSuccess`/`showError`)
+- ✅ **必须使用 Naive UI 组件**（禁止原生 HTML 元素）
+  - 按钮: `<n-button>` 替代 `<button>`
+  - 输入框: `<n-input>` 替代 `<input/textarea>`
+  - 卡片: `<n-card>` 替代自定义 div
+  - 对话框: `<n-modal preset="card">` 标准模式
+  - 空状态: `<n-empty>` 替代自定义提示
+- ✅ 使用消息提示系统 (`showSuccess`/`showError`/`showWarning`)
 - ✅ 响应式数据使用 `storeToRefs` 解构
 - ❌ 不在组件中编写复杂业务逻辑
 - ❌ 不使用 `alert`/`confirm`
+- ❌ 不定义重复的公共样式（使用 `components.css`）
 
 ### 代码规范
 

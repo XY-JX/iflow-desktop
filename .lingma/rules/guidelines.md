@@ -5,7 +5,7 @@ description: 详细开发规范（架构+代码质量+协作流程）
 
 # 我的一个梦 - 开发规范
 
-> **版本**: 3.0.0 | **更新**: 2026-04-19
+> **版本**: 3.1.0 | **更新**: 2026-04-19
 > 
 > **说明**: 本文档是详细的开发规范，涵盖架构设计、代码质量标准和团队协作流程。
 > 开发新功能时请参考此文档。
@@ -75,6 +75,73 @@ info('Module', '操作成功');
 
 // ✅ 代码复用
 import { useKeyboardShortcuts } from '../composables';
+
+// ✅ Naive UI 组件使用
+import { NButton, NInput, NCard, NEmpty } from 'naive-ui';
+```
+
+**Naive UI 最佳实践**:
+
+```vue
+<!-- ✅ 按钮规范 -->
+<n-button size="small" quaternary @click="handleClick">操作</n-button>
+<n-button type="primary" :disabled="!isValid">确认</n-button>
+
+<!-- ✅ 输入框规范 -->
+<n-input 
+  v-model:value="text" 
+  type="textarea"
+  :autosize="{ minRows: 1, maxRows: 6 }"
+  clearable
+  placeholder="请输入..."
+/>
+
+<!-- ✅ 卡片规范 -->
+<n-card size="small" hoverable>
+  <template #header>
+    <div class="card-header">
+      <span>标题</span>
+      <n-button size="tiny" quaternary>操作</n-button>
+    </div>
+  </template>
+  内容
+  <template #action>
+    <n-button size="tiny" text type="error">删除</n-button>
+  </template>
+</n-card>
+
+<!-- ✅ 对话框规范 -->
+<n-modal v-model:show="visible" preset="card" title="标题" style="max-width: 500px;">
+  内容
+  <template #footer>
+    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+      <n-button @click="close">取消</n-button>
+      <n-button @click="confirm" type="primary">确认</n-button>
+    </div>
+  </template>
+</n-modal>
+
+<!-- ✅ 空状态规范 -->
+<n-empty description="暂无数据">
+  <template #extra>
+    <n-button @click="createNew" type="primary" size="small">
+      创建新项
+    </n-button>
+  </template>
+</n-empty>
+
+<!-- ✅ 统计信息规范 -->
+<n-space size="small">
+  <n-statistic label="消息" :value="count" size="tiny">
+    <template #prefix>💬</template>
+  </n-statistic>
+</n-space>
+
+<!-- ✅ 状态标签规范 -->
+<n-tag :type="ready ? 'success' : 'error'" size="small" round>
+  <template #icon><span>{{ ready ? '✅' : '⚠️' }}</span></template>
+  状态文本
+</n-tag>
 ```
 
 ### 架构原则
@@ -85,9 +152,38 @@ import { useKeyboardShortcuts } from '../composables';
 
 **CSS与JS分离**:
 - 公共样式 → `src/styles/components.css`
+  - `.panel-header` / `.panel-title` - 面板头部
+  - `.tool-header` - 工具栏头部
+  - `.status-dot` - 状态指示器（支持 success/error/warning/running/stopped）
+  - `.loading-spinner` - 加载动画
+  - `@keyframes pulse/spin` - 通用动画
 - 可复用逻辑 → `src/composables/`
 - 工具函数 → `src/utils/`
 - 组件特有样式 → `<style scoped>`
+
+**公共样式使用示例**:
+```vue
+<!-- ✅ 直接使用公共类，无需重复定义 -->
+<div class="panel-header">
+  <span class="panel-title">📌 面板标题</span>
+  <n-button quaternary circle @click="close">×</n-button>
+</div>
+
+<!-- ❌ 不要在组件中重复定义 -->
+<style scoped>
+.panel-header { /* 删除！已存在于 components.css */ }
+.panel-title { /* 删除！已存在于 components.css */ }
+</style>
+```
+
+**Naive UI 使用规范**:
+- **按钮**: 使用 `size="small"` 和 `quaternary` 实现幽灵按钮效果
+- **输入框**: 添加 `clearable` 属性，使用 `:autosize` 自动调整高度
+- **卡片**: 使用 `hoverable` 增强交互，通过 `template #header/action` 组织内容
+- **对话框**: 统一使用 `preset="card"` 模式，通过 `template #footer` 放置按钮
+- **空状态**: 使用 `<n-empty>` + `template #extra` 提供操作按钮
+- **统计**: 使用 `<n-statistic>` + `<n-space>` 替代自定义布局
+- **标签**: 使用 `<n-tag>` 替代自定义状态指示器
 
 **分层调用规则**:
 ```
@@ -376,6 +472,8 @@ npm run tauri build  # 打包
 6. **数据持久化**: 所有业务数据通过 Rust 后端存储
 7. **日志记录**: 使用统一 logger，禁止 `console.log`
 8. **代码清理**: 及时删除注释代码和未使用的变量
+9. **Naive UI 优先**: 必须使用 Naive UI 组件，禁止原生 HTML 元素
+10. **公共样式复用**: 优先使用 `components.css` 中的公共样式，避免重复定义
 
 ---
 

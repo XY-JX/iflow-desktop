@@ -14,16 +14,16 @@
     <div class="main-content">
       <div class="toolbar">
         <div class="toolbar-left">
-          <div class="status-indicator">
-            <div :class="['status-dot', zhipuReady ? 'running' : 'stopped']"></div>
-            <span class="status-text">
-              智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
-            </span>
-          </div>
+          <n-tag :type="zhipuReady ? 'success' : 'error'" size="small" round>
+            <template #icon>
+              <span>{{ zhipuReady ? '✅' : '⚠️' }}</span>
+            </template>
+            智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
+          </n-tag>
           <n-button
             @click="openApiKeyDialog"
-            class="btn-toggle"
-            :class="zhipuReady ? 'btn-stop' : 'btn-start'"
+            :type="zhipuReady ? 'warning' : 'primary'"
+            size="small"
           >
             {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
           </n-button>
@@ -42,25 +42,21 @@
         </div>
 
         <div class="toolbar-right">
-          <n-button @click="showSettingsPanel = !showSettingsPanel" class="btn-settings">
+          <n-button @click="showSettingsPanel = !showSettingsPanel" size="small" quaternary>
             ⚙️ 高级设置
           </n-button>
 
-          <n-button @click="showStatsPanel = !showStatsPanel" class="btn-stats">📊 统计</n-button>
+          <n-button @click="showStatsPanel = !showStatsPanel" size="small" quaternary>📊 统计</n-button>
 
           <!-- 对话统计 -->
-          <div class="conversation-stats">
-            <div class="stat-item-small">
-              <span class="stat-icon">💬</span>
-              <span class="stat-value">{{ currentMessageCount }}</span>
-              <span class="stat-label">消息</span>
-            </div>
-            <div class="stat-item-small">
-              <span class="stat-icon">🔢</span>
-              <span class="stat-value">{{ estimatedTokens }}</span>
-              <span class="stat-label">Token</span>
-            </div>
-          </div>
+          <n-space size="small">
+            <n-statistic label="消息" :value="currentMessageCount" size="tiny">
+              <template #prefix>💬</template>
+            </n-statistic>
+            <n-statistic label="Token" :value="estimatedTokens" size="tiny">
+              <template #prefix>🔢</template>
+            </n-statistic>
+          </n-space>
         </div>
 
         <span v-if="zhipuStatus" class="status-message">{{ zhipuStatus }}</span>
@@ -202,7 +198,7 @@
 
 <script setup lang="ts">
   import { ref, onMounted, watch, computed, defineAsyncComponent, Suspense } from 'vue';
-  import { NButton, NInput, NSelect, NModal, NSkeleton } from 'naive-ui';
+  import { NButton, NInput, NSelect, NModal, NSkeleton, NTag, NSpace, NStatistic } from 'naive-ui';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
@@ -1381,143 +1377,6 @@ Escape            - 关闭对话框/面板
     margin-left: auto;
   }
 
-  /* 响应式工具栏 */
-  @media (max-width: 1100px) {
-    .toolbar {
-      gap: 6px;
-      padding: 8px 12px;
-    }
-
-    .conversation-stats {
-      display: none;
-    }
-  }
-
-  @media (max-width: 900px) {
-    .toolbar {
-      gap: 4px;
-      padding: 6px 8px;
-      flex-wrap: wrap;
-    }
-
-    .toolbar-left {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .toolbar-right {
-      flex-basis: 100%;
-      justify-content: flex-end;
-      margin-left: 0;
-      padding-top: 6px;
-      flex-wrap: wrap;
-    }
-
-    .quick-role-selector {
-      max-width: 180px;
-    }
-
-    .role-select {
-      min-width: 100px;
-    }
-
-    .status-indicator {
-      padding: 4px 6px;
-    }
-
-    .status-text {
-      font-size: 11px;
-    }
-
-    .btn-toggle.n-button {
-      padding: 4px 10px;
-      font-size: 11px;
-    }
-
-    .btn-settings,
-    .btn-stats {
-      padding: 4px 8px;
-      font-size: 11px;
-    }
-  }
-
-  .status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-  }
-
-  .status-indicator:hover {
-    background: var(--n-action-color);
-  }
-
-  /* 状态指示器 */
-  .status-dot.running {
-    background: var(--n-success-color);
-    box-shadow: 0 0 6px rgba(82, 196, 26, 0.5);
-    animation: pulse 2s infinite;
-  }
-
-  .status-dot.stopped {
-    background: var(--n-error-color);
-    box-shadow: 0 0 6px rgba(255, 77, 79, 0.5);
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.6;
-    }
-  }
-
-  .status-text {
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  .btn-toggle.n-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    min-width: fit-content;
-    color: white !important;
-  }
-
-  .btn-toggle.n-button.btn-start {
-    background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%) !important;
-    box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
-  }
-
-  .btn-toggle.n-button.btn-start:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(82, 196, 26, 0.4);
-  }
-
-  .btn-toggle.n-button.btn-stop {
-    background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%) !important;
-    box-shadow: 0 2px 4px rgba(255, 77, 79, 0.3);
-  }
-
-  .btn-toggle.n-button.btn-stop:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(255, 77, 79, 0.4);
-  }
-
-  .btn-toggle.n-button:active {
-    transform: translateY(0);
-  }
-
   .status-message {
     font-size: 13px;
     color: var(--n-text-color-2);
@@ -1538,37 +1397,6 @@ Escape            - 关闭对话框/面板
   .role-select {
     width: 100%;
     min-width: 150px;
-  }
-
-  /* 对话统计 */
-  .conversation-stats {
-    display: flex;
-    gap: 12px;
-    padding: 6px 12px;
-    border-radius: 8px;
-  }
-
-  .stat-item-small {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .stat-icon {
-    font-size: 14px;
-  }
-
-  .stat-value {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--n-primary-color);
-    min-width: 20px;
-    text-align: center;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    color: var(--n-text-color-3);
   }
 
   .sidebar-right {

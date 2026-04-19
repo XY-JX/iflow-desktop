@@ -169,89 +169,89 @@
     </div>
 
     <!-- 添加角色对话框 -->
-    <n-modal v-model:show="showAddRoleDialog" class="dialog-add-role">
-      <div class="dialog-content">
-        <h3 class="dialog-title">➕ 添加自定义角色</h3>
-        <div class="dialog-body">
-          <div class="form-row">
-            <div class="form-group form-group-icon">
-              <label class="form-label">角色图标</label>
-              <n-input
-                v-model:value="newRole.icon"
-                class="form-input input-icon"
-                placeholder="🚀"
-                maxlength="2"
-              />
-            </div>
-            <div class="form-group form-group-name">
-              <label class="form-label">角色名称</label>
-              <n-input
-                v-model:value="newRole.label"
-                class="form-input"
-                placeholder="例如：翻译助手"
-                maxlength="10"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">系统提示词</label>
+    <n-modal v-model:show="showAddRoleDialog" preset="card" title="➕ 添加自定义角色" style="max-width: 520px;">
+      <div class="dialog-body">
+        <div class="form-row">
+          <div class="form-group form-group-icon">
+            <label class="form-label">角色图标</label>
             <n-input
-              v-model:value="newRole.value"
-              type="textarea"
-              class="form-textarea"
-              placeholder="描述这个角色的职责和能力...\n\n例如：你是专业的翻译助手，精通多国语言翻译..."
-              :rows="5"
+              v-model:value="newRole.icon"
+              class="form-input input-icon"
+              placeholder="🚀"
+              maxlength="2"
+            />
+          </div>
+          <div class="form-group form-group-name">
+            <label class="form-label">角色名称</label>
+            <n-input
+              v-model:value="newRole.label"
+              class="form-input"
+              placeholder="例如：翻译助手"
+              maxlength="10"
+              clearable
             />
           </div>
         </div>
-        <div class="dialog-footer">
-          <n-button @click="cancelAddRoleHandler" class="btn-dialog-cancel">取消</n-button>
-          <n-button @click="handleAddRole" type="primary" class="btn-dialog-confirm">确定添加</n-button>
+        <div class="form-group">
+          <label class="form-label">系统提示词</label>
+          <n-input
+            v-model:value="newRole.value"
+            type="textarea"
+            class="form-textarea"
+            placeholder="描述这个角色的职责和能力...\n\n例如：你是专业的翻译助手，精通多国语言翻译..."
+            :rows="5"
+          />
         </div>
       </div>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <n-button @click="cancelAddRoleHandler">取消</n-button>
+          <n-button @click="handleAddRole" type="primary">确定添加</n-button>
+        </div>
+      </template>
     </n-modal>
 
     <!-- 编辑角色对话框 -->
-    <n-modal v-model:show="showEditRoleDialog" class="dialog-add-role">
-      <div class="dialog-content">
-        <h3 class="dialog-title">✏️ 编辑自定义角色</h3>
-        <div class="dialog-body">
-          <div class="form-row">
-            <div class="form-group form-group-icon">
-              <label class="form-label">角色图标</label>
-              <n-input
-                v-model:value="newRole.icon"
-                class="form-input input-icon"
-                placeholder="🚀"
-                maxlength="2"
-              />
-            </div>
-            <div class="form-group form-group-name">
-              <label class="form-label">角色名称</label>
-              <n-input
-                v-model:value="newRole.label"
-                class="form-input"
-                placeholder="例如：翻译助手"
-                maxlength="10"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">系统提示词</label>
+    <n-modal v-model:show="showEditRoleDialog" preset="card" title="✏️ 编辑自定义角色" style="max-width: 520px;">
+      <div class="dialog-body">
+        <div class="form-row">
+          <div class="form-group form-group-icon">
+            <label class="form-label">角色图标</label>
             <n-input
-              v-model:value="newRole.value"
-              type="textarea"
-              class="form-textarea"
-              placeholder="描述这个角色的职责和能力..."
-              :rows="5"
+              v-model:value="newRole.icon"
+              class="form-input input-icon"
+              placeholder="🚀"
+              maxlength="2"
+            />
+          </div>
+          <div class="form-group form-group-name">
+            <label class="form-label">角色名称</label>
+            <n-input
+              v-model:value="newRole.label"
+              class="form-input"
+              placeholder="例如：翻译助手"
+              maxlength="10"
+              clearable
             />
           </div>
         </div>
-        <div class="dialog-footer">
-          <n-button @click="cancelEditRoleHandler" class="btn-dialog-cancel">取消</n-button>
-          <n-button @click="saveEditedRole" type="primary" class="btn-dialog-confirm">保存修改</n-button>
+        <div class="form-group">
+          <label class="form-label">系统提示词</label>
+          <n-input
+            v-model:value="newRole.value"
+            type="textarea"
+            class="form-textarea"
+            placeholder="描述这个角色的职责和能力..."
+            :rows="5"
+          />
         </div>
       </div>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <n-button @click="cancelEditRoleHandler">取消</n-button>
+          <n-button @click="saveEditedRole" type="primary">保存修改</n-button>
+        </div>
+      </template>
     </n-modal>
   </div>
 </template>
@@ -540,17 +540,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-  }
-
-  .close-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 24px;
-    border-radius: 4px;
-    transition: all 0.2s;
   }
 
   .panel-content {

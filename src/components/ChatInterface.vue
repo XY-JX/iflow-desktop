@@ -18,7 +18,7 @@
             </div>
             <div class="message-footer">
               <span class="message-time">{{ formatTime(message.timestamp) }}</span>
-              <button @click="replyToMessageFunc(message)" class="reply-btn" title="回复">↩️</button>
+              <n-button @click="replyToMessageFunc(message)" size="tiny" quaternary title="回复" class="reply-btn">↩️</n-button>
             </div>
           </div>
         </div>
@@ -29,34 +29,37 @@
     <div class="input-section">
       <!-- 快捷操作栏 -->
       <div class="action-bar">
-        <button @click="$emit('clear-conversation')" class="action-btn" title="清空对话">🗑️</button>
-        <button @click="$emit('export-conversation')" class="action-btn" title="导出">📥</button>
-        <button @click="$emit('export-pdf')" class="action-btn" title="PDF">📄</button>
-        <button @click="$emit('copy-last-answer')" class="action-btn" title="复制">📋</button>
-        <button @click="saveLastCodeSnippet" class="action-btn" title="收藏代码">💾</button>
+        <n-button @click="$emit('clear-conversation')" size="small" quaternary title="清空对话">🗑️</n-button>
+        <n-button @click="$emit('export-conversation')" size="small" quaternary title="导出">📥</n-button>
+        <n-button @click="$emit('export-pdf')" size="small" quaternary title="PDF">📄</n-button>
+        <n-button @click="$emit('copy-last-answer')" size="small" quaternary title="复制">📋</n-button>
+        <n-button @click="saveLastCodeSnippet" size="small" quaternary title="收藏代码">💾</n-button>
         <div class="divider"></div>
-        <button @click="$emit('apply-template', 'explain')" class="action-btn" title="解释代码">💡</button>
-        <button @click="$emit('apply-template', 'optimize')" class="action-btn" title="优化">⚡</button>
-        <button @click="$emit('apply-template', 'debug')" class="action-btn" title="调试">🐛</button>
+        <n-button @click="$emit('apply-template', 'explain')" size="small" quaternary title="解释代码">💡</n-button>
+        <n-button @click="$emit('apply-template', 'optimize')" size="small" quaternary title="优化">⚡</n-button>
+        <n-button @click="$emit('apply-template', 'debug')" size="small" quaternary title="调试">🐛</n-button>
       </div>
 
       <!-- 输入框 -->
       <div class="input-box">
-        <textarea
+        <n-input
           ref="inputRef"
-          v-model="inputText"
+          v-model:value="inputText"
           @keydown="handleKeyDown"
+          type="textarea"
           placeholder="输入消息..."
+          :autosize="{ minRows: 1, maxRows: 6 }"
+          :bordered="true"
           class="input-field"
-          rows="1"
-        ></textarea>
-        <button 
+        />
+        <n-button 
           @click="sendMessage" 
           :disabled="!inputText.trim() || isGenerating"
+          type="primary"
           class="send-button"
         >
           📤 发送
-        </button>
+        </n-button>
       </div>
 
       <!-- 状态提示 -->
@@ -71,8 +74,10 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted } from 'vue'
+import { NButton, NInput } from 'naive-ui'
 import { formatTime } from '../utils/common'
 import { useMarkdown } from '../composables'
+import { showWarning } from '../utils/message'
 import type { Message, Model } from '../types'
 
 const { renderMarkdown } = useMarkdown()
@@ -160,7 +165,7 @@ function extractCodeBlocks(content: string): Array<{ code: string; language: str
 function saveLastCodeSnippet() {
   const assistantMessages = props.messages.filter((m) => m.role === 'assistant')
   if (assistantMessages.length === 0) {
-    alert('没有找到助手的消息')
+    showWarning('没有找到助手的消息')
     return
   }
 
@@ -168,7 +173,7 @@ function saveLastCodeSnippet() {
   const codeBlocks = extractCodeBlocks(lastMessage.content)
 
   if (codeBlocks.length === 0) {
-    alert('该消息中没有找到代码块')
+    showWarning('该消息中没有找到代码块')
     return
   }
 
@@ -305,22 +310,12 @@ function replyToMessageFunc(message: Message) {
 }
 
 .reply-btn {
-  padding: 2px 6px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
   opacity: 0;
   transition: all 0.2s;
 }
 
 .message-item:hover .reply-btn {
   opacity: 1;
-}
-
-.reply-btn:hover {
-  background: var(--n-action-color);
 }
 
 /* Markdown 样式 */
@@ -373,19 +368,8 @@ function replyToMessageFunc(message: Message) {
 }
 
 .action-btn {
-  padding: 6px 10px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
+  padding: 4px 8px;
   font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  opacity: 0.7;
-}
-
-.action-btn:hover {
-  background: var(--n-action-color);
-  opacity: 1;
 }
 
 .divider {
@@ -403,43 +387,11 @@ function replyToMessageFunc(message: Message) {
 
 .input-field {
   flex: 1;
-  padding: 12px 16px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  resize: none;
-  outline: none;
-  transition: border-color 0.2s;
-  min-height: 44px;
-  max-height: 160px;
-}
-
-.input-field:focus {
-  border-color: var(--n-primary-color);
 }
 
 .send-button {
-  padding: 12px 24px;
-  background: var(--n-primary-color);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
   white-space: nowrap;
-  height: 44px;
-}
-
-.send-button:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.send-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  height: auto;
 }
 
 /* 状态提示 */
@@ -452,21 +404,9 @@ function replyToMessageFunc(message: Message) {
   color: var(--n-primary-color);
 }
 
-.status-dot {
+.status-tip .status-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
-  background: var(--n-primary-color);
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
 }
 
 .hint-text {

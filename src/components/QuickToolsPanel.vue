@@ -27,18 +27,20 @@
         <n-button @click="$emit('add-snippet')" size="tiny" circle title="添加新片段">+</n-button>
       </div>
       <div class="snippets-list">
-        <n-card v-for="(snippet, index) in snippets" :key="index" class="snippet-item" size="small">
-          <div class="snippet-header">
-            <span class="snippet-name">{{ snippet.name }}</span>
-            <div class="snippet-actions">
-              <n-button @click="$emit('copy-snippet', snippet.code)" size="tiny" quaternary title="复制">
-                📋
-              </n-button>
-              <n-button @click="$emit('delete-snippet', index)" size="tiny" quaternary title="删除">
-                🗑️
-              </n-button>
+        <n-card v-for="(snippet, index) in snippets" :key="index" class="snippet-item" size="small" hoverable>
+          <template #header>
+            <div class="snippet-header">
+              <span class="snippet-name">{{ snippet.name }}</span>
+              <div class="snippet-actions">
+                <n-button @click="$emit('copy-snippet', snippet.code)" size="tiny" quaternary title="复制">
+                  📋
+                </n-button>
+                <n-button @click="$emit('delete-snippet', index)" size="tiny" quaternary type="error" title="删除">
+                  🗑️
+                </n-button>
+              </div>
             </div>
-          </div>
+          </template>
           <pre class="snippet-code"
             >{{ snippet.code.substring(0, 100) }}{{ snippet.code.length > 100 ? '...' : '' }}</pre
           >
@@ -74,8 +76,8 @@
               <span class="link-url">{{ link.url }}</span>
             </div>
           </div>
-          <template #footer>
-            <n-button @click.stop="$emit('delete-link', index)" size="tiny" text title="删除" style="float: right;">
+          <template #action>
+            <n-button @click.stop="$emit('delete-link', index)" size="tiny" text type="error" title="删除">
               ×
             </n-button>
           </template>
@@ -104,10 +106,10 @@
             placeholder="输入笔记内容..."
             :autosize="{ minRows: 3, maxRows: 6 }"
           />
-          <template #footer>
+          <template #action>
             <div class="note-footer">
               <span class="note-time">{{ formatTime(note.timestamp) }}</span>
-              <n-button @click="$emit('delete-note', index)" size="tiny" quaternary title="删除">🗑️</n-button>
+              <n-button @click="$emit('delete-note', index)" size="tiny" quaternary type="error" title="删除">🗑️</n-button>
             </div>
           </template>
         </n-card>

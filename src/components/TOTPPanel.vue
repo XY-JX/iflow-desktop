@@ -41,19 +41,21 @@
 
     <!-- 添加密钥对话框 -->
     <n-modal v-model:show="showAddDialog" preset="card" title="添加验证码" style="max-width: 450px;">
-      <n-form label-placement="left" label-width="100">
-        <n-form-item label="名称">
+      <n-form label-placement="left" label-width="100" require-mark-placement="right-hanging">
+        <n-form-item label="名称" required>
           <n-input 
             v-model:value="newSecret.name" 
             placeholder="例如: GitHub"
+            clearable
           />
         </n-form-item>
 
-        <n-form-item label="密钥 (Base32)">
+        <n-form-item label="密钥 (Base32)" required>
           <n-input-group>
             <n-input 
               v-model:value="newSecret.secret" 
               placeholder="输入或生成密钥"
+              clearable
             />
             <n-button @click="generateNewSecret" type="primary" title="生成随机密钥">
               🎲
@@ -64,7 +66,7 @@
 
       <n-alert v-if="qrCodeUrl" type="info" title="扫描二维码:" style="margin-top: 16px;">
         <div style="text-align: center; margin-top: 12px;">
-          <img :src="qrCodeUrl" alt="QR Code" style="width: 200px; height: 200px;" />
+          <img :src="qrCodeUrl" alt="QR Code" style="width: 200px; height: 200px; border-radius: 8px;" />
         </div>
       </n-alert>
 
@@ -185,7 +187,7 @@ onUnmounted(() => {
   font-weight: 600;
   font-family: 'Courier New', monospace;
   letter-spacing: 2px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   color: var(--n-primary-color);
 }
 

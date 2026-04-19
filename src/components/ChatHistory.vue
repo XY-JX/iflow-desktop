@@ -65,6 +65,15 @@
 
       <!-- 无搜索结果提示 -->
       <n-empty v-if="filteredConversations.length === 0 && searchKeyword" description="未找到匹配的对话" />
+      
+      <!-- 无对话提示 -->
+      <n-empty v-else-if="conversations.length === 0" description="暂无对话记录">
+        <template #extra>
+          <n-button @click="$emit('new-chat')" type="primary" size="small">
+            创建第一个对话
+          </n-button>
+        </template>
+      </n-empty>
     </div>
   </div>
 </template>
