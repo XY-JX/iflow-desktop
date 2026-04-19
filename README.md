@@ -1,4 +1,4 @@
-# 我的一个梦
+# 我的一个梦 - Desktop
 
 <div align="center">
 
@@ -6,12 +6,13 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg)
+![Naive UI](https://img.shields.io/badge/Naive%20UI-Latest-18A058.svg)
 
-**一个功能强大的 AI 编程助手桌面应用**
+**专业的 AI 编程助手桌面应用**
 
-基于 Tauri 2.0 + Vue 3 + Rust 构建，提供智能对话、代码分析、文件管理等功能。
+基于 Tauri 2.0 + Vue 3 + Rust + Naive UI 构建，采用专业团队开发规范，分层清晰，职责明确。
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [开发指南](#-开发指南) • [项目结构](#-项目结构)
+[功能特性](#-功能特性) • [快速开始](#-快速开始) • [架构设计](#-架构设计) • [开发规范](#-开发规范) • [团队协作](#-团队协作)
 
 </div>
 
@@ -103,70 +104,105 @@ npm run tauri build
 
 ## 📖 开发指南
 
-### 项目结构
+### 项目结构（分层架构）
 
 ```
 我的一个梦/
 ├── src/                          # Vue 前端源码
-│   ├── components/              # Vue 组件
-│   │   ├── SplashScreen.vue     # 启动页
-│   │   ├── MainLayout.vue       # 主布局
-│   │   ├── ChatInterface.vue    # 聊天界面
-│   │   ├── ChatHistory.vue      # 聊天记录
-│   │   ├── FileEditor.vue       # 文件编辑器
-│   │   ├── FileExplorer.vue     # 文件浏览器
-│   │   ├── SettingsPanel.vue    # 设置面板
-│   │   └── ...                  # 其他组件
-│   ├── stores/                  # Pinia 状态管理
-│   │   ├── chatStore.ts         # 对话状态
-│   │   ├── fileStore.ts         # 文件状态
-│   │   └── iflowStore.ts        # iFlow 服务状态
-│   ├── utils/                   # 工具函数（模块化）
+│   ├── components/              # 🎨 UI组件层 - 负责界面展示和用户交互
+│   │   ├── ChatInterface.vue    # 聊天界面组件
+│   │   ├── ChatHistory.vue      # 对话历史组件
+│   │   ├── SettingsPanel.vue    # 设置面板组件
+│   │   ├── FileExplorer.vue     # 文件浏览器组件
+│   │   ├── FileEditor.vue       # 文件编辑器组件
+│   │   ├── ModelSelector.vue    # 模型选择器组件
+│   │   ├── QuickToolsPanel.vue  # 快捷工具面板
+│   │   ├── StatsPanel.vue       # 统计面板
+│   │   ├── TOTPPanel.vue        # TOTP验证面板
+│   │   ├── SplashScreen.vue     # 启动页组件
+│   │   └── MainLayout.vue       # 主布局组件
+│   │
+│   ├── stores/                  # 🗄️ 状态管理层 - 负责全局状态管理
+│   │   ├── chatStore.ts         # 对话状态管理
+│   │   ├── fileStore.ts         # 文件状态管理
+│   │   └── iflowStore.ts        # iFlow服务状态
+│   │
+│   ├── composables/             # 🔄 业务逻辑层 - 可复用的组合式函数
+│   │   ├── useDialog.ts         # 对话框逻辑
+│   │   ├── useMarkdown.ts       # Markdown渲染逻辑
+│   │   └── index.ts             # 统一导出
+│   │
+│   ├── utils/                   # 🛠️ 工具层 - 通用工具函数和API封装
 │   │   ├── api/                 # API封装层 ✨
-│   │   │   ├── zhipu.ts         # 智谱AI API
-│   │   │   ├── conversation.ts  # 对话API
-│   │   │   ├── totp.ts          # TOTP API
+│   │   │   ├── zhipu.ts         # 智谱AI API封装
+│   │   │   ├── conversation.ts  # 对话API封装
+│   │   │   ├── totp.ts          # TOTP API封装
 │   │   │   └── index.ts         # 统一导出
 │   │   ├── helpers/             # 辅助函数 ✨
 │   │   │   ├── format.ts        # 格式化工具
 │   │   │   ├── validation.ts    # 验证工具
 │   │   │   └── index.ts
+│   │   ├── message.ts           # 消息提示工具（Naive UI封装）
 │   │   ├── common.ts            # 通用工具函数
 │   │   ├── configUtils.ts       # 配置管理工具
 │   │   ├── errorHandler.ts      # 错误处理
 │   │   ├── logger.ts            # 日志系统
-│   │   ├── tokenUtils.ts        # Token 计算工具
-│   │   └── totp.ts              # TOTP 生成器
-│   ├── constants/               # 常量定义 ✨
+│   │   ├── tokenUtils.ts        # Token计算工具
+│   │   └── totp.ts              # TOTP生成器
+│   │
+│   ├── constants/               # 📌 常量层 - 全局常量定义
 │   │   └── index.ts             # APP_CONSTANTS, STORAGE_KEYS
-│   ├── composables/             # 可复用组合式函数 ✨
-│   │   └── index.ts             # Composables集合
-│   ├── styles/                  # 公共样式库 ✨
+│   │
+│   ├── types/                   # 📝 类型层 - TypeScript类型定义
+│   │   └── index.ts             # 全局类型定义
+│   │
+│   ├── theme/                   # 🎨 主题层 - 主题系统配置
+│   │   ├── index.ts             # 全局主题系统
+│   │   └── naive.ts             # Naive UI主题适配
+│   │
+│   ├── styles/                  # 💅 样式层 - 公共样式库
 │   │   └── components.css       # 组件样式库
-│   ├── types/                   # TypeScript 类型定义
-│   ├── theme/                   # 主题配置
-│   │   └── index.ts             # 全局主题系统
-│   ├── App.vue                  # 根组件
-│   └── main.ts                  # 应用入口
-├── src-tauri/                   # Tauri 后端 (Rust)
+│   │
+│   ├── App.vue                  # 根组件（应用入口）
+│   └── main.ts                  # 应用初始化
+│
+├── src-tauri/                   # 🔧 Rust后端层
 │   ├── src/
-│   │   ├── commands/            # Tauri 命令
-│   │   │   ├── zhipu.rs         # 智谱 AI 相关命令
+│   │   ├── commands/            # Tauri命令层 - 前后端通信接口
+│   │   │   ├── mod.rs           # 命令模块导出
+│   │   │   ├── zhipu.rs         # 智谱AI相关命令
 │   │   │   ├── conversation.rs  # 对话管理命令
-│   │   │   └── totp.rs          # TOTP 相关命令
-│   │   ├── config.rs            # 配置管理
-│   │   ├── logging.rs           # 日志系统
+│   │   │   └── totp.rs          # TOTP相关命令
+│   │   ├── config.rs            # 配置管理模块
+│   │   ├── logging.rs           # 日志系统模块
+│   │   ├── zhipu_ai.rs          # 智谱AI客户端
 │   │   ├── lib.rs               # 库入口
-│   │   └── main.rs              # 主入口
+│   │   └── main.rs              # 应用主入口
+│   │
 │   ├── capabilities/            # 权限配置
 │   ├── icons/                   # 应用图标
-│   ├── Cargo.toml               # Rust 依赖
-│   └── tauri.conf.json          # Tauri 配置
+│   ├── Cargo.toml               # Rust依赖配置
+│   └── tauri.conf.json          # Tauri配置
+│
 ├── .env*                        # 环境变量配置
-├── package.json                 # Node.js 依赖
-├── tsconfig.json                # TypeScript 配置
-└── vite.config.ts               # Vite 配置
+├── package.json                 # Node.js依赖
+├── tsconfig.json                # TypeScript配置
+└── vite.config.ts               # Vite构建配置
 ```
+
+### 分层职责说明
+
+| 层级 | 目录 | 职责 | 负责人 |
+|------|------|------|--------|
+| **UI组件层** | `components/` | 界面展示、用户交互、事件处理 | 前端工程师 |
+| **状态管理层** | `stores/` | 全局状态管理、数据持久化 | 前端工程师 |
+| **业务逻辑层** | `composables/` | 可复用业务逻辑、组合式函数 | 前端工程师 |
+| **工具层** | `utils/` | 工具函数、API封装、错误处理 | 全栈工程师 |
+| **常量层** | `constants/` | 全局常量定义、配置项 | 技术负责人 |
+| **类型层** | `types/` | TypeScript类型定义 | 全体开发人员 |
+| **主题层** | `theme/` | 主题系统、样式变量 | UI设计师 + 前端 |
+| **样式层** | `styles/` | 公共样式库、CSS变量 | UI设计师 |
+| **Rust后端层** | `src-tauri/` | 系统调用、文件操作、性能优化 | Rust工程师 |
 
 ### 常用命令
 
@@ -188,16 +224,34 @@ npm run format             # 代码格式化
 
 ### 开发规范
 
-#### 前端开发
+#### 分层开发原则
+
+**核心原则**：各层职责清晰，各司其职，避免跨层调用。
+
+```
+UI组件层 → 状态管理层 → 业务逻辑层 → 工具层 → Rust后端层
+   ↓           ↓              ↓           ↓          ↓
+ 展示交互    状态管理      业务逻辑     通用工具   系统调用
+```
+
+**禁止行为**：
+- ❌ UI组件直接调用 Rust 命令（应通过 API 封装层）
+- ❌ UI组件直接操作 localStorage（应通过 Store）
+- ❌ Store 中编写复杂业务逻辑（应提取到 Composables）
+- ❌ 工具函数中依赖 UI 组件
+
+#### 前端开发规范
 
 1. **组件命名**：使用 PascalCase，如 `ChatInterface.vue`
-2. **状态管理**：使用 Pinia store 管理全局状态
-3. **类型安全**：所有变量和函数必须有明确的类型
-4. **响应式解构**：使用 `storeToRefs` 保持响应式
-5. **代码复用**：优先使用 composables 和公共工具函数
-6. **样式规范**：使用 CSS 变量，避免硬编码颜色
-7. **API调用**：使用统一的 API 层封装（推荐）
-8. **错误处理**：使用 AppError 类和 ErrorHandler
+2. **组件职责**：只负责界面展示和用户交互，不包含业务逻辑
+3. **状态管理**：使用 Pinia store 管理全局状态
+4. **类型安全**：所有变量和函数必须有明确的类型
+5. **响应式解构**：使用 `storeToRefs` 保持响应式
+6. **代码复用**：优先使用 composables 和公共工具函数
+7. **样式规范**：使用 CSS 变量，避免硬编码颜色
+8. **API调用**：使用统一的 API 层封装
+9. **错误处理**：使用消息提示系统（showSuccess/showError）
+10. **UI组件库**：优先使用 Naive UI 组件，减少自定义元素
 
 ```typescript
 // ✅ 正确 - 使用 storeToRefs
@@ -215,6 +269,13 @@ await zhipuApi.sendMessage(apiKey, content);
 import { APP_CONSTANTS } from '../constants';
 const maxTokens = APP_CONSTANTS.MAX_TOKENS;
 
+// ✅ 正确 - 使用消息提示
+import { showSuccess, showError } from '../utils/message';
+showSuccess('操作成功');
+
+// ✅ 正确 - 使用 Naive UI 组件
+import { NButton, NInput } from 'naive-ui';
+
 // ❌ 错误 - 失去响应式
 const { state } = myStore;
 
@@ -223,13 +284,17 @@ await invoke('send_message', { ... }); // 应使用 API 层
 
 // ❌ 错误 - 硬编码颜色
 background: #667eea; // 应使用 var(--color-primary)
+
+// ❌ 错误 - 使用 alert
+alert('操作成功'); // 应使用 showSuccess
 ```
 
-#### Rust 后端
+#### Rust 后端规范
 
 1. **命令定义**：所有 Tauri 命令必须添加 `#[tauri::command]` 属性
 2. **错误处理**：使用 `Result<T, String>` 返回错误
 3. **日志记录**：使用 `tracing` 进行日志记录
+4. **模块化**：按功能模块组织代码，每个模块职责单一
 
 ```rust
 // ✅ 正确
@@ -266,6 +331,7 @@ fn my_command() { /* ... */ } // 缺少属性和返回类型
 | 类别 | 技术 | 说明 |
 |------|------|------|
 | **前端框架** | Vue 3 | Composition API + `<script setup>` |
+| **UI组件库** | Naive UI | 专业级 Vue 3 组件库，按需引入 |
 | **状态管理** | Pinia | 轻量级、类型安全的状态管理 |
 | **构建工具** | Vite | 快速的开发服务器和构建工具 |
 | **桌面框架** | Tauri 2.0 | 轻量级跨平台桌面应用框架 |
@@ -290,21 +356,29 @@ fn my_command() { /* ... */ } // 缺少属性和返回类型
 - 文件选择和预览
 - 编辑状态管理
 
-#### 3. API 封装层 (`utils/api.ts`)
+#### 3. API 封装层 (`utils/api/`)
 
 统一的 Tauri 命令调用接口：
 - 错误处理和日志记录
 - 类型安全的命令调用
 - 批量操作支持
 
-#### 4. 主题系统 (`theme/index.ts`)
+#### 4. 消息提示系统 (`utils/message.ts`)
 
-全局设计令牌管理：
+全局消息通知和对话框管理：
+- 成功/错误/警告提示
+- 确认对话框
+- 删除确认对话框
+- 通知提示
+
+#### 5. 主题系统 (`theme/`)
+
+全局设计令牌管理和 Naive UI 适配：
 - 颜色、间距、圆角等常量
-- 统一的视觉风格
-- 易于维护和扩展
+- Naive UI 主题覆盖配置
+- 深色模式自动切换
 
-#### 5. 公共样式库 (`styles/components.css`)
+#### 6. 公共样式库 (`styles/components.css`)
 
 可复用的基础组件样式：
 - 按钮、输入框、卡片等通用组件
@@ -370,6 +444,60 @@ A:
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
+
+---
+
+## 🤝 团队协作
+
+### 核心原则
+
+1. **单一职责**: 每个模块/函数只做一件事
+2. **开闭原则**: 对扩展开放，对修改关闭
+3. **DRY 原则**: 相同逻辑只写一次
+4. **分层清晰**: 遵循架构分层，禁止跨层调用
+
+### 代码质量标准
+
+- **命名规范**: 语义化命名，避免缩写
+- **类型安全**: 100% TypeScript 覆盖，避免 any
+- **函数复杂度**: 单个函数 ≤ 50 行，圈复杂度 ≤ 10
+- **注释规范**: 复杂逻辑必须注释，接口必须有 JSDoc
+
+### 提交流程
+
+```bash
+# 1. 创建功能分支
+git checkout -b feature/chat-export
+
+# 2. 开发并测试
+git add .
+git commit -m "feat: 添加对话导出为 PDF 功能"
+
+# 3. 推送到远程
+git push origin feature/chat-export
+
+# 4. 创建 Pull Request，等待 Code Review
+```
+
+### Code Review 清单
+
+- [ ] 功能是否按需求实现？
+- [ ] 是否有未使用的代码？
+- [ ] 类型定义是否完整？
+- [ ] 错误处理是否完善？
+- [ ] 性能是否有影响？
+- [ ] 文档是否更新？
+
+### 质量指标
+
+| 指标 | 目标值 |
+|------|--------|
+| 测试覆盖率 | ≥ 70% |
+| 圈复杂度 | ≤ 10 |
+| 函数长度 | ≤ 50 行 |
+| TypeScript 覆盖率 | 100% |
+
+**详细规范**: 查看 [.lingma/rules/team-collaboration.md](.lingma/rules/team-collaboration.md)
 
 ---
 

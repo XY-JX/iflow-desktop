@@ -2,17 +2,19 @@
   <div class="chat-history">
     <div class="history-header">
       <h3>对话历史</h3>
-      <button class="new-chat-btn" @click="$emit('new-chat')"><span>+</span> 新建对话</button>
+      <n-button type="primary" block @click="$emit('new-chat')">
+        <template #icon><span>+</span></template>
+        新建对话
+      </n-button>
 
       <!-- 搜索框 -->
       <div class="search-box">
-        <input
-          v-model="searchKeyword"
-          type="text"
+        <n-input
+          v-model:value="searchKeyword"
           placeholder="🔍 搜索对话..."
-          class="search-input"
+          clearable
+          size="small"
         />
-        <button v-if="searchKeyword" @click="clearSearch" class="clear-search">×</button>
       </div>
     </div>
 
@@ -40,9 +42,15 @@
           <span class="model-name">{{ conversation.model }}</span>
           <span class="conversation-time">{{ formatTime(conversation.updatedAt) }}</span>
         </div>
-        <button class="delete-btn" @click.stop="$emit('delete-conversation', conversation.id)">
+        <n-button 
+          quaternary 
+          circle 
+          size="tiny"
+          class="delete-btn" 
+          @click.stop="handleDeleteConversation(conversation.id, conversation.title)"
+        >
           ×
-        </button>
+        </n-button>
       </div>
 
       <!-- 无搜索结果提示 -->
@@ -55,7 +63,9 @@
 
 <script setup lang="ts">
   import { ref, computed } from 'vue';
+  import { NButton, NInput } from 'naive-ui';
   import { formatTime } from '../utils/common';
+  import { showDeleteConfirm } from '../utils/message';
   import type { Conversation } from '../types';
 
   const props = defineProps<{
@@ -71,6 +81,13 @@
 
   // 搜索关键词
   const searchKeyword = ref('');
+
+  // 处理删除对话
+  function handleDeleteConversation(id: string, title: string) {
+    showDeleteConfirm(title, () => {
+      emit('delete-conversation', id);
+    });
+  }
 
   // 过滤后的对话列表（支持模糊搜索）
   const filteredConversations = computed(() => {
@@ -90,22 +107,6 @@
       return titleMatch || modelMatch || messageMatch;
     });
   });
-
-  // 清除搜索
-  function clearSearch() {
-    searchKeyword.value = '';
-  }
-
-  // 高亮显示匹配文本
-  function highlightText(text: string): string {
-    if (!searchKeyword.value.trim()) {
-      return text;
-    }
-
-    const keyword = searchKeyword.value.trim();
-    const regex = new RegExp(`(${keyword})`, 'gi');
-    return text.replace(regex, '<mark>$1</mark>');
-  }
 </script>
 
 <style scoped>
@@ -129,77 +130,9 @@
     color: var(--text-primary, #333);
   }
 
-  .new-chat-btn {
-    width: 100%;
-    padding: 10px;
-    background: var(--primary-color, #4a90e2);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .new-chat-btn:hover {
-    background: var(--primary-hover, #357abd);
-  }
-
-  .new-chat-btn span {
-    font-size: 18px;
-    margin-right: 4px;
-  }
-
   /* 搜索框样式 */
   .search-box {
-    position: relative;
     margin-top: 12px;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 8px 32px 8px 12px;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    font-size: 13px;
-    background: white;
-    color: var(--text-primary, #333);
-    transition: all 0.2s;
-  }
-
-  .search-input:focus {
-    outline: none;
-    border-color: var(--primary-color, #4a90e2);
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
-  }
-
-  .search-input::placeholder {
-    color: var(--text-secondary, #999);
-  }
-
-  .clear-search {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary, #999);
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  .clear-search:hover {
-    background: rgba(0, 0, 0, 0.1);
-    color: var(--text-primary, #333);
   }
 
   /* 无搜索结果提示 */
@@ -303,25 +236,12 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary, #999);
-    font-size: 18px;
-    cursor: pointer;
     opacity: 0;
     transition: all 0.2s;
-    border-radius: 4px;
   }
 
   .history-item:hover .delete-btn {
     opacity: 1;
-  }
-
-  .delete-btn:hover {
-    background: rgba(0, 0, 0, 0.1);
-    color: #d32f2f;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -352,22 +272,6 @@
 
     .conversation-meta {
       color: var(--text-secondary, #aaa);
-    }
-
-    /* 深色主题 - 搜索框 */
-    .search-input {
-      background: var(--bg-primary, #1a1a1a);
-      color: var(--text-primary, #f0f0f0);
-      border-color: var(--border-color, #404040);
-    }
-
-    .search-input:focus {
-      border-color: var(--primary-color, #4a90e2);
-      box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
-    }
-
-    .clear-search:hover {
-      background: rgba(255, 255, 255, 0.1);
     }
 
     :deep(mark) {

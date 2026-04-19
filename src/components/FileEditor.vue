@@ -7,24 +7,27 @@
         <span class="file-path">{{ file.path }}</span>
       </div>
       <div class="editor-actions">
-        <button
-          class="action-btn"
+        <n-button
+          type="primary"
+          size="small"
           @click="saveFile"
           :disabled="!hasChanges"
-          :class="{ active: hasChanges }"
         >
           💾 保存
-        </button>
-        <button class="action-btn close-btn" @click="$emit('close')">✕ 关闭</button>
+        </n-button>
+        <n-button size="small" quaternary @click="$emit('close')">✕ 关闭</n-button>
       </div>
     </div>
     <div class="editor-content">
-      <textarea
-        v-model="content"
-        @input="hasChanges = true"
+      <n-input
+        v-model:value="content"
+        @update:value="hasChanges = true"
+        type="textarea"
         placeholder="文件内容..."
+        :autosize="false"
         spellcheck="false"
-      ></textarea>
+        class="code-editor"
+      />
     </div>
   </div>
   <div class="empty-state" v-else>
@@ -34,6 +37,7 @@
 
 <script setup lang="ts">
   import { ref, watch } from 'vue';
+  import { NButton, NInput } from 'naive-ui';
   import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
   import { error as logError } from '../utils/logger';
   import type { FileItem } from '../types';
@@ -132,60 +136,16 @@
     gap: 8px;
   }
 
-  .action-btn {
-    padding: 6px 12px;
-    border: 1px solid var(--border-color, #ddd);
-    background: white;
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .action-btn:hover:not(:disabled) {
-    background: var(--bg-hover, #f0f0f0);
-  }
-
-  .action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .action-btn.active {
-    background: var(--primary-color, #4a90e2);
-    color: white;
-    border-color: var(--primary-color, #4a90e2);
-  }
-
-  .close-btn {
-    color: var(--text-secondary, #666);
-  }
-
-  .close-btn:hover {
-    background: rgba(255, 77, 79, 0.1);
-    color: var(--color-error);
-  }
-
   .editor-content {
     flex: 1;
     overflow: hidden;
   }
 
-  .editor-content textarea {
-    width: 100%;
-    height: 100%;
-    border: none;
-    padding: 16px;
+  .editor-content :deep(.n-input__textarea-el) {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 14px;
     line-height: 1.6;
-    resize: none;
-    background: var(--bg-primary, white);
-    color: var(--text-primary, #333);
-  }
-
-  .editor-content textarea:focus {
-    outline: none;
+    height: 100%;
   }
 
   .empty-state {

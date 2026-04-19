@@ -62,23 +62,23 @@
 
     <!-- 聊天快捷操作栏 -->
     <div class="chat-actions-bar">
-      <button @click="$emit('clear-conversation')" class="action-btn" title="清空对话">🗑️</button>
-      <button @click="$emit('export-conversation')" class="action-btn" title="导出为Markdown">
+      <n-button quaternary circle @click="$emit('clear-conversation')" title="清空对话">🗑️</n-button>
+      <n-button quaternary circle @click="$emit('export-conversation')" title="导出为Markdown">
         📥
-      </button>
-      <button @click="$emit('export-pdf')" class="action-btn" title="导出为PDF">📄</button>
-      <button @click="$emit('copy-last-answer')" class="action-btn" title="复制最后回答">📋</button>
-      <button @click="saveLastCodeSnippet" class="action-btn" title="收藏代码片段">💾</button>
+      </n-button>
+      <n-button quaternary circle @click="$emit('export-pdf')" title="导出为PDF">📄</n-button>
+      <n-button quaternary circle @click="$emit('copy-last-answer')" title="复制最后回答">📋</n-button>
+      <n-button quaternary circle @click="saveLastCodeSnippet" title="收藏代码片段">💾</n-button>
       <div class="divider"></div>
-      <button @click="$emit('apply-template', 'explain')" class="action-btn" title="解释代码">
+      <n-button quaternary circle @click="$emit('apply-template', 'explain')" title="解释代码">
         💡
-      </button>
-      <button @click="$emit('apply-template', 'optimize')" class="action-btn" title="优化代码">
+      </n-button>
+      <n-button quaternary circle @click="$emit('apply-template', 'optimize')" title="优化代码">
         ⚡
-      </button>
-      <button @click="$emit('apply-template', 'debug')" class="action-btn" title="调试帮助">
+      </n-button>
+      <n-button quaternary circle @click="$emit('apply-template', 'debug')" title="调试帮助">
         🐛
-      </button>
+      </n-button>
     </div>
 
     <div class="input-area">
@@ -87,21 +87,27 @@
         <span class="reply-indicator-text">
           ↩️ 回复：{{ getRepliedMessagePreview(replyToMessage.id) }}
         </span>
-        <button @click="cancelReply" class="btn-cancel-reply">×</button>
+        <n-button text @click="cancelReply" class="btn-cancel-reply">×</n-button>
       </div>
 
       <div class="input-wrapper">
-        <textarea
-          v-model="inputText"
+        <n-input
+          v-model:value="inputText"
           @keydown="handleKeyDown"
           placeholder="输入消息与 iFlow AI 交流..."
-          rows="1"
+          :autosize="{ minRows: 1, maxRows: 6 }"
+          type="textarea"
           ref="inputRef"
-        ></textarea>
-        <button class="send-btn" @click="sendMessage" :disabled="!inputText.trim() || isGenerating">
+        />
+        <n-button 
+          type="primary" 
+          class="send-btn" 
+          @click="sendMessage" 
+          :disabled="!inputText.trim() || isGenerating"
+        >
           <span class="icon">📤</span>
           <span class="text">发送</span>
-        </button>
+        </n-button>
       </div>
       
       <!-- 响应状态提示 -->
@@ -117,6 +123,7 @@
 
 <script setup lang="ts">
   import { ref, nextTick, watch, onMounted } from 'vue';
+  import { NButton, NInput } from 'naive-ui';
   import ModelSelector from './ModelSelector.vue';
   import { formatTime } from '../utils/common';
   import { useMarkdown } from '../composables';
@@ -143,7 +150,7 @@
   }>();
 
   const inputText = ref('');
-  const inputRef = ref<HTMLTextAreaElement>();
+  const inputRef = ref<any>();
   const messagesContainer = ref<HTMLDivElement>();
   const replyToMessage = ref<Message | null>(null); // 当前引用的消息
 
@@ -161,14 +168,8 @@
     // 普通模式发送消息
     emit('send-message', finalContent);
 
-    // 清空输入框并触发视图更新
+    // 清空输入框（NInput 会自动处理高度）
     inputText.value = '';
-
-    // 确保DOM更新后再调整高度
-    await nextTick();
-    if (inputRef.value) {
-      inputRef.value.style.height = 'auto';
-    }
 
     // 滚动到底部
     await scrollToBottom();
@@ -224,19 +225,6 @@
     },
   );
 
-  // 自动调整输入框高度
-  watch(inputText, async () => {
-    if (inputRef.value) {
-      // 先重置高度以获取正确的scrollHeight
-      inputRef.value.style.height = 'auto';
-      await nextTick();
-
-      // 计算新高度，限制最大高度
-      const newHeight = Math.min(inputRef.value.scrollHeight, 150);
-      inputRef.value.style.height = newHeight + 'px';
-    }
-  });
-
   // 初始化时滚动到底部
   onMounted(() => {
     scrollToBottom();
@@ -283,9 +271,11 @@
   function replyToMessageFunc(message: Message) {
     replyToMessage.value = message;
     // 聚焦到输入框
-    if (inputRef.value) {
-      inputRef.value.focus();
-    }
+    nextTick(() => {
+      if (inputRef.value?.focus) {
+        inputRef.value.focus();
+      }
+    });
   }
 
   // 取消引用

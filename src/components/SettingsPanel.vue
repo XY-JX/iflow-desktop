@@ -2,7 +2,9 @@
   <div class="settings-panel">
     <div class="panel-header">
       <span class="panel-title">⚙️ 模型设置</span>
-      <button class="close-btn" @click="$emit('close')">×</button>
+      <n-button quaternary circle class="close-btn" @click="$emit('close')">
+        <template #icon>×</template>
+      </n-button>
     </div>
 
     <div class="panel-content">
@@ -13,37 +15,37 @@
           <span class="role-icon">✅</span>
           <span class="role-text">当前角色：{{ getCurrentRoleName() }}</span>
         </div>
-        <textarea
-          v-model="localSystemPrompt"
+        <n-input
+          v-model:value="localSystemPrompt"
+          type="textarea"
           class="system-prompt-input"
           placeholder="输入系统提示词，例如：你是一个有帮助的 AI 助手..."
-          rows="4"
+          :rows="4"
           @change="updateSettings"
-        ></textarea>
+        />
         <div class="preset-prompts">
-          <button
-            class="preset-btn"
+          <n-button
+            size="small"
             :class="{ active: localSystemPrompt === preset.value }"
             v-for="preset in presetPrompts"
             :key="preset.value"
             @click="setSystemPrompt(preset.value)"
           >
             {{ preset.label }}
-          </button>
+          </n-button>
         </div>
       </div>
 
       <!-- 温度参数 -->
       <div class="setting-section">
         <label class="section-label">🌡️ 温度 (Temperature): {{ temperature }}</label>
-        <input
-          type="range"
-          v-model.number="temperature"
-          min="0"
-          max="1"
-          step="0.1"
+        <n-slider
+          v-model:value="temperature"
+          :min="0"
+          :max="1"
+          :step="0.1"
           class="slider"
-          @change="updateSettings"
+          @update:value="updateSettings"
         />
         <div class="slider-labels">
           <span>精准 (0)</span>
@@ -54,14 +56,13 @@
       <!-- 最大 Token 数 -->
       <div class="setting-section">
         <label class="section-label">📏 最大输出长度 (Tokens): {{ maxTokens }}</label>
-        <input
-          type="range"
-          v-model.number="maxTokens"
-          min="256"
-          max="8192"
-          step="256"
+        <n-slider
+          v-model:value="maxTokens"
+          :min="256"
+          :max="8192"
+          :step="256"
           class="slider"
-          @change="updateSettings"
+          @update:value="updateSettings"
         />
         <div class="slider-labels">
           <span>256</span>
@@ -76,24 +77,28 @@
         <!-- 压缩级别 -->
         <div class="context-config-item">
           <label class="config-label">压缩级别</label>
-          <select v-model="contextConfig.compressionLevel" @change="updateSettings" class="config-select">
-            <option value="none">不压缩</option>
-            <option value="light">轻度压缩</option>
-            <option value="aggressive">激进压缩</option>
-          </select>
+          <n-select 
+            v-model:value="contextConfig.compressionLevel" 
+            @update:value="updateSettings" 
+            class="config-select"
+            :options="[
+              { label: '不压缩', value: 'none' },
+              { label: '轻度压缩', value: 'light' },
+              { label: '激进压缩', value: 'aggressive' }
+            ]"
+          />
         </div>
 
         <!-- 保留最近轮数 -->
         <div class="context-config-item">
           <label class="config-label">保留最近对话轮数: {{ contextConfig.recentRounds }}</label>
-          <input
-            type="range"
-            v-model.number="contextConfig.recentRounds"
-            min="0"
-            max="20"
-            step="1"
+          <n-slider
+            v-model:value="contextConfig.recentRounds"
+            :min="0"
+            :max="20"
+            :step="1"
             class="slider"
-            @change="updateSettings"
+            @update:value="updateSettings"
           />
           <div class="slider-labels">
             <span>不限 (0)</span>
@@ -103,21 +108,19 @@
 
         <!-- 保护选项 -->
         <div class="context-config-item config-checkboxes">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="contextConfig.keepCodeBlocks" @change="updateSettings" />
-            <span>🔒 保护代码块</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="contextConfig.keepErrors" @change="updateSettings" />
-            <span>🔒 保护错误信息</span>
-          </label>
+          <n-checkbox v-model:checked="contextConfig.keepCodeBlocks" @update:checked="updateSettings">
+            🔒 保护代码块
+          </n-checkbox>
+          <n-checkbox v-model:checked="contextConfig.keepErrors" @update:checked="updateSettings">
+            🔒 保护错误信息
+          </n-checkbox>
         </div>
       </div>
 
       <!-- 重置按钮 -->
       <div class="setting-actions">
-        <button class="reset-btn" @click="resetToDefaults">🔄 恢复默认设置</button>
-        <button class="debug-btn" @click="openDevTools">🐛 打开调试工具</button>
+        <n-button @click="resetToDefaults">🔄 恢复默认设置</n-button>
+        <n-button @click="openDevTools">🐛 打开调试工具</n-button>
       </div>
 
 
@@ -126,9 +129,9 @@
       <div class="setting-section">
         <div class="section-header">
           <label class="section-label">🎭 自定义角色管理</label>
-          <button @click="showAddRoleDialog = true" class="btn-add-role-panel" title="添加新角色">
+          <n-button @click="showAddRoleDialog = true" type="primary" size="small" title="添加新角色">
             ➕ 添加角色
-          </button>
+          </n-button>
         </div>
 
         <div v-if="customRoles.length > 0" class="custom-roles-list">
@@ -149,12 +152,12 @@
               </div>
             </div>
             <div class="role-actions" @click.stop>
-              <button @click="editCustomRole(index)" class="btn-edit-role" title="编辑此角色">
+              <n-button @click="editCustomRole(index)" size="tiny" quaternary title="编辑此角色">
                 ✏️
-              </button>
-              <button @click="deleteCustomRole(index)" class="btn-delete-role" title="删除此角色">
+              </n-button>
+              <n-button @click="deleteCustomRole(index)" size="tiny" quaternary title="删除此角色">
                 🗑️
-              </button>
+              </n-button>
             </div>
           </div>
         </div>
@@ -166,16 +169,15 @@
     </div>
 
     <!-- 添加角色对话框 -->
-    <div v-if="showAddRoleDialog" class="dialog-overlay" @click.self="cancelAddRoleHandler">
-      <div class="dialog-content dialog-add-role" @click.stop>
+    <n-modal v-model:show="showAddRoleDialog" class="dialog-add-role">
+      <div class="dialog-content">
         <h3 class="dialog-title">➕ 添加自定义角色</h3>
         <div class="dialog-body">
           <div class="form-row">
             <div class="form-group form-group-icon">
               <label class="form-label">角色图标</label>
-              <input
-                v-model="newRole.icon"
-                type="text"
+              <n-input
+                v-model:value="newRole.icon"
                 class="form-input input-icon"
                 placeholder="🚀"
                 maxlength="2"
@@ -183,9 +185,8 @@
             </div>
             <div class="form-group form-group-name">
               <label class="form-label">角色名称</label>
-              <input
-                v-model="newRole.label"
-                type="text"
+              <n-input
+                v-model:value="newRole.label"
                 class="form-input"
                 placeholder="例如：翻译助手"
                 maxlength="10"
@@ -194,32 +195,32 @@
           </div>
           <div class="form-group">
             <label class="form-label">系统提示词</label>
-            <textarea
-              v-model="newRole.value"
+            <n-input
+              v-model:value="newRole.value"
+              type="textarea"
               class="form-textarea"
               placeholder="描述这个角色的职责和能力...\n\n例如：你是专业的翻译助手，精通多国语言翻译..."
-              rows="5"
-            ></textarea>
+              :rows="5"
+            />
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="cancelAddRoleHandler" class="btn-dialog-cancel">取消</button>
-          <button @click="handleAddRole" class="btn-dialog-confirm">确定添加</button>
+          <n-button @click="cancelAddRoleHandler" class="btn-dialog-cancel">取消</n-button>
+          <n-button @click="handleAddRole" type="primary" class="btn-dialog-confirm">确定添加</n-button>
         </div>
       </div>
-    </div>
+    </n-modal>
 
     <!-- 编辑角色对话框 -->
-    <div v-if="showEditRoleDialog" class="dialog-overlay" @click.self="cancelEditRoleHandler">
-      <div class="dialog-content dialog-add-role" @click.stop>
+    <n-modal v-model:show="showEditRoleDialog" class="dialog-add-role">
+      <div class="dialog-content">
         <h3 class="dialog-title">✏️ 编辑自定义角色</h3>
         <div class="dialog-body">
           <div class="form-row">
             <div class="form-group form-group-icon">
               <label class="form-label">角色图标</label>
-              <input
-                v-model="newRole.icon"
-                type="text"
+              <n-input
+                v-model:value="newRole.icon"
                 class="form-input input-icon"
                 placeholder="🚀"
                 maxlength="2"
@@ -227,9 +228,8 @@
             </div>
             <div class="form-group form-group-name">
               <label class="form-label">角色名称</label>
-              <input
-                v-model="newRole.label"
-                type="text"
+              <n-input
+                v-model:value="newRole.label"
                 class="form-input"
                 placeholder="例如：翻译助手"
                 maxlength="10"
@@ -238,25 +238,27 @@
           </div>
           <div class="form-group">
             <label class="form-label">系统提示词</label>
-            <textarea
-              v-model="newRole.value"
+            <n-input
+              v-model:value="newRole.value"
+              type="textarea"
               class="form-textarea"
               placeholder="描述这个角色的职责和能力..."
-              rows="5"
-            ></textarea>
+              :rows="5"
+            />
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="cancelEditRoleHandler" class="btn-dialog-cancel">取消</button>
-          <button @click="saveEditedRole" class="btn-dialog-confirm">保存修改</button>
+          <n-button @click="cancelEditRoleHandler" class="btn-dialog-cancel">取消</n-button>
+          <n-button @click="saveEditedRole" type="primary" class="btn-dialog-confirm">保存修改</n-button>
         </div>
       </div>
-    </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, onMounted } from 'vue';
+  import { NButton, NInput, NSlider, NSelect, NModal, NCheckbox } from 'naive-ui';
   import type { ContextConfig, CustomRole } from '../types';
   import { loadCustomRoles as fetchCustomRoles, addCustomRole, deleteCustomRole as deleteCustomRoleUtil, loadAppConfig, saveAppConfig } from '../utils/configUtils';
   import { useDialog } from '../composables';

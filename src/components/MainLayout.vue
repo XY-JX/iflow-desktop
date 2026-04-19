@@ -19,33 +19,30 @@
             智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
           </span>
         </div>
-        <button
+        <n-button
           @click="openApiKeyDialog"
           class="btn-toggle"
           :class="zhipuReady ? 'btn-stop' : 'btn-start'"
         >
           {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
-        </button>
+        </n-button>
 
         <!-- 快速角色选择 -->
         <div class="quick-role-selector">
-          <select
-            v-model="systemPrompt"
+          <n-select
+            v-model:value="systemPrompt"
             class="role-select"
-            @change="saveQuickRoles"
+            @update:value="saveQuickRoles"
+            :options="quickRoleOptions"
             :title="systemPrompt"
-          >
-            <option v-for="role in quickRoles" :key="role.value" :value="role.value">
-              {{ role.icon }} {{ role.label }}
-            </option>
-          </select>
+          />
         </div>
 
-        <button @click="showSettingsPanel = !showSettingsPanel" class="btn-settings">
+        <n-button @click="showSettingsPanel = !showSettingsPanel" class="btn-settings">
           ⚙️ 高级设置
-        </button>
+        </n-button>
 
-        <button @click="showStatsPanel = !showStatsPanel" class="btn-stats">📊 统计</button>
+        <n-button @click="showStatsPanel = !showStatsPanel" class="btn-stats">📊 统计</n-button>
 
         <!-- 对话统计 -->
         <div class="conversation-stats">
@@ -155,24 +152,25 @@
 
         <div class="input-section">
           <label class="input-label">API Key</label>
-          <input
-            v-model="apiKeyInput"
+          <n-input
+            v-model:value="apiKeyInput"
             type="password"
             class="api-key-input"
             placeholder="请输入智谱 AI API Key"
+            show-password-on="click"
           />
           <p class="input-hint">如果没有 API Key，可以留空直接关闭</p>
         </div>
 
         <div class="dialog-actions">
-          <button @click="handleClearKey" class="btn-action btn-clear" :disabled="!zhipuReady">
+          <n-button @click="handleClearKey" class="btn-action btn-clear" :disabled="!zhipuReady">
             🗑️ 清除配置
-          </button>
-          <button @click="handleSaveKey" class="btn-action btn-save">💾 保存配置</button>
+          </n-button>
+          <n-button @click="handleSaveKey" class="btn-action btn-save" type="primary">💾 保存配置</n-button>
         </div>
 
         <div class="dialog-footer">
-          <button @click="closeApiKeyDialog" class="btn-close">关闭</button>
+          <n-button @click="closeApiKeyDialog" class="btn-close">关闭</n-button>
         </div>
       </div>
     </div>
@@ -181,6 +179,7 @@
 
 <script setup lang="ts">
   import { ref, onMounted, watch, computed, defineAsyncComponent } from 'vue';
+  import { NButton, NInput, NSelect } from 'naive-ui';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
@@ -189,6 +188,7 @@
   import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
   import { formatTime } from '../utils/common';
   import { useKeyboardShortcuts } from '../composables';
+  import { showSuccess, showError, showConfirm, showDeleteConfirm } from '../utils/message';
   import ChatHistory from './ChatHistory.vue';
   import ChatInterface from './ChatInterface.vue';
   import FileExplorer from './FileExplorer.vue';
@@ -500,19 +500,20 @@
     navigator.clipboard
       .writeText(code)
       .then(() => {
-        alert('已复制到剪贴板');
+        showSuccess('已复制到剪贴板');
       })
       .catch(() => {
-        alert('复制失败');
+        showError('复制失败');
       });
   }
 
   // 删除代码片段
   function deleteSnippet(index: number) {
-    if (confirm('确定要删除这个代码片段吗？')) {
+    showDeleteConfirm('代码片段', () => {
       codeSnippets.value.splice(index, 1);
       saveSnippets();
-    }
+      showSuccess('代码片段已删除');
+    });
   }
 
   // 保存代码片段
@@ -539,7 +540,7 @@
 
     codeSnippets.value.unshift({ name, code });
     saveSnippets();
-    alert('✅ 代码片段已收藏');
+    showSuccess('✅ 代码片段已收藏');
   }
 
   // 添加新链接
@@ -558,10 +559,12 @@
 
   // 删除链接
   function deleteLink(index: number) {
-    if (confirm('确定要删除这个链接吗？')) {
+    const link = quickLinks.value[index];
+    showDeleteConfirm(link.name, () => {
       quickLinks.value.splice(index, 1);
       saveLinks();
-    }
+      showSuccess('链接已删除');
+    });
   }
 
   // 保存链接
@@ -592,10 +595,11 @@
 
   // 删除笔记
   function deleteNote(index: number) {
-    if (confirm('确定要删除这条笔记吗？')) {
+    showDeleteConfirm('笔记', () => {
       quickNotes.value.splice(index, 1);
       saveNotes();
-    }
+      showSuccess('笔记已删除');
+    });
   }
 
   // 保存笔记
@@ -635,23 +639,27 @@
   // 清空当前对话
   function handleClearConversation() {
     if (currentMessages.value.length === 0) {
-      alert('当前对话已经没有消息了');
+      showWarning('当前对话已经没有消息了');
       return;
     }
 
-    const confirm = window.confirm('确定要清空当前对话的所有消息吗？\n\n此操作不可恢复！');
-    if (!confirm) return;
-
-    const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
-    if (conversation) {
-      conversation.messages = [];
-    }
+    showConfirm(
+      '确认清空',
+      '确定要清空当前对话的所有消息吗？\n\n此操作不可恢复！',
+      () => {
+        const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
+        if (conversation) {
+          conversation.messages = [];
+          showSuccess('对话已清空');
+        }
+      }
+    );
   }
 
   // 导出对话记录
   function handleExportConversation() {
     if (currentMessages.value.length === 0) {
-      alert('当前对话没有消息可导出');
+      showWarning('当前对话没有消息可导出');
       return;
     }
 
@@ -690,13 +698,13 @@ ${msg.content}
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    alert('对话已导出为 Markdown 文件');
+    showSuccess('对话已导出为 Markdown 文件');
   }
 
   // 导出对话为 PDF（通过打印功能）
   function handleExportAsPDF() {
     if (currentMessages.value.length === 0) {
-      alert('当前对话没有消息可导出');
+      showWarning('当前对话没有消息可导出');
       return;
     }
 
@@ -706,7 +714,7 @@ ${msg.content}
     // 创建打印窗口
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('无法打开打印窗口，请允许弹出窗口');
+      showError('无法打开打印窗口，请允许弹出窗口');
       return;
     }
 
@@ -827,7 +835,7 @@ ${msg.content}
     const assistantMessages = currentMessages.value.filter((m) => m.role === 'assistant');
 
     if (assistantMessages.length === 0) {
-      alert('没有找到助手的回答');
+      showWarning('没有找到助手的回答');
       return;
     }
 
@@ -836,10 +844,10 @@ ${msg.content}
     navigator.clipboard
       .writeText(lastAnswer)
       .then(() => {
-        alert('已复制到剪贴板');
+        showSuccess('已复制到剪贴板');
       })
       .catch(() => {
-        alert('复制失败，请手动复制');
+        showError('复制失败，请手动复制');
       });
   }
 
@@ -1242,6 +1250,14 @@ Escape            - 关闭对话框/面板
     return [...defaultRoles, ...customRoles.value];
   });
 
+  // 转换为 Naive UI 需要的 options 格式
+  const quickRoleOptions = computed(() => {
+    return quickRoles.value.map(role => ({
+      label: `${role.icon} ${role.label}`,
+      value: role.value
+    }));
+  });
+
   // 从 SettingsPanel 接收角色添加事件
   async function handleRoleAdded() {
     try {
@@ -1428,82 +1444,6 @@ Escape            - 关闭对话框/面板
     align-items: center;
   }
 
-  .role-select {
-    padding: 6px 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    outline: none;
-    min-width: 140px;
-    font-weight: 500;
-  }
-
-  .role-select:hover {
-    background: var(--bg-hover);
-    border-color: var(--primary-color);
-  }
-
-  .role-select:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
-  }
-
-  .btn-settings {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    background: var(--gradient-primary);
-    border: none;
-    border-radius: var(--radius-md);
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-    white-space: nowrap;
-  }
-
-  .btn-settings:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-  }
-
-  .btn-settings:active {
-    transform: translateY(0);
-  }
-
-  .btn-stats {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    border: none;
-    border-radius: var(--radius-md);
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(245, 87, 108, 0.2);
-    white-space: nowrap;
-  }
-
-  .btn-stats:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(245, 87, 108, 0.3);
-  }
-
-  .btn-stats:active {
-    transform: translateY(0);
-  }
-
   /* 对话统计 */
   .conversation-stats {
     display: flex;
@@ -1537,39 +1477,6 @@ Escape            - 关闭对话框/面板
   }
 
   /* 对话框 */
-
-
-  .btn-dialog-cancel,
-  .btn-dialog-confirm {
-    padding: 8px 20px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
-  }
-
-  .btn-dialog-cancel {
-    background: var(--bg-secondary, #f5f5f5);
-    color: var(--text-primary, #333);
-    border: 1px solid var(--border-color, #ddd);
-  }
-
-  .btn-dialog-cancel:hover {
-    background: var(--bg-hover, #e8e8e8);
-  }
-
-  .btn-dialog-confirm {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-  }
-
-  .btn-dialog-confirm:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-  }
 
   @media (prefers-color-scheme: dark) {
     .toolbar {

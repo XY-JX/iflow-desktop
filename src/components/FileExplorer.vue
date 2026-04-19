@@ -2,7 +2,7 @@
   <div class="file-explorer">
     <div class="explorer-header">
       <h3>文件浏览器</h3>
-      <button class="select-dir-btn" @click="selectDirectory">📁 选择目录</button>
+      <n-button type="primary" size="small" @click="selectDirectory">📁 选择目录</n-button>
     </div>
     <div class="path-bar" v-if="currentPath">
       <span class="path-label">路径:</span>
@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
   import { ref } from 'vue';
+  import { NButton } from 'naive-ui';
   import { open } from '@tauri-apps/plugin-dialog';
   import { readDir } from '@tauri-apps/plugin-fs';
   import { error as logError } from '../utils/logger';
@@ -125,21 +126,6 @@
     font-size: 16px;
     font-weight: 600;
     color: var(--text-primary, #333);
-  }
-
-  .select-dir-btn {
-    padding: 8px 12px;
-    background: var(--primary-color, #4a90e2);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .select-dir-btn:hover {
-    background: var(--primary-hover, #357abd);
   }
 
   .path-bar {
