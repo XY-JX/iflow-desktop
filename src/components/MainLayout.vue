@@ -186,7 +186,6 @@
   import { showSuccess, showError, showConfirm, showDeleteConfirm, showWarning } from '../utils/message';
   import ChatHistory from './ChatHistory.vue';
   import ChatInterface from './ChatInterface.vue';
-  import FileExplorer from './FileExplorer.vue';
   import FileEditor from './FileEditor.vue';
   // 懒加载大型组件
   const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'));
