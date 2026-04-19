@@ -13,19 +13,21 @@
 
     <div class="main-content">
       <div class="toolbar">
-        <div class="status-indicator">
-          <div :class="['status-dot', zhipuReady ? 'running' : 'stopped']"></div>
-          <span class="status-text">
-            智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
-          </span>
+        <div class="toolbar-left">
+          <div class="status-indicator">
+            <div :class="['status-dot', zhipuReady ? 'running' : 'stopped']"></div>
+            <span class="status-text">
+              智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
+            </span>
+          </div>
+          <n-button
+            @click="openApiKeyDialog"
+            class="btn-toggle"
+            :class="zhipuReady ? 'btn-stop' : 'btn-start'"
+          >
+            {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
+          </n-button>
         </div>
-        <n-button
-          @click="openApiKeyDialog"
-          class="btn-toggle"
-          :class="zhipuReady ? 'btn-stop' : 'btn-start'"
-        >
-          {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
-        </n-button>
 
         <!-- 快速角色选择 -->
         <div class="quick-role-selector">
@@ -39,23 +41,25 @@
           />
         </div>
 
-        <n-button @click="showSettingsPanel = !showSettingsPanel" class="btn-settings">
-          ⚙️ 高级设置
-        </n-button>
+        <div class="toolbar-right">
+          <n-button @click="showSettingsPanel = !showSettingsPanel" class="btn-settings">
+            ⚙️ 高级设置
+          </n-button>
 
-        <n-button @click="showStatsPanel = !showStatsPanel" class="btn-stats">📊 统计</n-button>
+          <n-button @click="showStatsPanel = !showStatsPanel" class="btn-stats">📊 统计</n-button>
 
-        <!-- 对话统计 -->
-        <div class="conversation-stats">
-          <div class="stat-item-small">
-            <span class="stat-icon">💬</span>
-            <span class="stat-value">{{ currentMessageCount }}</span>
-            <span class="stat-label">消息</span>
-          </div>
-          <div class="stat-item-small">
-            <span class="stat-icon">🔢</span>
-            <span class="stat-value">{{ estimatedTokens }}</span>
-            <span class="stat-label">Token</span>
+          <!-- 对话统计 -->
+          <div class="conversation-stats">
+            <div class="stat-item-small">
+              <span class="stat-icon">💬</span>
+              <span class="stat-value">{{ currentMessageCount }}</span>
+              <span class="stat-label">消息</span>
+            </div>
+            <div class="stat-item-small">
+              <span class="stat-icon">🔢</span>
+              <span class="stat-value">{{ estimatedTokens }}</span>
+              <span class="stat-label">Token</span>
+            </div>
           </div>
         </div>
 
@@ -80,19 +84,37 @@
     <div class="sidebar-right">
       <!-- 设置面板 (条件显示) -->
       <div v-if="showSettingsPanel" class="settings-panel-container">
-        <SettingsPanel
-          :system-prompt="systemPrompt"
-          :temperature="temperature"
-          :max-tokens="maxTokens"
-          @close="showSettingsPanel = false"
-          @update:settings="handleSettingsUpdate"
-          @role-added="handleRoleAdded"
-        />
+        <Suspense>
+          <template #default>
+            <SettingsPanel
+              :system-prompt="systemPrompt"
+              :temperature="temperature"
+              :max-tokens="maxTokens"
+              @close="showSettingsPanel = false"
+              @update:settings="handleSettingsUpdate"
+              @role-added="handleRoleAdded"
+            />
+          </template>
+          <template #fallback>
+            <div class="skeleton-loading">
+              <n-skeleton :repeat="5" size="medium" />
+            </div>
+          </template>
+        </Suspense>
       </div>
 
       <!-- 统计面板 -->
       <div v-else-if="showStatsPanel" class="stats-panel-container">
-        <StatsPanel :conversations="conversations" @close="showStatsPanel = false" />
+        <Suspense>
+          <template #default>
+            <StatsPanel :conversations="conversations" @close="showStatsPanel = false" />
+          </template>
+          <template #fallback>
+            <div class="skeleton-loading">
+              <n-skeleton :repeat="3" size="large" />
+            </div>
+          </template>
+        </Suspense>
       </div>
 
       <!-- 原来的文件浏览器和思考过程 -->
@@ -137,7 +159,13 @@
     </div>
 
     <!-- API Key 管理对话框 -->
-    <n-modal v-model:show="showApiKeyDialog" preset="card" :title="zhipuReady ? '⚙️ API Key 管理' : '🔑 配置 API Key'" style="max-width: 450px;">
+    <n-modal 
+      v-model:show="showApiKeyDialog" 
+      preset="card" 
+      :title="zhipuReady ? '⚙️ API Key 管理' : '🔑 配置 API Key'" 
+      style="max-width: 450px;"
+      :mask-closable="false"
+    >
       <div class="api-key-dialog-content">
         <div v-if="zhipuReady" class="status-info success">
           <span class="status-icon">✅</span>
@@ -173,8 +201,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, watch, computed, defineAsyncComponent } from 'vue';
-  import { NButton, NInput, NSelect, NModal } from 'naive-ui';
+  import { ref, onMounted, watch, computed, defineAsyncComponent, Suspense } from 'vue';
+  import { NButton, NInput, NSelect, NModal, NSkeleton } from 'naive-ui';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
@@ -1311,15 +1339,13 @@ Escape            - 关闭对话框/面板
     grid-template-columns: 280px 1fr 280px;
     height: 100vh;
     overflow: hidden;
-    background: var(--bg-primary);
   }
 
   .sidebar-left {
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--n-border-color);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: var(--bg-secondary);
   }
 
   .main-content {
@@ -1327,18 +1353,92 @@ Escape            - 关闭对话框/面板
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
-    background: var(--bg-primary);
   }
 
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     padding: 10px 16px;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-primary);
+    border-bottom: 1px solid var(--n-border-color);
     flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    flex-wrap: wrap;
+    min-height: 56px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  /* 响应式工具栏 */
+  @media (max-width: 1100px) {
+    .toolbar {
+      gap: 6px;
+      padding: 8px 12px;
+    }
+
+    .conversation-stats {
+      display: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .toolbar {
+      gap: 4px;
+      padding: 6px 8px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .toolbar-right {
+      flex-basis: 100%;
+      justify-content: flex-end;
+      margin-left: 0;
+      padding-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .quick-role-selector {
+      max-width: 180px;
+    }
+
+    .role-select {
+      min-width: 100px;
+    }
+
+    .status-indicator {
+      padding: 4px 6px;
+    }
+
+    .status-text {
+      font-size: 11px;
+    }
+
+    .btn-toggle.n-button {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+
+    .btn-settings,
+    .btn-stats {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
   }
 
   .status-indicator {
@@ -1346,24 +1446,23 @@ Escape            - 关闭对话框/面板
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background: var(--bg-secondary);
     border-radius: 6px;
     transition: all 0.2s ease;
   }
 
   .status-indicator:hover {
-    background: var(--bg-hover);
+    background: var(--n-action-color);
   }
 
-  /* 状态指示器 - 使用组件特定名称避免冲突 */
+  /* 状态指示器 */
   .status-dot.running {
-    background: var(--color-success);
+    background: var(--n-success-color);
     box-shadow: 0 0 6px rgba(82, 196, 26, 0.5);
     animation: pulse 2s infinite;
   }
 
   .status-dot.stopped {
-    background: var(--color-error);
+    background: var(--n-error-color);
     box-shadow: 0 0 6px rgba(255, 77, 79, 0.5);
   }
 
@@ -1379,54 +1478,50 @@ Escape            - 关闭对话框/面板
 
   .status-text {
     font-size: 14px;
-    color: var(--text-primary);
     font-weight: 500;
   }
 
-  .btn-toggle {
-    padding: 8px 20px;
+  .btn-toggle.n-button {
+    padding: 8px 16px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s ease;
-    min-width: 100px;
+    white-space: nowrap;
+    min-width: fit-content;
+    color: white !important;
   }
 
-  .btn-start {
-    background: linear-gradient(135deg, var(--color-success) 0%, #389e0d 100%);
-    color: white;
+  .btn-toggle.n-button.btn-start {
+    background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%) !important;
     box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
   }
 
-  .btn-start:hover {
+  .btn-toggle.n-button.btn-start:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(82, 196, 26, 0.4);
   }
 
-  .btn-stop {
-    background: linear-gradient(135deg, var(--color-error) 0%, #cf1322 100%);
-    color: white;
+  .btn-toggle.n-button.btn-stop {
+    background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%) !important;
     box-shadow: 0 2px 4px rgba(255, 77, 79, 0.3);
   }
 
-  .btn-stop:hover {
+  .btn-toggle.n-button.btn-stop:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(255, 77, 79, 0.4);
   }
 
-  .btn-toggle:active {
+  .btn-toggle.n-button:active {
     transform: translateY(0);
   }
 
-
-
   .status-message {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--n-text-color-2);
     padding: 6px 12px;
-    background: var(--bg-secondary);
     border-radius: 6px;
     white-space: nowrap;
   }
@@ -1434,8 +1529,15 @@ Escape            - 关闭对话框/面板
   /* 快速角色选择器 */
   .quick-role-selector {
     display: flex;
-    gap: 6px;
     align-items: center;
+    flex: 0 1 200px;
+    min-width: 120px;
+    max-width: 200px;
+  }
+
+  .role-select {
+    width: 100%;
+    min-width: 150px;
   }
 
   /* 对话统计 */
@@ -1443,7 +1545,6 @@ Escape            - 关闭对话框/面板
     display: flex;
     gap: 12px;
     padding: 6px 12px;
-    background: var(--bg-secondary);
     border-radius: 8px;
   }
 
@@ -1460,31 +1561,18 @@ Escape            - 关闭对话框/面板
   .stat-value {
     font-size: 14px;
     font-weight: 700;
-    color: #667eea;
+    color: var(--n-primary-color);
     min-width: 20px;
     text-align: center;
   }
 
   .stat-label {
     font-size: 11px;
-    color: var(--text-secondary);
-  }
-
-  /* 对话框 */
-
-  @media (prefers-color-scheme: dark) {
-    .toolbar {
-      border-bottom-color: var(--border-color);
-      background: var(--bg-primary);
-    }
-
-    .status-message {
-      color: var(--text-secondary);
-    }
+    color: var(--n-text-color-3);
   }
 
   .sidebar-right {
-    border-left: 1px solid var(--border-color, #e0e0e0);
+    border-left: 1px solid var(--n-border-color);
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -1492,13 +1580,7 @@ Escape            - 关闭对话框/面板
     min-height: 0;
   }
 
-  .settings-panel-container {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
+  .settings-panel-container,
   .stats-panel-container {
     flex: 1;
     overflow: hidden;
@@ -1509,7 +1591,7 @@ Escape            - 关闭对话框/面板
   .sidebar-right-top {
     flex: 1;
     overflow: hidden;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    border-bottom: 1px solid var(--n-border-color);
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -1523,8 +1605,6 @@ Escape            - 关闭对话框/面板
     min-height: 0;
   }
 
-
-
   .thinking-display {
     flex: 1;
     overflow-y: auto;
@@ -1536,20 +1616,19 @@ Escape            - 关闭对话框/面板
   .thinking-content {
     font-size: 13px;
     line-height: 1.6;
-    color: var(--text-primary, #333);
     white-space: pre-wrap;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   }
 
   .thinking-note {
-    background: var(--thinking-bg, #fff7e6);
-    border-left: 3px solid var(--thinking-border, #ffd591);
     padding: 8px 12px;
     margin-bottom: 12px;
     border-radius: 4px;
     font-size: 12px;
-    color: var(--thinking-text, #d46b08);
     font-style: italic;
+    background: var(--n-warning-color);
+    border-left: 3px solid var(--n-warning-border-color);
+    color: var(--n-warning-text-color);
   }
 
   .thinking-placeholder {
@@ -1558,7 +1637,7 @@ Escape            - 关闭对话框/面板
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--text-secondary, #999);
+    color: var(--n-text-color-3);
     gap: 12px;
   }
 
@@ -1599,15 +1678,15 @@ Escape            - 关闭对话框/面板
   }
 
   .status-info.success {
-    background: #f6ffed;
-    color: #52c41a;
-    border: 1px solid #b7eb8f;
+    background: var(--n-success-color);
+    color: var(--n-success-text-color);
+    border: 1px solid var(--n-success-border-color);
   }
 
   .status-info.warning {
-    background: #fff7e6;
-    color: #fa8c16;
-    border: 1px solid #ffd591;
+    background: var(--n-warning-color);
+    color: var(--n-warning-text-color);
+    border: 1px solid var(--n-warning-border-color);
   }
 
   .input-section {
@@ -1616,7 +1695,7 @@ Escape            - 关闭对话框/面板
 
   .input-hint {
     font-size: 12px;
-    color: #999;
+    color: var(--n-text-color-3);
     margin: 8px 0 0 0;
   }
 
@@ -1626,354 +1705,11 @@ Escape            - 关闭对话框/面板
     gap: 12px;
   }
 
-  /* 快捷操作菜单 */
-  .quick-actions {
-    position: relative;
-  }
-
-  .btn-quick-actions {
-    padding: 8px 14px;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 6px;
-    font-size: 18px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-quick-actions:hover {
-    background: #f5f5f5;
-    border-color: #667eea;
-    transform: scale(1.05);
-  }
-
-  .quick-actions-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    background: white;
-    border: 1px solid #e8e8e8;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    min-width: 280px;
-    max-width: 320px;
-    z-index: 10000;
-    animation: slideDown 0.2s ease;
-  }
-
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .menu-section {
-    padding: 12px 16px;
-  }
-
-  .menu-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #999;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  /* 骨架屏加载样式 */
+  .skeleton-loading {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 12px;
-    background: #f5f5f5;
-    border-radius: 8px;
-  }
-
-
-
-  .menu-divider {
-    height: 1px;
-    background: #f0f0f0;
-    margin: 0;
-  }
-
-  .menu-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-  }
-
-  .menu-item:hover {
-    background: #f5f5f5;
-    color: #667eea;
-  }
-
-  .item-icon {
-    font-size: 16px;
-  }
-
-  .item-text {
-    flex: 1;
-  }
-
-  /* 快捷工具面板 */
-  .quick-tools-panel {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .tools-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 8px;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .tab-btn {
-    flex: 1;
-    padding: 6px 8px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    font-size: 12px;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .tab-btn:hover {
-    background: #f5f5f5;
-  }
-
-  .tab-btn.active {
-    background: #f0f5ff;
-    border-color: #667eea;
-    color: #667eea;
-    font-weight: 600;
-  }
-
-  .tool-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-  }
-
-  .tool-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-  }
-
-  .btn-add-small {
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    background: #667eea;
-    border: none;
-    border-radius: 50%;
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn-add-small:hover {
-    background: #5a6fd6;
-    transform: scale(1.1);
-  }
-
-  /* 代码片段样式 */
-  .snippets-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .snippet-item {
-    padding: 10px;
-    background: #fafafa;
-    border: 1px solid #e8e8e8;
-    border-radius: 8px;
-    transition: all 0.2s;
-  }
-
-  .snippet-item:hover {
-    border-color: #667eea;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
-  }
-
-  .snippet-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .snippet-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-  }
-
-  .snippet-actions {
-    display: flex;
-    gap: 4px;
-  }
-
-
-
-  /* 链接样式 */
-  .links-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .link-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: #fafafa;
-    border: 1px solid #e8e8e8;
-    border-radius: 8px;
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.2s;
-  }
-
-  .link-item:hover {
-    border-color: #667eea;
-    background: #f0f5ff;
-  }
-
-  .link-icon {
-    font-size: 20px;
-  }
-
-  .link-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .link-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-  }
-
-  .link-url {
-    font-size: 11px;
-    color: #999;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* 笔记样式 */
-  .notes-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .note-item {
-    padding: 10px;
-    background: #fffbe6;
-    border: 1px solid #ffe58f;
-    border-radius: 8px;
-    transition: all 0.2s;
-  }
-
-  .note-item:hover {
-    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.15);
-  }
-
-  .note-textarea {
-    width: 100%;
-    padding: 8px;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: inherit;
-    resize: vertical;
-    transition: all 0.2s;
-  }
-
-  .note-textarea:focus {
-    outline: none;
-    border-color: #667eea;
-  }
-
-  .note-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-  }
-
-  .note-time {
-    font-size: 11px;
-    color: #999;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .sidebar-left {
-      border-right-color: var(--border-color);
-    }
-
-    .sidebar-right {
-      border-left-color: var(--border-color);
-    }
-
-    .toolbar {
-      border-bottom-color: var(--border-color);
-      background: var(--bg-primary);
-    }
-
-    .status-indicator {
-      background: var(--bg-secondary);
-    }
-
-    .status-text {
-      color: var(--text-primary);
-    }
-
-    .status-message {
-      color: var(--text-secondary);
-    }
   }
 </style>

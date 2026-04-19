@@ -1,11 +1,15 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
 import App from './App.vue';
 import { ErrorHandler } from './utils/errorHandler';
 import './styles/components.css'; // 引入公共组件样式
 
 const app = createApp(App);
 const pinia = createPinia();
+
+// 使用 Pinia 持久化插件
+pinia.use(piniaPluginPersistedstate);
 
 // 全局错误处理
 app.config.errorHandler = (err, _instance, info) => {

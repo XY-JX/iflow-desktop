@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
+use tokio::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tracing::info;
@@ -16,12 +16,13 @@ pub fn get_install_dir() -> Result<PathBuf, String> {
 }
 
 /// 获取配置目录 (config/)
-pub fn get_config_dir() -> Result<PathBuf, String> {
+pub async fn get_config_dir() -> Result<PathBuf, String> {
     let install_dir = get_install_dir()?;
     let config_dir = install_dir.join("config");
     
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)
+            .await
             .map_err(|e| format!("无法创建配置目录：{}", e))?;
     }
     
@@ -29,12 +30,13 @@ pub fn get_config_dir() -> Result<PathBuf, String> {
 }
 
 /// 获取数据目录 (data/)
-pub fn get_data_dir() -> Result<PathBuf, String> {
+pub async fn get_data_dir() -> Result<PathBuf, String> {
     let install_dir = get_install_dir()?;
     let data_dir = install_dir.join("data");
     
     if !data_dir.exists() {
         fs::create_dir_all(&data_dir)
+            .await
             .map_err(|e| format!("无法创建数据目录：{}", e))?;
     }
     
@@ -81,9 +83,10 @@ fn get_config_path(_app_handle: &AppHandle) -> Result<PathBuf, String> {
     if let Ok(custom_dir) = std::env::var("IFLOW_CONFIG_DIR") {
         let config_dir = PathBuf::from(custom_dir);
         
-        // 确保配置目录存在
-        if let Err(e) = fs::create_dir_all(&config_dir) {
-            return Err(format!("创建配置目录失败：{}", e));
+        // 确保配置目录存在（同步，因为只是检查）
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir)
+                .map_err(|e| format!("创建配置目录失败：{}", e))?;
         }
         
         info!("使用自定义配置目录：{:?}", config_dir);
@@ -100,9 +103,10 @@ fn get_config_path(_app_handle: &AppHandle) -> Result<PathBuf, String> {
     // 在安装目录下创建 config 文件夹
     let config_dir = PathBuf::from(app_dir).join("config");
     
-    // 确保配置目录存在
-    if let Err(e) = fs::create_dir_all(&config_dir) {
-        return Err(format!("创建配置目录失败：{}", e));
+    // 确保配置目录存在（同步，因为只是检查）
+    if !config_dir.exists() {
+        std::fs::create_dir_all(&config_dir)
+            .map_err(|e| format!("创建配置目录失败：{}", e))?;
     }
     
     info!("配置目录：{:?}", config_dir);
@@ -111,13 +115,14 @@ fn get_config_path(_app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 /// 加载配置
 #[tauri::command]
-pub fn load_app_config(app_handle: AppHandle) -> Result<AppConfig, String> {
+pub async fn load_app_config(app_handle: AppHandle) -> Result<AppConfig, String> {
     let config_path = get_config_path(&app_handle)?;
     
     info!("加载配置文件：{:?}", config_path);
     
     if config_path.exists() {
         let content = fs::read_to_string(&config_path)
+            .await
             .map_err(|e| format!("读取配置文件失败：{}", e))?;
         
         let config: AppConfig = serde_json::from_str(&content)
@@ -133,7 +138,7 @@ pub fn load_app_config(app_handle: AppHandle) -> Result<AppConfig, String> {
 
 /// 保存配置
 #[tauri::command]
-pub fn save_app_config(app_handle: AppHandle, config: AppConfig) -> Result<(), String> {
+pub async fn save_app_config(app_handle: AppHandle, config: AppConfig) -> Result<(), String> {
     let config_path = get_config_path(&app_handle)?;
     
     info!("保存配置文件：{:?}", config_path);
@@ -142,6 +147,7 @@ pub fn save_app_config(app_handle: AppHandle, config: AppConfig) -> Result<(), S
         .map_err(|e| format!("序列化配置失败：{}", e))?;
     
     fs::write(&config_path, content)
+        .await
         .map_err(|e| format!("写入配置文件失败：{}", e))?;
     
     info!("配置保存成功");
@@ -150,40 +156,40 @@ pub fn save_app_config(app_handle: AppHandle, config: AppConfig) -> Result<(), S
 
 /// 添加自定义角色
 #[tauri::command]
-pub fn add_custom_role(app_handle: AppHandle, role: RoleConfig) -> Result<(), String> {
-    let mut config = load_app_config(app_handle.clone())?;
+pub async fn add_custom_role(app_handle: AppHandle, role: RoleConfig) -> Result<(), String> {
+    let mut config = load_app_config(app_handle.clone()).await?;
     config.custom_roles.push(role);
-    save_app_config(app_handle, config)?;
+    save_app_config(app_handle, config).await?;
     Ok(())
 }
 
 /// 删除自定义角色
 #[tauri::command]
-pub fn delete_custom_role(app_handle: AppHandle, index: usize) -> Result<(), String> {
-    let mut config = load_app_config(app_handle.clone())?;
+pub async fn delete_custom_role(app_handle: AppHandle, index: usize) -> Result<(), String> {
+    let mut config = load_app_config(app_handle.clone()).await?;
     
     if index >= config.custom_roles.len() {
         return Err(format!("角色索引 {} 超出范围", index));
     }
     
     config.custom_roles.remove(index);
-    save_app_config(app_handle, config)?;
+    save_app_config(app_handle, config).await?;
     Ok(())
 }
 
 /// 获取 API Key
 #[tauri::command]
-pub fn get_api_key(app_handle: AppHandle) -> Result<Option<String>, String> {
-    let config = load_app_config(app_handle.clone())?;
+pub async fn get_api_key(app_handle: AppHandle) -> Result<Option<String>, String> {
+    let config = load_app_config(app_handle.clone()).await?;
     Ok(config.api_key)
 }
 
 /// 保存 API Key
 #[tauri::command]
-pub fn save_api_key(app_handle: AppHandle, api_key: String) -> Result<(), String> {
-    let mut config = load_app_config(app_handle.clone())?;
+pub async fn save_api_key(app_handle: AppHandle, api_key: String) -> Result<(), String> {
+    let mut config = load_app_config(app_handle.clone()).await?;
     config.api_key = Some(api_key);
-    save_app_config(app_handle, config)?;
+    save_app_config(app_handle, config).await?;
     Ok(())
 }
 

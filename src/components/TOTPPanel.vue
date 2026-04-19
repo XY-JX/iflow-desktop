@@ -27,8 +27,8 @@
               :percentage="(code.timeLeft / 30 * 100)"
               :height="4"
               :show-indicator="false"
-              :color="code.timeLeft <= 5 ? '#ff4d4f' : '#4a90e2'"
-              :rail-color="'#e0e0e0'"
+              :color="code.timeLeft <= 5 ? 'var(--n-error-color)' : 'var(--n-primary-color)'"
+              :rail-color="'var(--n-border-color)'"
             />
             <span class="timer-text">{{ code.timeLeft }}s</span>
           </div>
@@ -154,7 +154,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: transparent;
 }
 
 .codes-container {
@@ -178,7 +177,6 @@ onUnmounted(() => {
 .code-name {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-primary, #333);
   margin-bottom: 4px;
 }
 
@@ -186,9 +184,9 @@ onUnmounted(() => {
   font-size: 20px;
   font-weight: 600;
   font-family: 'Courier New', monospace;
-  color: var(--primary-color, #4a90e2);
   letter-spacing: 2px;
   margin-bottom: 4px;
+  color: var(--n-primary-color);
 }
 
 .code-timer {
@@ -201,6 +199,6 @@ onUnmounted(() => {
   right: 0;
   top: -18px;
   font-size: 11px;
-  color: var(--text-secondary, #999);
+  color: var(--n-text-color-3);
 }
 </style>

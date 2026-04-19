@@ -2,35 +2,39 @@
   <div class="stats-panel">
     <div class="panel-header">
       <span class="panel-title">📊 统计分析</span>
-      <button @click="$emit('close')" class="btn-close">×</button>
+      <n-button quaternary circle @click="$emit('close')">×</n-button>
     </div>
 
     <div class="stats-content">
       <!-- 总体统计 -->
       <div class="stats-section">
         <h3>总体统计</h3>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">💬</div>
-            <div class="stat-value">{{ totalConversations }}</div>
-            <div class="stat-label">对话总数</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">📨</div>
-            <div class="stat-value">{{ totalMessages }}</div>
-            <div class="stat-label">消息总数</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🔢</div>
-            <div class="stat-value">{{ formatNumber(totalTokens) }}</div>
-            <div class="stat-label">Token 总量</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">⏱️</div>
-            <div class="stat-value">{{ averageResponseTime }}s</div>
-            <div class="stat-label">平均响应时间</div>
-          </div>
-        </div>
+        <n-grid :cols="2" :x-gap="12" :y-gap="12">
+          <n-gi>
+            <n-statistic label="对话总数">
+              <template #prefix>💬</template>
+              {{ totalConversations }}
+            </n-statistic>
+          </n-gi>
+          <n-gi>
+            <n-statistic label="消息总数">
+              <template #prefix>📨</template>
+              {{ totalMessages }}
+            </n-statistic>
+          </n-gi>
+          <n-gi>
+            <n-statistic label="Token 总量">
+              <template #prefix>🔢</template>
+              {{ formatNumber(totalTokens) }}
+            </n-statistic>
+          </n-gi>
+          <n-gi>
+            <n-statistic label="平均响应时间">
+              <template #prefix>⏱️</template>
+              {{ averageResponseTime }}s
+            </n-statistic>
+          </n-gi>
+        </n-grid>
       </div>
 
       <!-- 模型使用统计 -->
@@ -42,12 +46,13 @@
               <span class="model-name">{{ model }}</span>
               <span class="model-count">{{ count }} 次对话</span>
             </div>
-            <div class="model-bar">
-              <div
-                class="model-bar-fill"
-                :style="{ width: (count / maxModelUsage) * 100 + '%' }"
-              ></div>
-            </div>
+            <n-progress
+              type="line"
+              :percentage="(count / maxModelUsage) * 100"
+              :height="6"
+              :show-indicator="false"
+              color="var(--n-primary-color)"
+            />
           </div>
         </div>
       </div>
@@ -56,14 +61,19 @@
       <div class="stats-section">
         <h3>最近活动</h3>
         <div class="activity-list">
-          <div v-for="conv in recentConversations" :key="conv.id" class="activity-item">
+          <n-card
+            v-for="conv in recentConversations"
+            :key="conv.id"
+            size="small"
+            style="border-left: 3px solid var(--n-primary-color);"
+          >
             <div class="activity-title">{{ conv.title }}</div>
             <div class="activity-meta">
               <span>{{ conv.messages.length }} 条消息</span>
               <span>{{ formatTime(conv.updatedAt) }}</span>
             </div>
-          </div>
-          <div v-if="recentConversations.length === 0" class="empty-state">暂无对话记录</div>
+          </n-card>
+          <n-empty v-if="recentConversations.length === 0" description="暂无对话记录" />
         </div>
       </div>
     </div>
@@ -72,6 +82,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
+  import { NButton, NGrid, NGi, NStatistic, NProgress, NCard, NEmpty } from 'naive-ui';
   import { formatTime } from '../utils/common';
   import type { Conversation } from '../types';
 
@@ -153,10 +164,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--bg-primary, white);
   }
-
-
 
   .stats-content {
     flex: 1;
@@ -171,46 +179,9 @@
   .stats-section h3 {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #333);
     margin: 0 0 12px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-  }
-
-  /* 统计卡片网格 */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 16px;
-    background: var(--bg-secondary, #f8f9fa);
-    border-radius: 8px;
-    text-align: center;
-    transition: transform 0.2s;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-2px);
-  }
-
-  .stat-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-
-  .stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--primary-color, #4a90e2);
-    margin-bottom: 4px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-    color: var(--text-secondary, #666);
   }
 
   /* 模型统计 */
@@ -222,8 +193,8 @@
 
   .model-stat-item {
     padding: 12px;
-    background: var(--bg-secondary, #f8f9fa);
     border-radius: 8px;
+    background: var(--n-color-modal);
   }
 
   .model-info {
@@ -235,25 +206,10 @@
 
   .model-name {
     font-weight: 600;
-    color: var(--text-primary, #333);
   }
 
   .model-count {
-    color: var(--text-secondary, #666);
-  }
-
-  .model-bar {
-    height: 6px;
-    background: var(--bg-hover, #e0e0e0);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-
-  .model-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color, #4a90e2), #6c5ce7);
-    border-radius: 3px;
-    transition: width 0.3s ease;
+    color: var(--n-text-color-3);
   }
 
   /* 活动列表 */
@@ -263,17 +219,9 @@
     gap: 8px;
   }
 
-  .activity-item {
-    padding: 12px;
-    background: var(--bg-secondary, #f8f9fa);
-    border-radius: 8px;
-    border-left: 3px solid var(--primary-color, #4a90e2);
-  }
-
   .activity-title {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary, #333);
     margin-bottom: 6px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -284,72 +232,6 @@
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: var(--text-secondary, #666);
-  }
-
-  .empty-state {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text-secondary, #999);
-    font-size: 14px;
-  }
-
-  /* 深色主题 */
-  @media (prefers-color-scheme: dark) {
-    .stats-panel {
-      background: var(--bg-primary, #1a1a1a);
-    }
-
-    .panel-title {
-      color: var(--text-primary, #f0f0f0);
-    }
-
-    .btn-close:hover {
-      background: var(--bg-hover, #3d3d3d);
-    }
-
-    .stats-section h3 {
-      color: var(--text-primary, #f0f0f0);
-    }
-
-    .stat-card {
-      background: var(--bg-secondary, #2d2d2d);
-    }
-
-    .stat-value {
-      color: #7cb3ff;
-    }
-
-    .stat-label {
-      color: var(--text-secondary, #aaa);
-    }
-
-    .model-stat-item {
-      background: var(--bg-secondary, #2d2d2d);
-    }
-
-    .model-name {
-      color: var(--text-primary, #f0f0f0);
-    }
-
-    .model-count {
-      color: var(--text-secondary, #aaa);
-    }
-
-    .model-bar {
-      background: var(--bg-hover, #3d3d3d);
-    }
-
-    .activity-item {
-      background: var(--bg-secondary, #2d2d2d);
-    }
-
-    .activity-title {
-      color: var(--text-primary, #f0f0f0);
-    }
-
-    .activity-meta {
-      color: var(--text-secondary, #aaa);
-    }
+    color: var(--n-text-color-3);
   }
 </style>

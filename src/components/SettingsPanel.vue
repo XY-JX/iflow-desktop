@@ -540,10 +540,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--bg-primary, white);
   }
-
-
 
   .close-btn {
     width: 28px;
@@ -552,14 +549,8 @@
     background: transparent;
     cursor: pointer;
     font-size: 24px;
-    color: var(--text-secondary, #666);
     border-radius: 4px;
     transition: all 0.2s;
-  }
-
-  .close-btn:hover {
-    background: var(--hover-bg, #f0f0f0);
-    color: var(--text-primary, #333);
   }
 
   .panel-content {
@@ -576,24 +567,11 @@
     display: block;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #333);
     margin-bottom: 8px;
   }
 
   .system-prompt-input {
     width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 14px;
-    resize: vertical;
-    transition: border-color 0.2s;
-  }
-
-  .system-prompt-input:focus {
-    outline: none;
-    border-color: var(--primary-color, #4a90e2);
   }
 
   .preset-prompts {
@@ -603,38 +581,15 @@
     margin-top: 12px;
   }
 
-  .preset-btn {
-    padding: 6px 12px;
-    background: var(--bg-secondary, #f5f5f5);
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .preset-btn:hover {
-    background: var(--primary-color, #4a90e2);
-    border-color: var(--primary-color, #4a90e2);
-    color: white;
-  }
-
-  .preset-btn.active {
-    background: var(--primary-color, #4a90e2);
-    border-color: var(--primary-color, #4a90e2);
-    color: white;
-    font-weight: 600;
-  }
-
   .current-role-display {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: var(--bg-success, #e6f7e6);
-    border: 1px solid var(--border-success, #52c41a);
     border-radius: 6px;
     margin-bottom: 12px;
+    background: var(--n-success-color);
+    border: 1px solid var(--n-success-border-color);
   }
 
   .role-icon {
@@ -644,15 +599,7 @@
   .role-text {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-success, #389e0d);
-  }
-
-  .slider-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--text-secondary, #999);
+    color: var(--n-success-text-color);
   }
 
   /* 上下文压缩配置样式 */
@@ -664,7 +611,6 @@
     display: block;
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-primary, #333);
     margin-bottom: 6px;
   }
 
@@ -674,85 +620,20 @@
     flex-wrap: wrap;
   }
 
-  .checkbox-label {
+  .slider-labels {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-primary, #333);
-    cursor: pointer;
-  }
-
-  .checkbox-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--n-text-color-3);
   }
 
   .setting-actions {
     margin-top: 32px;
     padding-top: 16px;
-    border-top: 1px solid var(--border-color, #e0e0e0);
-  }
-
-  .reset-btn {
-    width: 100%;
-    padding: 12px;
-    background: var(--bg-secondary, #f5f5f5);
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .reset-btn:hover {
-    background: var(--hover-bg, #e0e0e0);
-    border-color: var(--border-color, #ccc);
-  }
-
-  /* 调试按钮 */
-  .debug-btn {
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 8px;
-  }
-
-  .debug-btn:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
   }
 
   /* 角色管理 */
-  .btn-add-role-panel {
-    padding: 6px 14px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-    white-space: nowrap;
-  }
-
-  .btn-add-role-panel:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-  }
-
   .section-header {
     display: flex;
     justify-content: space-between;
@@ -771,22 +652,21 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: var(--bg-secondary, #f5f5f5);
-    border: 2px solid var(--border-color, #ddd);
+    border: 2px solid var(--n-border-color);
     border-radius: 8px;
     transition: all 0.2s ease;
     cursor: pointer;
   }
 
   .role-item:hover {
-    background: var(--bg-hover, #e8e8e8);
-    border-color: var(--primary-color, #4a90e2);
+    background: var(--n-action-color);
+    border-color: var(--n-primary-color);
     transform: translateX(2px);
   }
 
   .role-item.role-selected {
-    background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
-    border-color: #1890ff;
+    background: var(--n-primary-color-suppl);
+    border-color: var(--n-primary-color);
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
   }
 
@@ -807,12 +687,11 @@
   .role-name-display {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #333);
   }
 
   .role-prompt-display {
     font-size: 12px;
-    color: var(--text-secondary, #999);
+    color: var(--n-text-color-3);
     line-height: 1.4;
   }
 
@@ -827,43 +706,10 @@
     opacity: 1;
   }
 
-  .btn-edit-role,
-  .btn-delete-role {
-    width: 32px;
-    height: 32px;
-    background: transparent;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    opacity: 0.7;
-  }
-
-  .btn-edit-role:hover {
-    background: #1890ff;
-    border-color: #1890ff;
-    color: white;
-    opacity: 1;
-    transform: scale(1.05);
-  }
-
-  .btn-delete-role {
-    opacity: 0.7;
-  }
-
-  .btn-delete-role:hover {
-    background: #ff4d4f;
-    border-color: #ff4d4f;
-    color: white;
-    opacity: 1;
-    transform: scale(1.05);
-  }
-
   .no-roles-hint {
     text-align: center;
     padding: 24px;
-    color: var(--text-secondary, #999);
+    color: var(--n-text-color-3);
     font-size: 14px;
   }
 
@@ -887,50 +733,14 @@
   .input-icon {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #d9d9d9;
     border-radius: 6px;
     font-size: 20px;
     text-align: center;
     transition: all 0.2s;
-    background: white;
   }
 
   .input-icon:focus {
-    border-color: #667eea;
+    border-color: var(--n-primary-color);
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-  }
-
-  .btn-dialog-cancel {
-    padding: 8px 20px;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-dialog-cancel:hover {
-    color: #667eea;
-    border-color: #667eea;
-  }
-
-  .btn-dialog-confirm {
-    padding: 8px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-dialog-confirm:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
   }
 </style>

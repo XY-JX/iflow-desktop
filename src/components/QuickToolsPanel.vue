@@ -161,26 +161,13 @@
   }
 
   .tools-tabs {
-    display: flex;
-    gap: 4px;
     padding: 8px;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
   }
 
   .tool-content {
     flex: 1;
     overflow-y: auto;
     padding: 12px;
-  }
-
-  .tool-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary, #333);
   }
 
   .snippets-list,
@@ -207,7 +194,6 @@
   .snippet-name {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-primary, #333);
   }
 
   .snippet-actions {
@@ -216,15 +202,15 @@
   }
 
   .snippet-code {
-    background: var(--bg-secondary, #f0f0f0);
     padding: 8px;
     border-radius: 4px;
     font-size: 12px;
-    color: var(--text-primary, #333);
     overflow-x: auto;
     margin: 0;
     white-space: pre-wrap;
     word-break: break-all;
+    background: var(--n-code-color);
+    color: var(--n-code-text-color);
   }
 
   .link-content {
@@ -248,12 +234,11 @@
   .link-name {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-primary, #333);
   }
 
   .link-url {
     font-size: 11px;
-    color: var(--text-secondary, #666);
+    color: var(--n-text-color-3);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -267,6 +252,6 @@
 
   .note-time {
     font-size: 11px;
-    color: var(--text-secondary, #999);
+    color: var(--n-text-color-3);
   }
 </style>

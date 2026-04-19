@@ -180,14 +180,26 @@ export class ErrorHandler {
 }
 
 /**
- * 全局未捕获错误处理
+ * 错误边界组件 Hook
  */
-if (typeof window !== 'undefined') {
-  window.addEventListener('error', (event) => {
-    ErrorHandler.handle(event.error, 'Global Error');
-  });
+import { ref } from 'vue';
 
-  window.addEventListener('unhandledrejection', (event) => {
-    ErrorHandler.handle(event.reason, 'Unhandled Promise Rejection');
-  });
+export function useErrorBoundary() {
+  const error = ref<Error | null>(null);
+  
+  const withErrorHandling = async <T>(fn: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await fn();
+    } catch (err) {
+      error.value = err as Error;
+      ErrorHandler.handle(err, 'ErrorBoundary');
+      return null;
+    }
+  };
+  
+  const resetError = () => {
+    error.value = null;
+  };
+  
+  return { error, withErrorHandling, resetError };
 }

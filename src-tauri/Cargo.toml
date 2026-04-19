@@ -39,3 +39,19 @@ lto = true                 # 链接时优化
 opt-level = "s"            # 优化体积
 strip = true               # 移除调试符号
 incremental = false        # 发布构建禁用增量编译
+
+# 开发环境优化配置
+[profile.dev]
+opt-level = 0              # 开发环境不优化，加快编译
+incremental = true         # 启用增量编译
+debug = true               # 保留调试信息
+codegen-units = 256        # 增加并行编译单元
+
+# 快速开发模式（比 dev 更快）
+[profile.dev-fast]
+inherits = "dev"
+opt-level = 0
+incremental = true
+debug = false              # 不生成调试信息
+strip = "debuginfo"        # 只移除调试信息
+codegen-units = 256

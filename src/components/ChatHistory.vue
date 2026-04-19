@@ -19,51 +19,59 @@
     </div>
 
     <div class="history-list">
-      <div
+      <n-card
         v-for="conversation in filteredConversations"
         :key="conversation.id"
-        class="history-item"
-        :class="{ active: activeConversationId === conversation.id }"
+        :class="{ 'active-conversation': activeConversationId === conversation.id }"
         @click="$emit('select-conversation', conversation.id)"
+        hoverable
+        size="small"
+        style="margin-bottom: 4px; cursor: pointer; position: relative;"
+        :content-style="{ padding: '12px' }"
       >
         <div class="conversation-title">{{ conversation.title }}</div>
 
         <!-- 标签显示 -->
-        <div v-if="conversation.tags && conversation.tags.length > 0" class="tags-container">
-          <span v-for="tag in conversation.tags.slice(0, 2)" :key="tag" class="tag">
+        <n-space v-if="conversation.tags && conversation.tags.length > 0" :size="4" style="margin-top: 8px;">
+          <n-tag
+            v-for="tag in conversation.tags.slice(0, 2)"
+            :key="tag"
+            size="small"
+            type="info"
+          >
             {{ tag }}
-          </span>
-          <span v-if="conversation.tags.length > 2" class="tag-more">
+          </n-tag>
+          <n-tag v-if="conversation.tags.length > 2" size="small" type="default">
             +{{ conversation.tags.length - 2 }}
-          </span>
-        </div>
+          </n-tag>
+        </n-space>
 
         <div class="conversation-meta">
           <span class="model-name">{{ conversation.model }}</span>
           <span class="conversation-time">{{ formatTime(conversation.updatedAt) }}</span>
         </div>
+        
         <n-button 
           quaternary 
           circle 
           size="tiny"
+          type="error"
           class="delete-btn" 
           @click.stop="handleDeleteConversation(conversation.id, conversation.title)"
         >
           ×
         </n-button>
-      </div>
+      </n-card>
 
       <!-- 无搜索结果提示 -->
-      <div v-if="filteredConversations.length === 0 && searchKeyword" class="no-results">
-        <p>未找到匹配的对话</p>
-      </div>
+      <n-empty v-if="filteredConversations.length === 0 && searchKeyword" description="未找到匹配的对话" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, computed } from 'vue';
-  import { NButton, NInput } from 'naive-ui';
+  import { NButton, NInput, NCard, NSpace, NTag, NEmpty } from 'naive-ui';
   import { formatTime } from '../utils/common';
   import { showDeleteConfirm } from '../utils/message';
   import type { Conversation } from '../types';
@@ -114,45 +122,21 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--bg-secondary, #f8f9fa);
-    border-right: 1px solid var(--border-color, #e0e0e0);
   }
 
   .history-header {
     padding: 16px;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
   }
 
   .history-header h3 {
     margin: 0 0 12px 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary, #333);
   }
 
   /* 搜索框样式 */
   .search-box {
     margin-top: 12px;
-  }
-
-  /* 无搜索结果提示 */
-  .no-results {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text-secondary, #999);
-  }
-
-  .no-results p {
-    margin: 0;
-    font-size: 14px;
-  }
-
-  /* 高亮文本 */
-  :deep(mark) {
-    background: var(--color-warning);
-    color: #856404;
-    padding: 1px 2px;
-    border-radius: 2px;
   }
 
   .history-list {
@@ -161,30 +145,15 @@
     padding: 8px;
   }
 
-  .history-item {
-    padding: 12px;
-    margin-bottom: 4px;
-    background: white;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    border: 1px solid transparent;
-  }
-
-  .history-item:hover {
-    background: var(--bg-hover, #f0f0f0);
-  }
-
-  .history-item.active {
-    background: var(--primary-light, #e8f4ff);
-    border-color: var(--primary-color, #4a90e2);
+  /* 激活的对话卡片 */
+  :deep(.active-conversation) {
+    border-color: var(--n-border-color-hover);
+    background-color: var(--n-color-hover);
   }
 
   .conversation-title {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary, #333);
     margin-bottom: 6px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -192,44 +161,18 @@
     padding-right: 20px;
   }
 
-  /* 标签样式 */
-  .tags-container {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 6px;
-    flex-wrap: wrap;
-  }
-
-  .tag {
-    display: inline-block;
-    padding: 2px 8px;
-    background: var(--primary-light, #e8f4ff);
-    color: var(--primary-color, #4a90e2);
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
-  }
-
-  .tag-more {
-    display: inline-block;
-    padding: 2px 6px;
-    background: var(--bg-hover, #f0f0f0);
-    color: var(--text-secondary, #666);
-    border-radius: 12px;
-    font-size: 11px;
-  }
-
   .conversation-meta {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 12px;
-    color: var(--text-secondary, #666);
+    color: var(--n-text-color-3);
+    margin-top: 8px;
   }
 
   .model-name {
     font-weight: 500;
-    color: var(--primary-color, #4a90e2);
+    color: var(--n-primary-color);
   }
 
   .delete-btn {
@@ -238,56 +181,10 @@
     right: 8px;
     opacity: 0;
     transition: all 0.2s;
+    z-index: 1;
   }
 
-  .history-item:hover .delete-btn {
+  :deep(.n-card:hover) .delete-btn {
     opacity: 1;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .chat-history {
-      background: var(--bg-secondary, #2d2d2d);
-      border-right-color: var(--border-color, #404040);
-    }
-
-    .history-header h3 {
-      color: var(--text-primary, #f0f0f0);
-    }
-
-    .history-item {
-      background: var(--bg-primary, #252525);
-    }
-
-    .history-item:hover {
-      background: var(--bg-hover, #3d3d3d);
-    }
-
-    .history-item.active {
-      background: var(--primary-dark, #1a4d7a);
-    }
-
-    .conversation-title {
-      color: var(--text-primary, #f0f0f0);
-    }
-
-    .conversation-meta {
-      color: var(--text-secondary, #aaa);
-    }
-
-    :deep(mark) {
-      background: #5c4b1e;
-      color: var(--color-warning);
-    }
-
-    /* 深色主题 - 标签 */
-    .tag {
-      background: var(--primary-dark, #1a4d7a);
-      color: #7cb3ff;
-    }
-
-    .tag-more {
-      background: var(--bg-hover, #3d3d3d);
-      color: var(--text-secondary, #aaa);
-    }
   }
 </style>

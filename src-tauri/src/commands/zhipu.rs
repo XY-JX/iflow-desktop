@@ -183,9 +183,9 @@ pub async fn fetch_zhipu_models(window: tauri::Window, app_handle: tauri::AppHan
             info!("成功获取 {} 个模型", models.len());
             
             // 保存到配置文件
-            if let Ok(mut config) = crate::config::load_app_config(app_handle.clone()) {
+            if let Ok(mut config) = crate::config::load_app_config(app_handle.clone()).await {
                 config.cached_models = models.clone();
-                if let Err(e) = crate::config::save_app_config(app_handle.clone(), config) {
+                if let Err(e) = crate::config::save_app_config(app_handle.clone(), config).await {
                     warn!("保存模型列表到配置文件失败：{}", e);
                 } else {
                     info!("模型列表已保存到配置文件");

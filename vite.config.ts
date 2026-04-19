@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import viteCompression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
 
 // @ts-expect-error process is a nodejs global
@@ -17,8 +18,14 @@ export default defineConfig(async () => ({
       threshold: 10240, // 大于 10KB 的文件才压缩
       algorithm: 'gzip',
       ext: '.gz'
+    }),
+    // 构建分析（仅在生产构建时启用）
+    process.env.ANALYZE === 'true' && visualizer({
+      filename: 'dist/stats.html',
+      open: true,
+      gzipSize: true
     })
-  ],
+  ].filter(Boolean),
 
   // 路径别名配置
   resolve: {
@@ -67,8 +74,10 @@ export default defineConfig(async () => ({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'pinia'],
+          'naive-ui': ['naive-ui'],
           'markdown': ['markdown-it'],
-          'tauri': ['@tauri-apps/api/core', '@tauri-apps/api/event']
+          'tauri': ['@tauri-apps/api/core', '@tauri-apps/api/event'],
+          'otpauth': ['otpauth']
         },
         // 优化 chunk 文件名
         chunkFileNames: 'assets/[name]-[hash].js',
@@ -81,7 +90,8 @@ export default defineConfig(async () => ({
     terserOptions: {
       compress: {
         drop_console: true, // 生产环境移除 console
-        drop_debugger: true
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info'] // 移除特定 console
       },
       format: {
         comments: false // 移除所有注释
@@ -96,7 +106,11 @@ export default defineConfig(async () => ({
     // 启用预加载策略
     modulePreload: {
       polyfill: true
-    }
+    },
+    // 减少并发数以减少内存占用
+    cssMinify: true,
+    // 生成 source map（开发环境）
+    sourcemap: process.env.NODE_ENV === 'development'
   },
   
   // 预加载优化
