@@ -100,7 +100,7 @@ ${msg.content}
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${conversation.title}</title>
+  <title>${escapeHtml(conversation.title)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
     h1 { color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
@@ -115,7 +115,7 @@ ${msg.content}
   </style>
 </head>
 <body>
-  <h1>${conversation.title}</h1>
+  <h1>${escapeHtml(conversation.title)}</h1>
   <div class="meta">
     <p><strong>导出时间:</strong> ${new Date().toLocaleString()}</p>
     <p><strong>模型:</strong> ${conversation.model}</p>

@@ -3,6 +3,7 @@
  * 优化版：基于 Unicode 范围和常见模式提高精度
  */
 import { error as logError } from './logger';
+import { TOKEN_WEIGHTS } from '../constants';
 
 export function estimateTokenCount(text: string): number {
   if (!text || typeof text !== 'string') return 0;
@@ -21,7 +22,7 @@ export function estimateTokenCount(text: string): number {
         (char >= 0x3400 && char <= 0x4dbf) || // CJK Unified Ideographs Extension A
         (char >= 0x20000 && char <= 0x2a6df) // CJK Unified Ideographs Extension B
       ) {
-        tokens += 1.5;
+        tokens += TOKEN_WEIGHTS.CJK;
         i++;
       }
       // Emoji 和特殊符号(通常占用更多 token)
@@ -30,12 +31,12 @@ export function estimateTokenCount(text: string): number {
         (char >= 0x1f300 && char <= 0x1f5ff) || // Misc Symbols and Pictographs
         (char >= 0x1f680 && char <= 0x1f6ff) // Transport and Map
       ) {
-        tokens += 2;
+        tokens += TOKEN_WEIGHTS.CJK * 1.33; // Emoji 约等于 2 tokens
         i++;
       }
       // 代理对(Surrogate pairs,如某些 emoji)
       else if (char >= 0xd800 && char <= 0xdbff && nextChar >= 0xdc00 && nextChar <= 0xdfff) {
-        tokens += 2;
+        tokens += TOKEN_WEIGHTS.CJK * 1.33;
         i += 2;
       }
       // ASCII 和控制字符
@@ -46,9 +47,9 @@ export function estimateTokenCount(text: string): number {
         const isUrlLike = /https?:\/\//.test(context);
 
         if (isCodeLike || isUrlLike) {
-          tokens += 0.5; // 代码/URL 中的字符消耗更多
+          tokens += TOKEN_WEIGHTS.CODE; // 代码/URL 中的字符消耗更多
         } else {
-          tokens += 0.25; // 普通英文字符
+          tokens += TOKEN_WEIGHTS.ASCII; // 普通英文字符
         }
         i++;
       }

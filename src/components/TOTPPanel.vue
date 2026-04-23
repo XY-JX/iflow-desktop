@@ -93,6 +93,7 @@ import { NButton, NCard, NEmpty, NModal, NForm, NFormItem, NInput, NInputGroup, 
 import { getAllCodes, addSecret, deleteSecret, generateSecret } from '../utils/totp';
 import { useDialog } from '../composables';
 import { showConfirm } from '../utils/message';
+import { warn } from '../utils/logger';
 import type { TOTPCode } from '../utils/totp';
 
 const codes = ref<TOTPCode[]>([]);
@@ -149,7 +150,7 @@ function copyCode(code: string) {
   navigator.clipboard.writeText(code).then(() => {
     // 可以添加成功提示
   }).catch(() => {
-    console.error('复制失败');
+    warn('TOTPPanel', '复制失败');
   });
 }
 

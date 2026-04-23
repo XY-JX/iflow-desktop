@@ -42,3 +42,43 @@ export const DEFAULTS = {
   SYSTEM_PROMPT: '你是一个有用的 AI 编程助手。',
   CONVERSATION_TITLE: '新对话',
 } as const;
+
+/**
+ * 默认角色列表
+ */
+export const DEFAULT_ROLES = [
+  { icon: '🤖', label: '通用助手', value: '你是一个有用的 AI 编程助手。' },
+  { icon: '💻', label: '代码专家', value: '你是一个资深的软件工程师，请帮我分析和编写代码。' },
+  { icon: '📝', label: '文案写作', value: '你是一个专业的文案写手，请帮我撰写和优化文本内容。' },
+  { icon: '🔍', label: '数据分析', value: '你是一个数据分析专家，请帮我分析数据并提供洞察。' },
+] as const;
+
+/**
+ * 默认模型列表
+ */
+export const DEFAULT_MODEL_LIST = [
+  'glm-4.6v',
+  'glm-4.5-air',
+  'glm-4.5',
+  'glm-4',
+  'glm-4-flash',
+] as const;
+
+/**
+ * Token 预留量（用于系统消息等开销）
+ */
+export const RESERVED_TOKENS = 500;
+
+/**
+ * Token 估算权重
+ */
+export const TOKEN_WEIGHTS = {
+  CJK: 1.5,
+  CODE: 0.5,
+  ASCII: 0.25,
+} as const;
+
+/**
+ * QR 码生成 API 基础 URL
+ */
+export const QR_CODE_BASE_URL = 'https://chart.googleapis.com/chart';

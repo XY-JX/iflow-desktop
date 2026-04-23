@@ -3,6 +3,8 @@ import { ref, computed } from 'vue';
 import type { Conversation, Message } from '../types';
 import { info, error as logError } from '../utils/logger';
 import conversationApi from '../utils/api/conversation';
+import { generateId } from '../utils/common';
+import { DEFAULTS } from '../constants';
 
 export const useChatStore = defineStore('chat', () => {
   // 状态
@@ -57,9 +59,9 @@ export const useChatStore = defineStore('chat', () => {
   });
 
   // 方法
-  function createNewConversation(title: string = '新对话', model: string = 'glm-4'): Conversation {
+  function createNewConversation(title: string = DEFAULTS.CONVERSATION_TITLE, model: string = DEFAULTS.MODEL): Conversation {
     const newConversation: Conversation = {
-      id: Date.now().toString(),
+      id: generateId(),
       title,
       messages: [],
       model,
@@ -68,9 +70,9 @@ export const useChatStore = defineStore('chat', () => {
     };
     conversations.value.unshift(newConversation);
     activeConversationId.value = newConversation.id;
-    
+
     // 自动保存
-    saveToStorage();
+    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
     return newConversation;
   }
 
@@ -83,9 +85,9 @@ export const useChatStore = defineStore('chat', () => {
     if (activeConversationId.value === id) {
       activeConversationId.value = undefined;
     }
-    
+
     // 自动保存
-    saveToStorage();
+    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
   }
 
   function addMessage(message: Message) {
@@ -100,9 +102,9 @@ export const useChatStore = defineStore('chat', () => {
       conversation.title =
         message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '');
     }
-    
+
     // 自动保存
-    saveToStorage();
+    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
   }
 
   function updateConversationTitle(title: string) {
@@ -110,7 +112,7 @@ export const useChatStore = defineStore('chat', () => {
     if (conversation) {
       conversation.title = title;
       conversation.updatedAt = Date.now();
-      saveToStorage();
+      saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
     }
   }
 
@@ -139,7 +141,7 @@ export const useChatStore = defineStore('chat', () => {
     if (!conversation.tags.includes(tag)) {
       conversation.tags.push(tag);
       conversation.updatedAt = Date.now();
-      saveToStorage();
+      saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
     }
   }
 
@@ -149,7 +151,7 @@ export const useChatStore = defineStore('chat', () => {
 
     conversation.tags = conversation.tags.filter((t) => t !== tag);
     conversation.updatedAt = Date.now();
-    saveToStorage();
+    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
   }
 
   function getUniqueTags(): string[] {

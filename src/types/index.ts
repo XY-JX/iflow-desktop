@@ -115,3 +115,21 @@ export interface QuickNote {
   content: string;
   timestamp: number;
 }
+
+// Tauri AI 事件 payload 类型
+export interface AiChunkPayload {
+  chunk: string;
+  full_content: string;
+  conversation_id: string;
+}
+
+export interface AiCompletePayload {
+  content: string;
+  conversation_id: string;
+  execution_time_ms?: number;
+}
+
+export interface AiErrorPayload {
+  error: string;
+  conversation_id: string;
+}

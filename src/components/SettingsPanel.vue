@@ -448,11 +448,6 @@
     }
   }
 
-  // 组件挂载时加载角色
-  onMounted(() => {
-    loadCustomRoles();
-  });
-
   // 预设提示词
   const presetPrompts = [
     { label: '💻 编程助手', value: '你是一个专业的 AI 编程助手，擅长代码编写、调试和优化。' },

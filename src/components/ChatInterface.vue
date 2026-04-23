@@ -25,20 +25,17 @@
 import { showWarning } from '../utils/message';
 import MessageList from './MessageList.vue';
 import InputArea from './InputArea.vue';
-import type { Message, Model } from '../types';
+import type { Message } from '../types';
 
 interface Props {
   messages: Message[];
   isGenerating: boolean;
-  availableModels: Model[];
-  currentModel: string;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   'send-message': [content: string];
-  'model-change': [modelId: string];
   'clear-conversation': [];
   'export-conversation': [];
   'export-pdf': [];

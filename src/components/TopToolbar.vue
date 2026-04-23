@@ -54,7 +54,6 @@
 
 <script setup lang="ts">
 import { NTag, NButton, NSelect } from 'naive-ui';
-import type { CustomRole } from '../types';
 
 interface Props {
   zhipuReady: boolean;

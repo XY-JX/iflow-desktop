@@ -1,8 +1,7 @@
 import * as OTPAuth from 'otpauth';
 import { error as logError } from './logger';
 import totpApi from './api/totp';
-
-const STORAGE_KEY = 'iflow_totp_secrets';
+import { APP_CONSTANTS } from '../constants';
 
 export interface TOTPSecret {
   id: string;
@@ -34,8 +33,8 @@ export function generateTOTP(secret: string): string {
     issuer: 'iFlow',
     label: 'iFlow Desktop',
     algorithm: 'SHA1',
-    digits: 6,
-    period: 30,
+    digits: APP_CONSTANTS.TOTP_DIGITS,
+    period: APP_CONSTANTS.TOTP_PERIOD,
     secret: OTPAuth.Secret.fromBase32(secret),
   });
   

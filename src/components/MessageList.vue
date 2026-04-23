@@ -36,7 +36,7 @@
 import { ref, watch, onMounted } from 'vue';
 import { NButton } from 'naive-ui';
 import { formatTime } from '../utils/common';
-import { useMarkdown } from '../composables';
+import { useMarkdown, setupCodeCopyDelegation } from '../composables';
 import type { Message } from '../types';
 
 const { renderMarkdown } = useMarkdown();
@@ -59,20 +59,25 @@ function scrollToBottom() {
   containerRef.value.scrollTop = containerRef.value.scrollHeight;
 }
 
-// 监听消息变化,自动滚动到底部
+// 监听消息数量变化,自动滚动到底部（非 deep 监听，避免流式更新时频繁触发）
 watch(
-  () => props.messages,
-  (newMessages, oldMessages) => {
-    if (props.isGenerating || !oldMessages || newMessages.length > oldMessages.length) {
+  () => props.messages.length,
+  () => {
+    if (props.isGenerating) {
       scrollToBottom();
     }
   },
-  { deep: true }
 );
 
 watch(() => props.isGenerating, scrollToBottom);
 
-onMounted(scrollToBottom);
+onMounted(() => {
+  scrollToBottom();
+  // 设置代码复制按钮的事件委托
+  if (containerRef.value) {
+    setupCodeCopyDelegation(containerRef.value);
+  }
+});
 </script>
 
 <style scoped>

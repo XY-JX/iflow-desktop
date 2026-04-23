@@ -26,10 +26,7 @@
       <ChatInterface
         :messages="currentMessages"
         :is-generating="isGenerating"
-        :available-models="availableModels"
-        :current-model="currentModel"
         @send-message="handleSendMessage"
-        @model-change="handleModelChange"
         @clear-conversation="handleClearConversation"
         @export-conversation="handleExportConversation"
         @export-pdf="handleExportAsPDF"
@@ -113,7 +110,7 @@
     </div>
 
     <div v-if="selectedFile" class="editor-panel">
-      <FileEditor :file="selectedFile" @close="clearSelection" @saved="handleFileSaved" />
+      <FileEditor :file="selectedFile" @close="clearSelection" />
     </div>
 
     <!-- API Key 管理对话框 -->
@@ -128,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, watch, computed, defineAsyncComponent, Suspense } from 'vue';
+  import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { storeToRefs } from 'pinia';
@@ -136,7 +133,6 @@
   import { useFileStore } from '../stores/fileStore';
   import { useQuickToolsStore } from '../stores/quickToolsStore';
   import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
-  import { formatTime } from '../utils/common';
   import { useKeyboardShortcuts } from '../composables';
   import { showSuccess, showError, showConfirm, showDeleteConfirm, showWarning } from '../utils/message';
   import ChatHistory from './ChatHistory.vue';
@@ -149,9 +145,10 @@
   const StatsPanel = defineAsyncComponent(() => import('./StatsPanel.vue'));
   const QuickToolsPanel = defineAsyncComponent(() => import('./QuickToolsPanel.vue'));
   import { truncateConversation, estimateTokenCount } from '../utils/tokenUtils';
-  import { toggleTheme, currentTheme } from '../theme';
   import { info, error as logError } from '../utils/logger';
-  import type { Message, Model, FileItem, AppConfig, CustomRole, ZhipuModelInfo } from '../types';
+  import { generateId } from '../utils/common';
+  import { DEFAULTS, APP_CONSTANTS, DEFAULT_ROLES, DEFAULT_MODEL_LIST, RESERVED_TOKENS } from '../constants';
+  import type { Message, AppConfig, CustomRole, ZhipuModelInfo, AiChunkPayload, AiCompletePayload, AiErrorPayload } from '../types';
 
   // 初始化 Store
   const chatStore = useChatStore();
@@ -173,37 +170,18 @@
   } = chatStore;
   const { selectedFile, selectFile, clearSelection } = fileStore;
 
-  // 获取当前角色名称
-  const defaultRoles = [
-    {
-      icon: '💻',
-      label: '编程助手',
-      value: '你是一个专业的 AI 编程助手，擅长代码编写、调试和优化。',
-    },
-    { icon: '📝', label: '文案专家', value: '你是专业的文案写作专家，擅长创作吸引人的营销内容。' },
-    { icon: '🔬', label: '学术顾问', value: '你是学术研究顾问，能提供专业的学术建议和指导。' },
-    {
-      icon: '🎨',
-      label: '创意助手',
-      value: '你是富有创意的 AI 助手，能帮助进行头脑风暴和创意构思。',
-    },
-  ];
-
   // 智谱 AI 状态
   const zhipuReady = ref(false);
   const zhipuStatus = ref('');
   const showApiKeyDialog = ref(false); // 显示 API Key 管理对话框
   const apiKeyDialogRef = ref<InstanceType<typeof ApiKeyDialog>>();
 
-  // 主题状态
-  const isDarkMode = computed(() => currentTheme.value === 'dark');
-
   // 设置面板状态
   const showSettingsPanel = ref(false);
   const showStatsPanel = ref(false);
-  const systemPrompt = ref(defaultRoles[0]?.value || '你是一个有用的 AI 编程助手。');
-  const temperature = ref(0.7);
-  const maxTokens = ref(2048);
+  const systemPrompt = ref<string>(DEFAULT_ROLES[0]?.value || DEFAULTS.SYSTEM_PROMPT);
+  const temperature = ref<number>(APP_CONSTANTS.DEFAULT_TEMPERATURE);
+  const maxTokens = ref<number>(APP_CONSTANTS.DEFAULT_MAX_TOKENS);
 
   // 自定义角色列表（从 SettingsPanel 同步）
   const customRoles = ref<CustomRole[]>([]);
@@ -225,16 +203,16 @@
   // const API_KEY_STORAGE_KEY = 'zhipu_api_key';
 
   // 当前模型 (本地状态)
-  const availableModels = ref<Model[]>([
-    { id: 'glm-4.6v', name: 'GLM-4.6V', provider: '智谱 AI' },
-    { id: 'glm-4.5-air', name: 'GLM-4.5 Air', provider: '智谱 AI' },
-    { id: 'glm-4', name: 'GLM-4', provider: '智谱 AI' },
-    { id: 'glm-4-flash', name: 'GLM-4 Flash', provider: '智谱 AI' },
-  ]);
-  const currentModel = ref('glm-4.6v');
+  const availableModels = ref<{ id: string; name: string; provider: string; description?: string }[]>(
+    DEFAULT_MODEL_LIST.map(id => ({ id, name: id.toUpperCase(), provider: '智谱 AI' }))
+  );
+  const currentModel = ref<string>(DEFAULTS.MODEL);
 
   // 思考过程显示引用
   const thinkingDisplay = ref<HTMLDivElement>();
+
+  // Tauri 事件监听清理函数
+  let activeUnlisteners: Array<() => void> = [];
 
   // 初始化智谱 AI 客户端
   async function initZhipuClient(apiKey: string) {
@@ -559,7 +537,7 @@ ${msg.content}
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${conversation.title}</title>
+  <title>${escapeHtml(conversation.title)}</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -626,7 +604,7 @@ ${msg.content}
   </style>
 </head>
 <body>
-  <h1>${conversation.title}</h1>
+  <h1>${escapeHtml(conversation.title)}</h1>
   <div class="meta">
     <p><strong>导出时间：</strong>${new Date().toLocaleString()}</p>
     <p><strong>模型：</strong>${conversation.model}</p>
@@ -702,41 +680,6 @@ ${msg.content}
     // 将模板填入输入框（通过自定义事件）
     const event = new CustomEvent('apply-prompt-template', { detail: template });
     window.dispatchEvent(event);
-  }
-
-  // 注册键盘快捷键
-  function registerKeyboardShortcuts() {
-    window.addEventListener('keydown', (event: KeyboardEvent) => {
-      // Ctrl/Cmd + Enter: 发送消息（如果输入框有焦点）
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-        const textarea = document.querySelector('.input-area textarea') as HTMLTextAreaElement;
-        if (textarea && document.activeElement === textarea && textarea.value.trim()) {
-          event.preventDefault();
-          textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-        }
-      }
-
-      // Ctrl/Cmd + K: 清空对话
-      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-        event.preventDefault();
-        handleClearConversation();
-      }
-
-      // Ctrl/Cmd + /: 显示帮助
-      if ((event.ctrlKey || event.metaKey) && event.key === '/') {
-        event.preventDefault();
-        showKeyboardHelp();
-      }
-
-      // Escape: 关闭对话框/面板
-      if (event.key === 'Escape') {
-        if (showApiKeyDialog.value) {
-          showApiKeyDialog.value = false;
-        } else if (showSettingsPanel.value) {
-          showSettingsPanel.value = false;
-        }
-      }
-    });
   }
 
   // 显示快捷键帮助
@@ -855,9 +798,6 @@ Escape            - 关闭对话框/面板
         }
       }
 
-      // 注册快捷键
-      registerKeyboardShortcuts();
-
       info('MainLayout', '组件挂载完成 - 应用可正常使用');
     } catch (error) {
       logError('MainLayout', '组件挂载异常:', error);
@@ -889,11 +829,6 @@ Escape            - 关闭对话框/面板
       }
     }
   }
-  // const currentMessages = computed(() => {
-  //   if (!activeConversationId.value) return [];
-  //   const conversation = conversations.value.find(c => c.id === activeConversationId.value);
-  //   return conversation?.messages || [];
-  // });
 
   // 创建新对话
   function handleNewChat() {
@@ -923,7 +858,7 @@ Escape            - 关闭对话框/面板
 
     // 添加用户消息
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: generateId(),
       role: 'user',
       content,
       timestamp: Date.now(),
@@ -935,7 +870,7 @@ Escape            - 关闭对话框/面板
 
     try {
       // 先创建一个空的助手消息用于显示流式内容
-      const assistantMessageId = (Date.now() + 1).toString();
+      const assistantMessageId = generateId();
       const assistantMessage: Message = {
         id: assistantMessageId,
         role: 'assistant',
@@ -945,7 +880,7 @@ Escape            - 关闭对话框/面板
       addMessage(assistantMessage);
 
       // 监听 AI chunk 事件
-      const unlistenChunk = await listen('ai-chunk', (event: any) => {
+      const unlistenChunk = await listen<AiChunkPayload>('ai-chunk', (event) => {
         const data = event.payload;
         
         // 更新思考过程
@@ -971,7 +906,7 @@ Escape            - 关闭对话框/面板
       });
 
       // 监听 AI 完成事件
-      const unlistenComplete = await listen('ai-complete', async (event: any) => {
+      const unlistenComplete = await listen<AiCompletePayload>('ai-complete', async (event) => {
         const data = event.payload;
 
         // 计算 Token 数
@@ -983,7 +918,7 @@ Escape            - 关闭对话框/面板
           session_id: '',
           conversation_id: '',
           assistant_rounds: 1,
-          execution_time_ms: data.execution_time_ms,
+          execution_time_ms: data.execution_time_ms ?? 0,
           token_usage: {
             input: inputTokens,
             output: outputTokens,
@@ -995,21 +930,26 @@ Escape            - 关闭对话框/面板
         clearThinking(); // 清除思考过程
 
         // 清理事件监听
-        unlistenChunk();
-        unlistenComplete();
+        cleanupListeners();
       });
 
       // 监听 AI 错误事件
-      const unlistenError = await listen('ai-error', (event: any) => {
+      const unlistenError = await listen<AiErrorPayload>('ai-error', (event) => {
         const data = event.payload;
 
         updateMessageContent(assistantMessageId, `❌ ${data.error}`, undefined);
         setGenerating(false);
 
-        unlistenChunk();
-        unlistenComplete();
-        unlistenError();
+        cleanupListeners();
       });
+
+      // 存储清理函数
+      activeUnlisteners = [unlistenChunk, unlistenComplete, unlistenError];
+
+      function cleanupListeners() {
+        activeUnlisteners.forEach(fn => fn());
+        activeUnlisteners = [];
+      }
 
       // 构建完整的对话历史 (包含 system, user, assistant)
       const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
@@ -1025,7 +965,7 @@ Escape            - 关闭对话框/面板
       // 自动截断超出限制的对话历史
       const messagesForApi = truncateConversation(
         allMessages,
-        maxTokens.value - 500, // 预留 500 tokens 给回复
+        maxTokens.value - RESERVED_TOKENS, // 预留 tokens 给回复
         systemPrompt.value,
         10, // 保留最近 10 轮对话
       );
@@ -1041,7 +981,7 @@ Escape            - 关闭对话框/面板
     } catch (error) {
       // 添加错误消息
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: generateId(),
         role: 'assistant',
         content: `❌ 获取回复失败：${error}`,
         timestamp: Date.now(),
@@ -1080,7 +1020,7 @@ Escape            - 关闭对话框/面板
 
   // 计算属性：合并默认角色和自定义角色
   const quickRoles = computed(() => {
-    return [...defaultRoles, ...customRoles.value];
+    return [...DEFAULT_ROLES, ...customRoles.value];
   });
 
   // 转换为 Naive UI 需要的 options 格式
@@ -1100,30 +1040,6 @@ Escape            - 关闭对话框/面板
     }
   }
 
-  // 删除角色
-  // function deleteRole(index: number) {
-  //   const customRoles = getCustomRoles();
-  //   customRoles.splice(index, 1);
-  //   saveCustomRoles(customRoles);
-  // }
-
-  // 保存快速角色 (当系统提示变化时)
-  function saveQuickRoles() {
-    // 这里可以记录用户偏好
-  }
-
-  /* eslint-disable @typescript-eslint/no-unused-vars */
-
-  // 选择文件
-  function handleFileSelected(file: FileItem) {
-    selectFile(file);
-  }
-
-  // 文件保存成功
-  function handleFileSaved() {
-    // 文件保存成功处理
-  }
-
   // ========== 快捷键支持 ==========
   const { registerShortcut } = useKeyboardShortcuts();
   
@@ -1141,6 +1057,32 @@ Escape            - 关闭对话框/面板
     } else if (showApiKeyDialog.value) {
       showApiKeyDialog.value = false;
     }
+  });
+
+  // 注册 Ctrl/Cmd + K: 清空对话
+  registerShortcut('ctrl+k', () => {
+    handleClearConversation();
+  });
+
+  // 注册 Ctrl/Cmd + /: 显示快捷键帮助
+  registerShortcut('ctrl+/', () => {
+    showKeyboardHelp();
+  });
+
+  // HTML 转义（用于 PDF 导出）
+  function escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // 组件卸载时清理事件监听
+  onUnmounted(() => {
+    activeUnlisteners.forEach(fn => fn());
+    activeUnlisteners = [];
   });
 </script>
 

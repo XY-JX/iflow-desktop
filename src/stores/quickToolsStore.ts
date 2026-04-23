@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { CodeSnippet, QuickLink, QuickNote } from '../types';
 import { info, error as logError } from '../utils/logger';
+import { STORAGE_KEYS } from '../constants';
 
 export const useQuickToolsStore = defineStore('quickTools', () => {
   // 状态
@@ -15,21 +16,21 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
   function loadFromStorage() {
     try {
       // 加载代码片段
-      const savedSnippets = localStorage.getItem('code_snippets');
+      const savedSnippets = localStorage.getItem(STORAGE_KEYS.CODE_SNIPPETS);
       if (savedSnippets) {
         codeSnippets.value = JSON.parse(savedSnippets);
         info('quickToolsStore', `已加载 ${codeSnippets.value.length} 个代码片段`);
       }
 
       // 加载快速链接
-      const savedLinks = localStorage.getItem('quick_links');
+      const savedLinks = localStorage.getItem(STORAGE_KEYS.QUICK_LINKS);
       if (savedLinks) {
         quickLinks.value = JSON.parse(savedLinks);
         info('quickToolsStore', `已加载 ${quickLinks.value.length} 个快速链接`);
       }
 
       // 加载快捷笔记
-      const savedNotes = localStorage.getItem('quick_notes');
+      const savedNotes = localStorage.getItem(STORAGE_KEYS.QUICK_NOTES);
       if (savedNotes) {
         quickNotes.value = JSON.parse(savedNotes);
         info('quickToolsStore', `已加载 ${quickNotes.value.length} 条快捷笔记`);
@@ -48,9 +49,9 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
     }
 
     try {
-      localStorage.setItem('code_snippets', JSON.stringify(codeSnippets.value));
-      localStorage.setItem('quick_links', JSON.stringify(quickLinks.value));
-      localStorage.setItem('quick_notes', JSON.stringify(quickNotes.value));
+      localStorage.setItem(STORAGE_KEYS.CODE_SNIPPETS, JSON.stringify(codeSnippets.value));
+      localStorage.setItem(STORAGE_KEYS.QUICK_LINKS, JSON.stringify(quickLinks.value));
+      localStorage.setItem(STORAGE_KEYS.QUICK_NOTES, JSON.stringify(quickNotes.value));
       lastSaveTime.value = now;
     } catch (error) {
       logError('quickToolsStore', '保存快捷工具数据失败:', error);

@@ -4,14 +4,9 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { Message, ZhipuModelInfo } from '../../types';
-
-/**
- * 检查是否在 Tauri 环境中
- */
-function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-}
+import type { Message, ZhipuModelInfo, ContextConfig } from '../../types';
+import { isTauri } from './tauri';
+import { warn } from '../logger';
 
 /**
  * 初始化智谱客户端
@@ -32,7 +27,7 @@ export async function sendMessage(
   model?: string,
   temperature?: number,
   maxTokens?: number
-): Promise<any> {
+): Promise<{ response: string }> {
   if (!isTauri()) {
     throw new Error('非 Tauri 环境，无法调用智谱 AI');
   }
@@ -54,7 +49,7 @@ export async function sendMessageWithMessages(
   model?: string,
   temperature?: number,
   maxTokens?: number
-): Promise<any> {
+): Promise<{ response: string }> {
   if (!isTauri()) {
     throw new Error('非 Tauri 环境，无法调用智谱 AI');
   }
@@ -98,7 +93,7 @@ export async function sendStreamMessageWithContext(
   model?: string,
   temperature?: number,
   maxTokens?: number,
-  contextConfig?: any
+  contextConfig?: ContextConfig
 ): Promise<void> {
   if (!isTauri()) {
     throw new Error('非 Tauri 环境，无法调用智谱 AI');
@@ -128,7 +123,7 @@ export async function checkStatus(): Promise<{ ready: boolean; status: string }>
  */
 export async function fetchModels(): Promise<ZhipuModelInfo[]> {
   if (!isTauri()) {
-    console.warn('[Zhipu] 非 Tauri 环境，返回空列表');
+    warn('Zhipu', '非 Tauri 环境，返回空列表');
     return [];
   }
   return invoke('fetch_zhipu_models');
