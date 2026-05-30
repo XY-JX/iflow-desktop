@@ -29,11 +29,13 @@
     "naive-ui": "^2.44.1",
     "otpauth": "^9.5.0",
     "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
     "vue": "^3.4.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
     "@types/markdown-it": "^14.1.2",
+    "@types/qrcode": "^1.5.6",
     "@typescript-eslint/eslint-plugin": "^8.58.1",
     "@typescript-eslint/parser": "^8.58.1",
     "@vitejs/plugin-vue": "^5.0.0",

@@ -3,67 +3,59 @@
  * 处理对话记录的导出功能(Markdown、PDF、复制)
  */
 
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 import { showSuccess, showWarning } from '../utils/message';
 import type { Conversation, Message } from '../types';
 
 export function useConversationExport(
-  conversations: Conversation[],
-  activeConversationId: string | undefined,
-  currentMessages: Message[]
+  conversations: Ref<Conversation[]>,
+  activeConversationId: Ref<string | null | undefined>,
+  currentMessages: Ref<Message[]>
 ) {
   // 计算属性：当前对话消息数
   const currentMessageCount = computed(() => {
-    return currentMessages.length;
+    return currentMessages.value.length;
   });
 
   // 估算 Token 数
   const estimatedTokens = computed(() => {
-    if (currentMessages.length === 0) return 0;
+    if (currentMessages.value.length === 0) return 0;
 
     let totalTokens = 0;
-    for (const msg of currentMessages) {
-      // 简单估算：中文字符 ~1.5 token, 英文单词 ~0.75 token
-      const chineseChars = (msg.content.match(/[\u4e00-\u9fa5]/g) || []).length;
-      const englishWords = msg.content.replace(/[\u4e00-\u9fa5]/g, '').split(/\s+/).length;
+    for (const msg of currentMessages.value) {
+      const chineseChars = (msg.content.match(/[一-龥]/g) || []).length;
+      const englishWords = msg.content.replace(/[一-龥]/g, '').split(/\s+/).length;
       totalTokens += Math.ceil(chineseChars * 1.5 + englishWords * 0.75);
     }
 
     return totalTokens;
   });
 
+  // 获取当前对话
+  function getCurrentConversation(): Conversation | undefined {
+    return conversations.value.find((c) => c.id === activeConversationId.value);
+  }
+
   // 导出对话记录为 Markdown
   function exportAsMarkdown() {
-    if (currentMessages.length === 0) {
+    if (currentMessages.value.length === 0) {
       showWarning('当前对话没有消息可导出');
       return;
     }
 
-    const conversation = conversations.find((c) => c.id === activeConversationId);
+    const conversation = getCurrentConversation();
     if (!conversation) return;
 
-    // 生成 Markdown 格式
     let markdown = `# ${conversation.title}\n\n`;
     markdown += `**导出时间**: ${new Date().toLocaleString()}\n`;
-    markdown += `**模型**: ${conversation.model}
-
----
-
-`;
+    markdown += `**模型**: ${conversation.model}\n\n---\n\n`;
 
     conversation.messages.forEach((msg) => {
-      const role = msg.role === 'user' ? '👤 用户' : '🤖 助手';
+      const role = msg.role === 'user' ? '用户' : '助手';
       const time = new Date(msg.timestamp).toLocaleString();
-      markdown += `### ${role} (${time})
-
-${msg.content}
-
----
-
-`;
+      markdown += `### ${role} (${time})\n\n${msg.content}\n\n---\n\n`;
     });
 
-    // 创建下载链接
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -79,22 +71,20 @@ ${msg.content}
 
   // 导出对话为 PDF（通过打印功能）
   function exportAsPDF() {
-    if (currentMessages.length === 0) {
+    if (currentMessages.value.length === 0) {
       showWarning('当前对话没有消息可导出');
       return;
     }
 
-    const conversation = conversations.find((c) => c.id === activeConversationId);
+    const conversation = getCurrentConversation();
     if (!conversation) return;
 
-    // 创建打印窗口
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       showWarning('无法打开打印窗口，请检查浏览器设置');
       return;
     }
 
-    // 生成 HTML 内容
     let html = `
 <!DOCTYPE html>
 <html>
@@ -125,10 +115,10 @@ ${msg.content}
 `;
 
     conversation.messages.forEach((msg) => {
-      const role = msg.role === 'user' ? '👤 用户' : '🤖 助手';
+      const role = msg.role === 'user' ? '用户' : '助手';
       const time = new Date(msg.timestamp).toLocaleString();
       const className = msg.role === 'user' ? 'user' : 'assistant';
-      
+
       html += `
   <div class="message ${className}">
     <div class="role">${role} <span class="time">(${time})</span></div>
@@ -137,14 +127,11 @@ ${msg.content}
 `;
     });
 
-    html += `
-</body>
-</html>`;
+    html += `\n</body>\n</html>`;
 
     printWindow.document.write(html);
     printWindow.document.close();
-    
-    // 延迟打印以确保内容加载
+
     setTimeout(() => {
       printWindow.print();
     }, 250);
@@ -154,14 +141,13 @@ ${msg.content}
 
   // 复制最后一条助手回答
   function copyLastAnswer() {
-    if (currentMessages.length === 0) {
+    if (currentMessages.value.length === 0) {
       showWarning('当前对话没有消息');
       return;
     }
 
-    // 从后往前找第一条助手消息
-    const lastAssistantMsg = [...currentMessages].reverse().find((msg) => msg.role === 'assistant');
-    
+    const lastAssistantMsg = [...currentMessages.value].reverse().find((msg) => msg.role === 'assistant');
+
     if (!lastAssistantMsg) {
       showWarning('没有找到助手的回答');
       return;
@@ -170,14 +156,13 @@ ${msg.content}
     navigator.clipboard
       .writeText(lastAssistantMsg.content)
       .then(() => {
-        showSuccess('✅ 已复制到最后一条回答');
+        showSuccess('已复制到最后一条回答');
       })
       .catch(() => {
         showWarning('复制失败，请手动复制');
       });
   }
 
-  // HTML 转义
   function escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
@@ -185,10 +170,8 @@ ${msg.content}
   }
 
   return {
-    // 计算属性
     currentMessageCount,
     estimatedTokens,
-    // 方法
     exportAsMarkdown,
     exportAsPDF,
     copyLastAnswer,

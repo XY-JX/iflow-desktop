@@ -89,14 +89,6 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
     saveToStorage();
   }
 
-  function updateNote(index: number, content: string) {
-    if (quickNotes.value[index]) {
-      quickNotes.value[index].content = content;
-      quickNotes.value[index].timestamp = Date.now();
-      saveToStorage();
-    }
-  }
-
   function deleteNote(index: number) {
     quickNotes.value.splice(index, 1);
     saveToStorage();
@@ -115,7 +107,6 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
     addLink,
     deleteLink,
     addNote,
-    updateNote,
     deleteNote,
   };
 });

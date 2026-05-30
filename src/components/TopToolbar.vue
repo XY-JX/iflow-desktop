@@ -1,54 +1,51 @@
 <template>
   <div class="toolbar">
     <div class="toolbar-left">
-      <n-tag :type="zhipuReady ? 'success' : 'error'" size="small" round>
-        <template #icon>
-          <span>{{ zhipuReady ? '✅' : '⚠️' }}</span>
-        </template>
-        智谱 AI: {{ zhipuReady ? '已就绪' : zhipuStatus || '未配置' }}
+      <n-tag :type="zhipuReady ? 'success' : 'warning'" size="small" round>
+        {{ zhipuReady ? '✅ 已连接' : '⚠️ 未配置' }}
       </n-tag>
       <n-button
         @click="$emit('open-api-key-dialog')"
-        :type="zhipuReady ? 'warning' : 'primary'"
         size="small"
+        :type="zhipuReady ? 'default' : 'primary'"
       >
-        {{ zhipuReady ? '⚙️ 管理 API Key' : '🔑 配置 API Key' }}
+        {{ zhipuReady ? '⚙️ API Key' : '🔑 配置' }}
       </n-button>
     </div>
 
     <!-- 快速角色选择 -->
-    <div class="quick-role-selector">
+    <div class="toolbar-center">
       <n-select
         :value="systemPrompt"
         class="role-select"
         @update:value="$emit('update:systemPrompt', $event)"
         :options="roleOptions"
         :title="systemPrompt"
-        :menu-props="{ style: { minWidth: '200px' } }"
+        placeholder="选择角色..."
+        size="small"
       />
     </div>
 
     <div class="toolbar-right">
-      <n-button @click="$emit('toggle-settings')" size="small" quaternary>
-        ⚙️ 高级设置
-      </n-button>
-
-      <n-button @click="$emit('toggle-stats')" size="small" quaternary>📊 统计</n-button>
-
       <!-- 对话统计 -->
       <div class="stats-display">
-        <span class="stat-item">
-          <span class="stat-label">💬 消息</span>
-          <span class="stat-value">{{ messageCount }}</span>
-        </span>
-        <span class="stat-item">
-          <span class="stat-label">🔢 Token</span>
-          <span class="stat-value">{{ tokenCount }}</span>
-        </span>
+        <n-tag size="small" type="info">
+          💬 {{ messageCount }}
+        </n-tag>
+        <n-tag size="small" type="info">
+          🔢 {{ formatTokenCount(tokenCount) }}
+        </n-tag>
+      </div>
+
+      <div class="toolbar-actions">
+        <n-button @click="$emit('toggle-settings')" size="small" quaternary circle title="设置">
+          ⚙️
+        </n-button>
+        <n-button @click="$emit('toggle-stats')" size="small" quaternary circle title="统计">
+          📊
+        </n-button>
       </div>
     </div>
-
-    <span v-if="zhipuStatus" class="status-message">{{ zhipuStatus }}</span>
   </div>
 </template>
 
@@ -72,17 +69,27 @@ defineEmits<{
   'toggle-settings': [];
   'toggle-stats': [];
 }>();
+
+// 格式化 token 数量
+function formatTokenCount(count: number): string {
+  if (count >= 10000) {
+    return (count / 10000).toFixed(1) + 'w';
+  }
+  if (count >= 1000) {
+    return (count / 1000).toFixed(1) + 'k';
+  }
+  return count.toString();
+}
 </script>
 
 <style scoped>
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 8px 16px;
+  background: var(--n-color);
+  border-bottom: 1px solid var(--n-border-color);
+  gap: 16px;
 }
 
 .toolbar-left,
@@ -90,44 +97,28 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-.quick-role-selector {
+.toolbar-center {
   flex: 1;
-  max-width: 300px;
+  max-width: 280px;
+  margin: 0 auto;
 }
 
 .role-select {
   width: 100%;
 }
 
-.status-message {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
 .stats-display {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 8px;
+  gap: 6px;
 }
 
-.stat-item {
+.toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--n-text-color-3);
-}
-
-.stat-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--n-text-color-1);
+  gap: 4px;
 }
 </style>

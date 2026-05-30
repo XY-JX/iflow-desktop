@@ -1,6 +1,7 @@
 [env]
 # 禁用 Tauri 配置文件的自动重载
-TAURI_DEV_WATCH_IGNORE = "tauri.conf.json"
+TAURI_DEV_WATCH_IGNORE = "tauri.conf.json, Cargo.lock"
+TAURI_SKIP_DEV_WATCH = "true"
 
 # 并行编译优化
 [target.'cfg(all())']
@@ -8,4 +9,4 @@ rustflags = ["-C", "codegen-units=256"]
 
 # 开发环境使用更少的优化级别
 [build]
-jobs = 16  # 根据 CPU 核心数调整
+jobs = 16

@@ -5,12 +5,17 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { AppConfig, CustomRole } from '../types';
-import { error as logError } from './logger';
+import { isTauri } from './api/tauri';
+import { warn, error as logError } from './logger';
 
 /**
  * 加载应用配置
  */
 export async function loadAppConfig(): Promise<AppConfig> {
+  if (!isTauri()) {
+    warn('configUtils', '非 Tauri 环境，返回空配置');
+    return { custom_roles: [] };
+  }
   try {
     return await invoke<AppConfig>('load_app_config');
   } catch (error) {
@@ -23,6 +28,10 @@ export async function loadAppConfig(): Promise<AppConfig> {
  * 保存应用配置
  */
 export async function saveAppConfig(config: AppConfig): Promise<void> {
+  if (!isTauri()) {
+    warn('configUtils', '非 Tauri 环境，跳过保存');
+    return;
+  }
   try {
     await invoke('save_app_config', { config });
   } catch (error) {
@@ -48,6 +57,9 @@ export async function loadCustomRoles(): Promise<CustomRole[]> {
  * 添加自定义角色
  */
 export async function addCustomRole(role: CustomRole): Promise<void> {
+  if (!isTauri()) {
+    throw new Error('非 Tauri 环境，无法添加角色');
+  }
   try {
     await invoke('add_custom_role', { role });
   } catch (error) {
@@ -60,6 +72,9 @@ export async function addCustomRole(role: CustomRole): Promise<void> {
  * 删除自定义角色
  */
 export async function deleteCustomRole(index: number): Promise<void> {
+  if (!isTauri()) {
+    throw new Error('非 Tauri 环境，无法删除角色');
+  }
   try {
     await invoke('delete_custom_role', { index });
   } catch (error) {

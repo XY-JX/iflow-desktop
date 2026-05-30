@@ -1,52 +1,56 @@
 <template>
-  <div class="input-section">
+  <div class="input-area">
     <!-- 快捷操作栏 -->
     <div class="action-bar">
       <n-button @click="$emit('clear-conversation')" size="small" quaternary title="清空对话">🗑️</n-button>
-      <n-button @click="$emit('export-conversation')" size="small" quaternary title="导出">📥</n-button>
-      <n-button @click="$emit('export-pdf')" size="small" quaternary title="PDF">📄</n-button>
-      <n-button @click="$emit('copy-last-answer')" size="small" quaternary title="复制">📋</n-button>
+      <n-button @click="$emit('export-conversation')" size="small" quaternary title="导出 Markdown">📥</n-button>
+      <n-button @click="$emit('export-pdf')" size="small" quaternary title="导出 PDF">📄</n-button>
+      <n-button @click="$emit('copy-last-answer')" size="small" quaternary title="复制最后回答">📋</n-button>
       <n-button @click="$emit('save-code-snippet')" size="small" quaternary title="收藏代码">💾</n-button>
-      <div class="divider"></div>
-      <n-button @click="$emit('apply-template', 'explain')" size="small" quaternary title="解释代码">💡</n-button>
-      <n-button @click="$emit('apply-template', 'optimize')" size="small" quaternary title="优化">⚡</n-button>
-      <n-button @click="$emit('apply-template', 'debug')" size="small" quaternary title="调试">🐛</n-button>
+      <n-divider vertical />
+      <n-button @click="$emit('apply-template', 'explain')" size="small" quaternary title="解释代码">💡 解释</n-button>
+      <n-button @click="$emit('apply-template', 'optimize')" size="small" quaternary title="优化代码">⚡ 优化</n-button>
+      <n-button @click="$emit('apply-template', 'debug')" size="small" quaternary title="调试代码">🐛 调试</n-button>
     </div>
 
-    <!-- 输入框 -->
-    <div class="input-box">
+    <!-- 输入框 + 发送按钮 -->
+    <div class="input-row">
       <n-input
         ref="inputRef"
         v-model:value="inputText"
         @keydown="handleKeyDown"
         type="textarea"
-        placeholder="输入消息..."
-        :autosize="{ minRows: 1, maxRows: 6 }"
+        placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+        :autosize="{ minRows: 2, maxRows: 8 }"
         :bordered="true"
-        class="input-field"
       />
-      <n-button 
-        @click="sendMessage" 
+      <n-button
+        @click="sendMessage"
         :disabled="!inputText.trim() || isGenerating"
         type="primary"
-        class="send-button"
+        size="large"
+        class="send-btn"
       >
-        📤 发送
+        {{ isGenerating ? '⏳' : '📤 发送' }}
       </n-button>
     </div>
 
     <!-- 状态提示 -->
-    <div v-if="isGenerating" class="status-tip">
-      <span class="status-dot"></span>
-      <span>AI 正在回复...</span>
+    <div class="input-footer">
+      <template v-if="isGenerating">
+        <n-badge dot color="var(--n-primary-color)" />
+        <n-text depth="3" style="font-size: 12px;">AI 正在回复...</n-text>
+      </template>
+      <n-text v-else depth="3" style="font-size: 12px;">
+        Enter 发送 | Shift+Enter 换行
+      </n-text>
     </div>
-    <div class="hint-text">按 Enter 发送，Shift + Enter 换行</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { NButton, NInput } from 'naive-ui';
+import { NButton, NInput, NDivider, NText, NBadge } from 'naive-ui';
 
 interface Props {
   isGenerating: boolean;
@@ -70,7 +74,6 @@ const emit = defineEmits<{
 function sendMessage() {
   const content = inputText.value.trim();
   if (!content) return;
-
   emit('send-message', content);
   inputText.value = '';
 }
@@ -84,73 +87,46 @@ function handleKeyDown(event: KeyboardEvent) {
 </script>
 
 <style scoped>
-.input-section {
-  padding: 16px;
+.input-area {
+  padding: 12px 16px;
   background: var(--n-color);
   border-top: 1px solid var(--n-border-color);
+  width: 100%;
 }
 
 .action-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
+  gap: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--n-border-color);
+  flex-wrap: wrap;
 }
 
-.action-btn {
-  padding: 4px 8px;
-  font-size: 14px;
-}
-
-.divider {
-  width: 1px;
-  height: 20px;
-  background: var(--n-border-color);
-  margin: 0 4px;
-}
-
-.input-box {
+.input-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-end;
+  width: 100%;
 }
 
-.input-field {
+/* 让 n-input 撑满剩余空间 */
+.input-row :deep(.n-input) {
   flex: 1;
 }
 
-.send-button {
+.send-btn {
   flex-shrink: 0;
+  height: 40px;
+  min-width: 80px;
 }
 
-.status-tip {
+.input-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--n-text-color-3);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--n-primary-color);
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.hint-text {
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--n-text-color-3);
-  text-align: center;
+  gap: 6px;
+  margin-top: 6px;
+  height: 20px;
 }
 </style>

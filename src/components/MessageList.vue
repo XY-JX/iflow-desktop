@@ -1,40 +1,74 @@
 <template>
-  <div class="messages-container" ref="containerRef">
-    <div v-if="messages.length === 0" class="empty-state">
-      <div class="empty-icon">💬</div>
-      <div class="empty-text">开始新的对话</div>
-    </div>
-    
-    <div v-for="message in messages" :key="message.id" class="message-item">
-      <div class="message" :class="message.role">
-        <div class="message-avatar">
-          {{ message.role === 'user' ? '👤' : '🤖' }}
-        </div>
-        <div class="message-body">
-          <div class="message-content">
-            <div class="message-text" v-html="renderMarkdown(message.content)"></div>
-          </div>
-          <div class="message-footer">
-            <span class="message-time">{{ formatTime(message.timestamp) }}</span>
-            <n-button 
-              @click="$emit('reply-to-message', message)" 
-              size="tiny" 
-              quaternary 
-              title="回复" 
-              class="reply-btn"
+  <div class="messages-wrapper" ref="containerRef" @scroll="handleScroll">
+    <n-empty
+      v-if="messages.length === 0"
+      description="开始新的对话"
+      style="margin: auto;"
+    />
+
+    <div v-else class="messages-list">
+      <div v-for="message in messages" :key="message.id" class="message-row">
+        <n-card
+          :class="['message-card', message.role]"
+          size="small"
+          :bordered="false"
+        >
+          <n-space align="flex-start" :wrap="false">
+            <n-avatar
+              :size="36"
+              round
+              :style="{
+                background: message.role === 'user' ? 'var(--n-primary-color)' : 'var(--n-action-color)'
+              }"
             >
-              ↩️
-            </n-button>
-          </div>
-        </div>
+              {{ message.role === 'user' ? '👤' : '🤖' }}
+            </n-avatar>
+
+            <div class="message-body">
+              <div
+                class="message-text"
+                v-html="renderMarkdown(message.content)"
+              />
+              <n-space justify="space-between" align="center" class="message-footer">
+                <n-text depth="3" style="font-size: 11px;">
+                  {{ formatTime(message.timestamp) }}
+                </n-text>
+                <n-button
+                  @click="$emit('reply-to-message', message)"
+                  size="tiny"
+                  quaternary
+                  title="回复"
+                  class="reply-btn"
+                >
+                  ↩️
+                </n-button>
+              </n-space>
+            </div>
+          </n-space>
+        </n-card>
       </div>
     </div>
+
+    <!-- 滚动到底部按钮 -->
+    <Transition name="fade">
+      <n-button
+        v-if="showScrollButton"
+        class="scroll-to-bottom"
+        circle
+        secondary
+        size="small"
+        @click="scrollToBottom(true)"
+        title="滚动到底部"
+      >
+        ⬇️
+      </n-button>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
-import { NButton } from 'naive-ui';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { NCard, NSpace, NAvatar, NButton, NText, NEmpty } from 'naive-ui';
 import { formatTime } from '../utils/common';
 import { useMarkdown, setupCodeCopyDelegation } from '../composables';
 import type { Message } from '../types';
@@ -53,168 +87,168 @@ defineEmits<{
 }>();
 
 const containerRef = ref<HTMLDivElement>();
+const showScrollButton = ref(false);
+const isUserScrolling = ref(false);
+let rafId: number | null = null;
 
-function scrollToBottom() {
-  if (!containerRef.value) return;
-  containerRef.value.scrollTop = containerRef.value.scrollHeight;
+function isNearBottom(): boolean {
+  if (!containerRef.value) return true;
+  const { scrollTop, scrollHeight, clientHeight } = containerRef.value;
+  return scrollHeight - scrollTop - clientHeight < 100;
 }
 
-// 监听消息数量变化,自动滚动到底部（非 deep 监听，避免流式更新时频繁触发）
+function scrollToBottom(smooth = false) {
+  if (!containerRef.value) return;
+  containerRef.value.scrollTo({
+    top: containerRef.value.scrollHeight,
+    behavior: smooth ? 'smooth' : 'instant',
+  });
+  showScrollButton.value = false;
+  isUserScrolling.value = false;
+}
+
+function handleScroll() {
+  if (!containerRef.value) return;
+  const nearBottom = isNearBottom();
+  showScrollButton.value = !nearBottom && props.messages.length > 0;
+  isUserScrolling.value = !nearBottom;
+}
+
+function startAutoScroll() {
+  function tick() {
+    if (props.isGenerating && !isUserScrolling.value) {
+      scrollToBottom();
+    }
+    if (props.isGenerating) {
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopAutoScroll() {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+}
+
+watch(
+  () => props.isGenerating,
+  (generating) => {
+    if (generating) {
+      isUserScrolling.value = false;
+      startAutoScroll();
+    } else {
+      stopAutoScroll();
+    }
+  },
+);
+
 watch(
   () => props.messages.length,
   () => {
-    if (props.isGenerating) {
+    if (!isUserScrolling.value) {
       scrollToBottom();
     }
   },
 );
 
-watch(() => props.isGenerating, scrollToBottom);
-
 onMounted(() => {
   scrollToBottom();
-  // 设置代码复制按钮的事件委托
   if (containerRef.value) {
     setupCodeCopyDelegation(containerRef.value);
   }
 });
+
+onUnmounted(() => {
+  stopAutoScroll();
+});
 </script>
 
 <style scoped>
-.messages-container {
+.messages-wrapper {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 16px;
+  position: relative;
 }
 
-.empty-state {
-  flex: 1;
+.messages-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 12px;
-  opacity: 0.5;
 }
 
-.empty-icon {
-  font-size: 48px;
-}
-
-.empty-text {
-  font-size: 14px;
-}
-
-.message-item {
+.message-row {
   animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.message {
-  display: flex;
-  gap: 12px;
+.message-card {
   max-width: 85%;
 }
 
-.message.user {
+.message-card.user {
   margin-left: auto;
-  flex-direction: row-reverse;
 }
 
-.message-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-  background: var(--n-action-color);
-}
-
-.message.user .message-avatar {
-  background: var(--n-primary-color);
+.message-card.assistant {
+  margin-right: auto;
 }
 
 .message-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   flex: 1;
+  min-width: 0;
 }
 
-.message-content {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--n-action-color);
+.message-text {
   font-size: 14px;
   line-height: 1.6;
   word-wrap: break-word;
 }
 
-.message.user .message-content {
-  background: var(--n-primary-color);
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.message.assistant .message-content {
-  border-bottom-left-radius: 4px;
-}
-
 .message-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 4px;
-}
-
-.message.user .message-footer {
-  flex-direction: row-reverse;
-}
-
-.message-time {
-  font-size: 11px;
-  color: var(--n-text-color-3);
+  margin-top: 6px;
 }
 
 .reply-btn {
   opacity: 0;
-  transition: all 0.2s;
+  transition: opacity 0.2s;
 }
 
-.message-item:hover .reply-btn {
+.message-row:hover .reply-btn {
   opacity: 1;
 }
 
-.message-text :deep(p) {
-  margin: 6px 0;
+.scroll-to-bottom {
+  position: sticky;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 }
 
-.message-text :deep(p:first-child) {
-  margin-top: 0;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.message-text :deep(p:last-child) {
-  margin-bottom: 0;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
-/* 代码块样式 */
+/* Markdown 内容样式 */
+.message-text :deep(p) { margin: 6px 0; }
+.message-text :deep(p:first-child) { margin-top: 0; }
+.message-text :deep(p:last-child) { margin-bottom: 0; }
+
 .message-text :deep(.code-block) {
   margin: 12px 0;
   border-radius: 8px;
@@ -236,7 +270,6 @@ onMounted(() => {
   font-size: 12px;
   color: #858585;
   font-weight: 500;
-  text-transform: uppercase;
 }
 
 .message-text :deep(.code-copy-btn) {
@@ -247,29 +280,20 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .message-text :deep(.code-copy-btn:hover) {
   background: #1177bb;
 }
 
-.message-text :deep(.code-copy-btn.copied) {
-  background: #16825d;
-}
-
 .message-text :deep(.code-content) {
   margin: 0;
   padding: 16px;
   overflow-x: auto;
-  background: #1e1e1e;
 }
 
 .message-text :deep(.code-content code) {
-  font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'Fira Code', 'Monaco', 'Menlo', monospace;
   font-size: 13px;
   line-height: 1.5;
   color: #d4d4d4;
@@ -277,38 +301,6 @@ onMounted(() => {
   padding: 0;
 }
 
-/* 用户消息中的代码块 */
-.message.user :deep(.code-block) {
-  background: #0a3a6b;
-  border-color: #1a5aa8;
-}
-
-.message.user :deep(.code-header) {
-  background: #0d4480;
-  border-bottom-color: #1a5aa8;
-}
-
-.message.user :deep(.code-lang) {
-  color: #a3c9ff;
-}
-
-.message.user :deep(.code-copy-btn) {
-  background: #0e639c;
-}
-
-.message.user :deep(.code-copy-btn:hover) {
-  background: #1177bb;
-}
-
-.message.user :deep(.code-content) {
-  background: #0a3a6b;
-}
-
-.message.user :deep(.code-content code) {
-  color: #e8f4ff;
-}
-
-/* 行内代码 */
 .message-text :deep(code) {
   background: var(--n-tag-color);
   padding: 2px 6px;

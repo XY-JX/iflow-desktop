@@ -6,6 +6,7 @@
 import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { info, error as logError } from '../utils/logger';
+import { isTauri } from '../utils/api/tauri';
 import type { Model, AppConfig, ZhipuModelInfo } from '../types';
 
 export function useApiKey() {
@@ -16,6 +17,11 @@ export function useApiKey() {
 
   // 初始化智谱 AI 客户端
   async function initZhipuClient(apiKey: string) {
+    if (!isTauri()) {
+      logError('useApiKey', '非 Tauri 环境，无法初始化');
+      return;
+    }
+
     info('useApiKey', '开始初始化智谱 AI 客户端');
     zhipuStatus.value = '正在初始化...';
 
@@ -54,12 +60,13 @@ export function useApiKey() {
 
   // 获取并缓存模型列表
   async function fetchAndCacheModels() {
+    if (!isTauri()) return;
+
     try {
       info('useApiKey', '正在获取模型列表...');
       const models = await invoke<ZhipuModelInfo[]>('fetch_zhipu_models');
       info('useApiKey', `成功获取 ${models.length} 个模型`);
 
-      // 更新可用模型列表
       availableModels.value = models.map((m) => ({
         id: m.id,
         name: m.name || m.id,
@@ -67,20 +74,20 @@ export function useApiKey() {
         description: m.description,
       }));
 
-      // 默认选择第一个模型
       if (models.length > 0) {
         currentModel.value = models[0].id;
         info('useApiKey', `默认选择模型: ${currentModel.value}`);
       }
     } catch (error) {
       logError('useApiKey', '获取模型列表失败，尝试从配置文件加载:', error);
-      // 尝试从配置文件加载缓存
       await loadCachedModels();
     }
   }
 
   // 从配置文件加载缓存的模型列表
   async function loadCachedModels() {
+    if (!isTauri()) return;
+
     try {
       const config = await invoke<AppConfig>('load_app_config');
       if (config.cached_models && config.cached_models.length > 0) {
@@ -94,11 +101,9 @@ export function useApiKey() {
 
         currentModel.value = config.cached_models[0].id;
         info('useApiKey', `默认选择模型: ${currentModel.value}`);
-      } else {
-        info('useApiKey', '配置文件中没有缓存模型，使用默认列表');
       }
     } catch (loadError) {
-      logError('useApiKey', '加载缓存模型失败，使用默认列表:', loadError);
+      logError('useApiKey', '加载缓存模型失败:', loadError);
     }
   }
 
@@ -107,19 +112,22 @@ export function useApiKey() {
     if (!zhipuReady.value) return;
 
     try {
-      await invoke('save_api_key', { apiKey: '' });
-      info('useApiKey', 'API Key 已从配置文件中清除');
+      if (isTauri()) {
+        await invoke('save_api_key', { apiKey: '' });
+        info('useApiKey', 'API Key 已从配置文件中清除');
+      }
     } catch (error) {
       logError('useApiKey', '清除 API Key 失败:', error);
     }
 
     zhipuReady.value = false;
     zhipuStatus.value = '';
-    info('useApiKey', 'API Key 已清除');
   }
 
   // 加载当前 API Key
   async function loadCurrentApiKey(): Promise<string | null> {
+    if (!isTauri()) return null;
+
     try {
       const savedKey = await invoke<string | null>('get_api_key');
       if (savedKey) {
@@ -133,12 +141,10 @@ export function useApiKey() {
   }
 
   return {
-    // 状态
     zhipuReady,
     zhipuStatus,
     availableModels,
     currentModel,
-    // 方法
     initZhipuClient,
     clearApiKey,
     loadCurrentApiKey,

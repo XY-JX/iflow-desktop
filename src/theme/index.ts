@@ -277,12 +277,3 @@ export function initTheme() {
 
 // 导出默认主题（兼容旧代码）
 export const theme = lightTheme;
-
-// 导出常用颜色的便捷访问
-export const color = theme.colors;
-export const spacing = theme.spacing;
-export const radius = theme.borderRadius;
-export const shadow = theme.shadows;
-export const font = theme.typography;
-export const transition = theme.transitions;
-export const z = theme.zIndex;
