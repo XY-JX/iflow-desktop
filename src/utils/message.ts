@@ -71,14 +71,22 @@ export function showConfirm(
   onPositive: () => void,
   onNegative?: () => void
 ) {
-  dialogApi?.warning({
-    title,
-    content,
-    positiveText: '确定',
-    negativeText: '取消',
-    onPositiveClick: onPositive,
-    onNegativeClick: onNegative,
-  });
+  if (dialogApi) {
+    dialogApi.warning({
+      title,
+      content,
+      positiveText: '确定',
+      negativeText: '取消',
+      onPositiveClick: onPositive,
+      onNegativeClick: onNegative,
+    });
+  } else {
+    if (window.confirm(`${title}\n\n${content}`)) {
+      onPositive();
+    } else {
+      onNegative?.();
+    }
+  }
 }
 
 /**
@@ -88,13 +96,21 @@ export function showDeleteConfirm(
   itemName: string,
   onConfirm: () => void
 ) {
-  dialogApi?.error({
-    title: '确认删除',
-    content: `确定要删除 "${itemName}" 吗？此操作不可恢复！`,
-    positiveText: '删除',
-    negativeText: '取消',
-    onPositiveClick: onConfirm,
-  });
+  if (dialogApi) {
+    const dialog = dialogApi.error({
+      title: '确认删除',
+      content: `确定要删除 "${itemName}" 吗？此操作不可恢复！`,
+      positiveText: '删除',
+      negativeText: '取消',
+      onPositiveClick: () => {
+        onConfirm();
+      },
+    });
+  } else {
+    if (window.confirm(`确定要删除 "${itemName}" 吗？此操作不可恢复！`)) {
+      onConfirm();
+    }
+  }
 }
 
 /**
