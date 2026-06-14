@@ -1,36 +1,36 @@
 <template>
-  <n-layout class="chat-history">
-    <n-layout-header bordered class="history-header">
-      <n-space vertical :size="12">
-        <n-space justify="space-between" align="center">
-          <n-text strong>对话历史</n-text>
-          <n-button type="primary" size="small" @click="$emit('new-chat')">
+  <NLayout style="height: 100%;">
+    <NLayoutHeader bordered style="padding: 16px;">
+      <NSpace vertical :size="12">
+        <NSpace justify="space-between" align="center">
+          <NText strong>对话历史</NText>
+          <NButton type="primary" size="small" @click="$emit('new-chat')">
             + 新建
-          </n-button>
-        </n-space>
-        <n-input
+          </NButton>
+        </NSpace>
+        <NInput
           v-model:value="searchKeyword"
           placeholder="搜索对话..."
           clearable
           size="small"
         />
-      </n-space>
-    </n-layout-header>
+      </NSpace>
+    </NLayoutHeader>
 
-    <n-layout-content class="history-list">
-      <n-list hoverable clickable>
-        <n-list-item
+    <NLayoutContent style="padding: 8px;">
+      <NList hoverable clickable>
+        <NListItem
           v-for="conversation in filteredConversations"
           :key="conversation.id"
-          :class="{ 'active-item': activeConversationId === conversation.id }"
+          :style="activeConversationId === conversation.id ? { backgroundColor: 'var(--n-color-hover)' } : undefined"
           @click="$emit('select-conversation', conversation.id)"
         >
-          <n-thing>
+          <NThing>
             <template #header>
-              <n-text depth="1" style="font-size: 14px;">{{ conversation.title }}</n-text>
+              <NText depth="1" style="font-size: 14px;">{{ conversation.title }}</NText>
             </template>
             <template #header-extra>
-              <n-button
+              <NButton
                 quaternary
                 circle
                 size="tiny"
@@ -38,39 +38,39 @@
                 @click.stop="handleDeleteConversation(conversation.id, conversation.title)"
               >
                 ×
-              </n-button>
+              </NButton>
             </template>
             <template #description>
-              <n-space :size="6" align="center">
-                <n-tag size="tiny" type="info">{{ conversation.model }}</n-tag>
-                <n-text depth="3" style="font-size: 12px;">
+              <NSpace :size="6" align="center">
+                <NTag size="tiny" type="info">{{ conversation.model }}</NTag>
+                <NText depth="3" style="font-size: 12px;">
                   {{ formatTime(conversation.updatedAt) }}
-                </n-text>
-              </n-space>
+                </NText>
+              </NSpace>
             </template>
-          </n-thing>
-        </n-list-item>
-      </n-list>
+          </NThing>
+        </NListItem>
+      </NList>
 
-      <n-empty
+      <NEmpty
         v-if="filteredConversations.length === 0 && searchKeyword"
         description="未找到匹配的对话"
         style="margin-top: 40px;"
       />
 
-      <n-empty
+      <NEmpty
         v-else-if="conversations.length === 0"
         description="暂无对话记录"
         style="margin-top: 40px;"
       >
         <template #extra>
-          <n-button @click="$emit('new-chat')" type="primary" size="small">
+          <NButton @click="$emit('new-chat')" type="primary" size="small">
             创建第一个对话
-          </n-button>
+          </NButton>
         </template>
-      </n-empty>
-    </n-layout-content>
-  </n-layout>
+      </NEmpty>
+    </NLayoutContent>
+  </NLayout>
 </template>
 
 <script setup lang="ts">
@@ -81,7 +81,6 @@ import {
   NThing, NTag, NEmpty
 } from 'naive-ui';
 import { formatTime } from '../utils/common';
-import { showDeleteConfirm } from '../utils/message';
 import type { Conversation } from '../types';
 
 const props = defineProps<{
@@ -98,9 +97,9 @@ const emit = defineEmits<{
 const searchKeyword = ref('');
 
 function handleDeleteConversation(id: string, title: string) {
-  showDeleteConfirm(title, () => {
+  if (window.confirm(`确定要删除 "${title}" 吗？此操作不可恢复！`)) {
     emit('delete-conversation', id);
-  });
+  }
 }
 
 const filteredConversations = computed(() => {
@@ -117,21 +116,3 @@ const filteredConversations = computed(() => {
   });
 });
 </script>
-
-<style scoped>
-.chat-history {
-  height: 100%;
-}
-
-.history-header {
-  padding: 16px;
-}
-
-.history-list {
-  padding: 8px;
-}
-
-.active-item {
-  background-color: var(--n-color-hover) !important;
-}
-</style>

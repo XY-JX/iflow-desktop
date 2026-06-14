@@ -1,76 +1,76 @@
 <template>
-  <n-layout class="stats-panel">
-    <n-layout-header bordered style="padding: 12px 16px;">
-      <n-space justify="space-between" align="center">
-        <n-text strong>📊 统计分析</n-text>
-        <n-button quaternary circle @click="$emit('close')">×</n-button>
-      </n-space>
-    </n-layout-header>
+  <NLayout style="height: 100%;">
+    <NLayoutHeader bordered style="padding: 12px 16px;">
+      <NSpace justify="space-between" align="center">
+        <NText strong>📊 统计分析</NText>
+        <NButton quaternary circle @click="$emit('close')">×</NButton>
+      </NSpace>
+    </NLayoutHeader>
 
-    <n-layout-content style="padding: 16px;">
-      <!-- 总体统计 -->
-      <n-space vertical :size="24">
+    <NLayoutContent style="padding: 16px;">
+      <NSpace vertical :size="24">
+        <!-- 总体统计 -->
         <div>
-          <n-h6 prefix="bar" style="margin-bottom: 12px;">总体统计</n-h6>
-          <n-grid :cols="2" :x-gap="12" :y-gap="12">
-            <n-gi>
-              <n-statistic label="💬 对话总数">{{ totalConversations }}</n-statistic>
-            </n-gi>
-            <n-gi>
-              <n-statistic label="📨 消息总数">{{ totalMessages }}</n-statistic>
-            </n-gi>
-            <n-gi>
-              <n-statistic label="🔢 Token 总量">{{ formatNumber(totalTokens) }}</n-statistic>
-            </n-gi>
-            <n-gi>
-              <n-statistic label="⏱️ 平均响应时间">{{ averageResponseTime }}s</n-statistic>
-            </n-gi>
-          </n-grid>
+          <NH6 prefix="bar" style="margin-bottom: 12px;">总体统计</NH6>
+          <NGrid :cols="2" :x-gap="12" :y-gap="12">
+            <NGi>
+              <NStatistic label="💬 对话总数">{{ totalConversations }}</NStatistic>
+            </NGi>
+            <NGi>
+              <NStatistic label="📨 消息总数">{{ totalMessages }}</NStatistic>
+            </NGi>
+            <NGi>
+              <NStatistic label="🔢 Token 总量">{{ formatNumber(totalTokens) }}</NStatistic>
+            </NGi>
+            <NGi>
+              <NStatistic label="⏱️ 平均响应时间">{{ averageResponseTime }}s</NStatistic>
+            </NGi>
+          </NGrid>
         </div>
 
         <!-- 模型使用统计 -->
         <div>
-          <n-h6 prefix="bar" style="margin-bottom: 12px;">模型使用分布</n-h6>
-          <n-space vertical :size="12">
-            <n-card v-for="(count, model) in modelUsage" :key="model" size="small">
-              <n-space justify="space-between" style="margin-bottom: 8px;">
-                <n-text strong>{{ model }}</n-text>
-                <n-text depth="3">{{ count }} 次对话</n-text>
-              </n-space>
-              <n-progress
+          <NH6 prefix="bar" style="margin-bottom: 12px;">模型使用分布</NH6>
+          <NSpace vertical :size="12">
+            <NCard v-for="(count, model) in modelUsage" :key="model" size="small">
+              <NSpace justify="space-between" style="margin-bottom: 8px;">
+                <NText strong>{{ model }}</NText>
+                <NText depth="3">{{ count }} 次对话</NText>
+              </NSpace>
+              <NProgress
                 type="line"
                 :percentage="(count / maxModelUsage) * 100"
                 :height="6"
                 :show-indicator="false"
               />
-            </n-card>
-          </n-space>
+            </NCard>
+          </NSpace>
         </div>
 
         <!-- 最近活动 -->
         <div>
-          <n-h6 prefix="bar" style="margin-bottom: 12px;">最近活动</n-h6>
-          <n-space vertical :size="8">
-            <n-card
+          <NH6 prefix="bar" style="margin-bottom: 12px;">最近活动</NH6>
+          <NSpace vertical :size="8">
+            <NCard
               v-for="conv in recentConversations"
               :key="conv.id"
               size="small"
               style="border-left: 3px solid var(--n-primary-color);"
             >
-              <n-text strong style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <NText strong style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 {{ conv.title }}
-              </n-text>
-              <n-space justify="space-between" style="margin-top: 6px;">
-                <n-text depth="3" style="font-size: 12px;">{{ conv.messages.length }} 条消息</n-text>
-                <n-text depth="3" style="font-size: 12px;">{{ formatTime(conv.updatedAt) }}</n-text>
-              </n-space>
-            </n-card>
-            <n-empty v-if="recentConversations.length === 0" description="暂无对话记录" />
-          </n-space>
+              </NText>
+              <NSpace justify="space-between" style="margin-top: 6px;">
+                <NText depth="3" style="font-size: 12px;">{{ conv.messages.length }} 条消息</NText>
+                <NText depth="3" style="font-size: 12px;">{{ formatTime(conv.updatedAt) }}</NText>
+              </NSpace>
+            </NCard>
+            <NEmpty v-if="recentConversations.length === 0" description="暂无对话记录" />
+          </NSpace>
         </div>
-      </n-space>
-    </n-layout-content>
-  </n-layout>
+      </NSpace>
+    </NLayoutContent>
+  </NLayout>
 </template>
 
 <script setup lang="ts">
@@ -144,9 +144,3 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 </script>
-
-<style scoped>
-.stats-panel {
-  height: 100%;
-}
-</style>

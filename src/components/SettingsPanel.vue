@@ -1,22 +1,22 @@
 <template>
-  <n-layout class="settings-panel">
-    <n-layout-header bordered style="padding: 12px 16px;">
-      <n-space justify="space-between" align="center">
-        <n-text strong>模型设置</n-text>
-        <n-button quaternary circle size="small" @click="$emit('close')">×</n-button>
-      </n-space>
-    </n-layout-header>
+  <NLayout style="height: 100%;">
+    <NLayoutHeader bordered style="padding: 12px 16px;">
+      <NSpace justify="space-between" align="center">
+        <NText strong>模型设置</NText>
+        <NButton quaternary circle size="small" @click="$emit('close')">×</NButton>
+      </NSpace>
+    </NLayoutHeader>
 
-    <n-layout-content style="padding: 12px;">
+    <NLayoutContent style="padding: 12px;">
       <!-- 系统提示词 -->
-      <n-card size="small" :bordered="false" style="margin-bottom: 12px;">
+      <NCard size="small" :bordered="false" style="margin-bottom: 12px;">
         <template #header>
-          <n-text strong>系统角色设定</n-text>
+          <NText strong>系统角色设定</NText>
         </template>
 
-        <n-space vertical :size="12">
-          <n-space :size="8" wrap>
-            <n-button
+        <NSpace vertical :size="12">
+          <NSpace :size="8" wrap>
+            <NButton
               v-for="preset in presetPrompts"
               :key="preset.value"
               size="small"
@@ -24,32 +24,32 @@
               @click="setSystemPrompt(preset.value)"
             >
               {{ preset.icon }} {{ preset.label }}
-            </n-button>
-          </n-space>
+            </NButton>
+          </NSpace>
 
-          <n-input
+          <NInput
             v-model:value="localSystemPrompt"
             type="textarea"
             placeholder="输入系统提示词..."
             :rows="3"
             @change="updateSettings"
           />
-        </n-space>
-      </n-card>
+        </NSpace>
+      </NCard>
 
       <!-- 温度和最大输出 -->
-      <n-card size="small" :bordered="false" style="margin-bottom: 12px;">
+      <NCard size="small" :bordered="false" style="margin-bottom: 12px;">
         <template #header>
-          <n-text strong>参数设置</n-text>
+          <NText strong>参数设置</NText>
         </template>
 
-        <n-space vertical :size="16">
+        <NSpace vertical :size="16">
           <div>
-            <n-space justify="space-between">
-              <n-text depth="3">温度 (Temperature)</n-text>
-              <n-text>{{ temperature }}</n-text>
-            </n-space>
-            <n-slider
+            <NSpace justify="space-between">
+              <NText depth="3">温度 (Temperature)</NText>
+              <NText>{{ temperature }}</NText>
+            </NSpace>
+            <NSlider
               v-model:value="temperature"
               :min="0"
               :max="1"
@@ -59,11 +59,11 @@
           </div>
 
           <div>
-            <n-space justify="space-between">
-              <n-text depth="3">最大输出长度</n-text>
-              <n-text>{{ maxTokens }} tokens</n-text>
-            </n-space>
-            <n-slider
+            <NSpace justify="space-between">
+              <NText depth="3">最大输出长度</NText>
+              <NText>{{ maxTokens }} tokens</NText>
+            </NSpace>
+            <NSlider
               v-model:value="maxTokens"
               :min="256"
               :max="8192"
@@ -71,94 +71,94 @@
               @update:value="updateSettings"
             />
           </div>
-        </n-space>
-      </n-card>
+        </NSpace>
+      </NCard>
 
       <!-- 自定义角色 -->
-      <n-card size="small" :bordered="false" style="margin-bottom: 12px;">
+      <NCard size="small" :bordered="false" style="margin-bottom: 12px;">
         <template #header>
-          <n-text strong>自定义角色</n-text>
+          <NText strong>自定义角色</NText>
         </template>
         <template #header-extra>
-          <n-button size="small" type="primary" @click="openAddDialog">
+          <NButton size="small" type="primary" @click="openAddDialog">
             + 添加
-          </n-button>
+          </NButton>
         </template>
 
-        <n-list v-if="customRoles.length > 0" hoverable clickable>
-          <n-list-item
+        <NList v-if="customRoles.length > 0" hoverable clickable>
+          <NListItem
             v-for="(role, index) in customRoles"
             :key="index"
-            :class="{ 'role-selected': localSystemPrompt === role.value }"
+            :style="localSystemPrompt === role.value ? { backgroundColor: 'var(--n-primary-color-suppl)', borderLeft: '3px solid var(--n-primary-color)' } : undefined"
             @click="selectCustomRole(role)"
           >
-            <n-thing>
+            <NThing>
               <template #header>
-                <n-space align="center" :size="8">
+                <NSpace align="center" :size="8">
                   <span>{{ role.icon }}</span>
-                  <n-text>{{ role.label }}</n-text>
-                  <n-tag v-if="localSystemPrompt === role.value" size="tiny" type="success">当前</n-tag>
-                </n-space>
+                  <NText>{{ role.label }}</NText>
+                  <NTag v-if="localSystemPrompt === role.value" size="tiny" type="success">当前</NTag>
+                </NSpace>
               </template>
               <template #header-extra>
-                <n-space :size="4" @click.stop>
-                  <n-button size="tiny" quaternary @click="openEditDialog(index)">✏️</n-button>
-                  <n-button size="tiny" quaternary type="error" @click="handleDeleteRole(index)">🗑️</n-button>
-                </n-space>
+                <NSpace :size="4" @click.stop>
+                  <NButton size="tiny" quaternary @click="openEditDialog(index)">✏️</NButton>
+                  <NButton size="tiny" quaternary type="error" @click="handleDeleteRole(index)">🗑️</NButton>
+                </NSpace>
               </template>
               <template #description>
-                <n-text depth="3" style="font-size: 12px;">
+                <NText depth="3" style="font-size: 12px;">
                   {{ role.value.substring(0, 60) }}{{ role.value.length > 60 ? '...' : '' }}
-                </n-text>
+                </NText>
               </template>
-            </n-thing>
-          </n-list-item>
-        </n-list>
+            </NThing>
+          </NListItem>
+        </NList>
 
-        <n-empty v-else description="暂无自定义角色" />
-      </n-card>
+        <NEmpty v-else description="暂无自定义角色" />
+      </NCard>
 
       <!-- 操作按钮 -->
-      <n-card size="small" :bordered="false">
-        <n-space>
-          <n-button @click="handleResetDefaults" type="warning" secondary>
+      <NCard size="small" :bordered="false">
+        <NSpace>
+          <NButton @click="handleResetDefaults" type="warning" secondary>
             恢复默认设置
-          </n-button>
-          <n-button @click="openDevTools" secondary>
+          </NButton>
+          <NButton @click="openDevTools" secondary>
             打开调试工具
-          </n-button>
-        </n-space>
-      </n-card>
-    </n-layout-content>
-  </n-layout>
+          </NButton>
+        </NSpace>
+      </NCard>
+    </NLayoutContent>
+  </NLayout>
 
   <!-- 添加/编辑角色对话框 -->
-  <n-modal v-model:show="showRoleDialog" preset="card" :title="isEditing ? '编辑角色' : '添加自定义角色'" style="max-width: 480px;">
-    <n-form>
-      <n-form-item label="角色图标">
-        <n-input v-model:value="formData.icon" placeholder="🚀" maxlength="2" style="width: 80px;" />
-      </n-form-item>
-      <n-form-item label="角色名称">
-        <n-input v-model:value="formData.label" placeholder="例如：翻译助手" maxlength="10" />
-      </n-form-item>
-      <n-form-item label="系统提示词">
-        <n-input
+  <NModal v-model:show="showRoleDialog" preset="card" :title="isEditing ? '编辑角色' : '添加自定义角色'" style="max-width: 480px;">
+    <NForm>
+      <NFormItem label="角色图标">
+        <NInput v-model:value="formData.icon" placeholder="🚀" maxlength="2" style="width: 80px;" />
+      </NFormItem>
+      <NFormItem label="角色名称">
+        <NInput v-model:value="formData.label" placeholder="例如：翻译助手" maxlength="10" />
+      </NFormItem>
+      <NFormItem label="系统提示词">
+        <NInput
           v-model:value="formData.value"
           type="textarea"
           placeholder="描述角色的职责和能力..."
           :rows="4"
         />
-      </n-form-item>
-    </n-form>
+      </NFormItem>
+    </NForm>
     <template #footer>
-      <n-space justify="end">
-        <n-button @click="showRoleDialog = false">取消</n-button>
-        <n-button @click="handleSaveRole" type="primary" :disabled="!formData.label || !formData.value">
+      <NSpace justify="end">
+        <NButton @click="showRoleDialog = false">取消</NButton>
+        <NButton @click="handleSaveRole" type="primary" :disabled="!formData.label || !formData.value">
           {{ isEditing ? '保存' : '确定添加' }}
-        </n-button>
-      </n-space>
+        </NButton>
+      </NSpace>
     </template>
-  </n-modal>
+  </NModal>
 </template>
 
 <script setup lang="ts">
@@ -175,8 +175,7 @@ import {
   deleteCustomRole as deleteCustomRoleUtil,
 } from '../utils/configUtils';
 import { DEFAULTS, DEFAULT_ROLES, APP_CONSTANTS } from '../constants';
-import { error as logError } from '../utils/logger';
-import { showError, showSuccess, showConfirm, showDeleteConfirm } from '../utils/message';
+import { showError, showSuccess, showConfirm } from '../utils/message';
 
 interface SettingsPanelProps {
   systemPrompt?: string;
@@ -207,7 +206,7 @@ const editingRoleIndex = ref(-1);
 const formData = ref({ icon: '🚀', label: '', value: '' });
 const customRoles = ref<CustomRole[]>([]);
 
-// 预设角色（使用统一的常量定义）
+// 预设角色
 const presetPrompts = DEFAULT_ROLES.map(role => ({ label: role.label, value: role.value, icon: role.icon }));
 
 function setSystemPrompt(value: string) {
@@ -283,7 +282,7 @@ function openEditDialog(index: number) {
   showRoleDialog.value = true;
 }
 
-// 保存角色（添加或编辑）
+// 保存角色
 async function handleSaveRole() {
   if (!formData.value.label || !formData.value.value) {
     showError('请填写角色名称和系统提示词');
@@ -292,7 +291,6 @@ async function handleSaveRole() {
 
   try {
     if (isEditing.value) {
-      // 先删除旧角色，再添加更新后的角色
       await deleteCustomRoleUtil(editingRoleIndex.value);
     }
     await addCustomRole({
@@ -314,29 +312,18 @@ async function handleDeleteRole(index: number) {
   const role = customRoles.value[index];
   if (!role) return;
 
-  showDeleteConfirm(`${role.icon} ${role.label}`, async () => {
-    try {
-      await deleteCustomRoleUtil(index);
-      await loadRoles();
-      showSuccess('角色已删除');
-    } catch (error) {
-      showError('删除角色失败：' + error);
-    }
-  });
+  if (!window.confirm(`确定要删除角色 "${role.icon} ${role.label}" 吗？`)) return;
+
+  try {
+    await deleteCustomRoleUtil(index);
+    await loadRoles();
+    showSuccess('角色已删除');
+  } catch (error) {
+    showError('删除角色失败：' + error);
+  }
 }
 
 onMounted(() => {
   loadRoles();
 });
 </script>
-
-<style scoped>
-.settings-panel {
-  height: 100%;
-}
-
-.role-selected {
-  background-color: var(--n-primary-color-suppl) !important;
-  border-left: 3px solid var(--n-primary-color);
-}
-</style>

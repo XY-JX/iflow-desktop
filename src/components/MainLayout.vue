@@ -1,7 +1,7 @@
 <template>
-  <n-layout has-sider class="main-layout">
+  <NLayout has-sider style="height: 100vh;">
     <!-- 左侧：对话历史 -->
-    <n-layout-sider
+    <NLayoutSider
       bordered
       :width="260"
       :collapsed-width="0"
@@ -16,14 +16,16 @@
         @select-conversation="handleSelectConversation"
         @delete-conversation="handleDeleteConversation"
       />
-    </n-layout-sider>
+    </NLayoutSider>
 
     <!-- 中间：聊天区域 -->
-    <n-layout content-style="display: flex; flex-direction: column; height: 100vh;">
-      <n-layout-header bordered style="padding: 0;">
+    <NLayout content-style="display: flex; flex-direction: column; height: 100vh;">
+      <NLayoutHeader bordered style="padding: 0;">
         <TopToolbar
           :zhipu-ready="zhipuReady"
           :zhipu-status="zhipuStatus"
+          v-model:model="currentModel"
+          :model-options="modelOptions"
           v-model:system-prompt="chatHandler.systemPrompt.value"
           :role-options="quickRoleOptions"
           :message-count="exportHandler.currentMessageCount.value"
@@ -32,8 +34,8 @@
           @toggle-settings="showSettingsPanel = !showSettingsPanel"
           @toggle-stats="showStatsPanel = !showStatsPanel"
         />
-      </n-layout-header>
-      <n-layout-content content-style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+      </NLayoutHeader>
+      <NLayoutContent content-style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
         <ChatInterface
           :messages="currentMessages"
           :is-generating="chatHandler.isGenerating.value"
@@ -45,11 +47,11 @@
           @apply-template="applyPromptTemplate"
           @save-code-snippet="handleSaveCodeSnippet"
         />
-      </n-layout-content>
-    </n-layout>
+      </NLayoutContent>
+    </NLayout>
 
     <!-- 右侧：工具面板 -->
-    <n-layout-sider
+    <NLayoutSider
       bordered
       :width="300"
       :collapsed-width="0"
@@ -70,9 +72,9 @@
             />
           </template>
           <template #fallback>
-            <n-card size="small">
-              <n-skeleton :repeat="5" size="medium" />
-            </n-card>
+            <NCard size="small">
+              <NSkeleton :repeat="5" size="medium" />
+            </NCard>
           </template>
         </Suspense>
       </template>
@@ -83,14 +85,15 @@
             <StatsPanel :conversations="conversations" @close="showStatsPanel = false" />
           </template>
           <template #fallback>
-            <n-card size="small">
-              <n-skeleton :repeat="3" size="large" />
-            </n-card>
+            <NCard size="small">
+              <NSkeleton :repeat="3" size="large" />
+            </NCard>
           </template>
         </Suspense>
       </template>
 
-      <div v-else class="tools-container">
+      <template v-else>
+        <NScrollbar style="height: 100%;">
           <QuickToolsPanel
             :active-tab="activeToolTab"
             :tabs="toolTabs"
@@ -108,28 +111,27 @@
             @delete-note="quickTools.handleDeleteNote"
           />
 
-        <div v-if="chatHandler.latestThinking.value" class="thinking-footer">
-          <n-card size="small" title="思考过程" :bordered="false">
-            <n-text depth="3" style="font-size: 12px; white-space: pre-wrap; font-family: monospace;">
+          <NCard v-if="chatHandler.latestThinking.value" size="small" title="思考过程" :bordered="false">
+            <NText depth="3" style="font-size: 12px; white-space: pre-wrap; font-family: monospace;">
               {{ chatHandler.latestThinking.value }}
-            </n-text>
-          </n-card>
-        </div>
-      </div>
-    </n-layout-sider>
-  </n-layout>
+            </NText>
+          </NCard>
+        </NScrollbar>
+      </template>
+    </NLayoutSider>
+  </NLayout>
 
   <!-- 文件编辑器 -->
-  <n-drawer
+  <NDrawer
     v-model:show="showEditor"
     :width="500"
     placement="right"
     :trap-focus="false"
   >
-    <n-drawer-content title="文件编辑器" closable>
+    <NDrawerContent title="文件编辑器" closable>
       <FileEditor v-if="selectedFile" :file="selectedFile" @close="clearSelection" />
-    </n-drawer-content>
-  </n-drawer>
+    </NDrawerContent>
+  </NDrawer>
 
   <!-- API Key 对话框 -->
   <ApiKeyDialog
@@ -156,15 +158,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent, watch } from 'vue';
 import {
-  NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NLayoutFooter,
-  NCard, NSkeleton, NText
+  NLayout, NLayoutSider, NLayoutHeader, NLayoutContent,
+  NCard, NSkeleton, NText, NDrawer, NDrawerContent, NScrollbar,
 } from 'naive-ui';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '../stores/chatStore';
 import { useFileStore } from '../stores/fileStore';
 import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
 import { useKeyboardShortcuts, useApiKey, useConversationExport, useChatHandler, useQuickTools } from '../composables';
-import { showSuccess, showError, showConfirm, showWarning, showDeleteConfirm } from '../utils/message';
+import { useQuickToolsStore } from '../stores/quickToolsStore';
+import { showSuccess, showError, showConfirm, showWarning } from '../utils/message';
 import ChatHistory from './ChatHistory.vue';
 import ChatInterface from './ChatInterface.vue';
 import FileEditor from './FileEditor.vue';
@@ -173,7 +176,7 @@ import ApiKeyDialog from './ApiKeyDialog.vue';
 import InputDialog from './InputDialog.vue';
 import KeyboardHelpDialog from './KeyboardHelpDialog.vue';
 import type { CustomRole } from '../types';
-import { DEFAULT_ROLES } from '../constants';
+import { DEFAULT_ROLES, DEFAULT_MODEL_LIST } from '../constants';
 
 // 懒加载大型组件
 const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'));
@@ -203,7 +206,21 @@ const exportHandler = useConversationExport(
 );
 const quickTools = useQuickTools();
 
-const { zhipuReady, zhipuStatus, currentModel } = apiKeyManager;
+const { zhipuReady, zhipuStatus, availableModels } = apiKeyManager;
+
+// 统一使用 chatHandler 的 currentModel
+const currentModel = chatHandler.currentModel;
+
+// 模型选项列表：优先使用 API 获取的模型，否则用默认列表
+const modelOptions = computed(() => {
+  if (availableModels.value.length > 0) {
+    return availableModels.value.map(m => ({
+      label: m.name || m.id,
+      value: m.id,
+    }));
+  }
+  return DEFAULT_MODEL_LIST.map(id => ({ label: id, value: id }));
+});
 
 // UI 状态
 const showSettingsPanel = ref(false);
@@ -233,6 +250,25 @@ const quickRoleOptions = computed(() => {
   }));
 });
 
+// 切换模型时同步到当前对话
+watch(currentModel, (newModel) => {
+  const conv = activeConversation.value;
+  if (conv) {
+    conv.model = newModel;
+    chatStore.saveToStorage();
+  }
+});
+
+// 切换角色时同步到当前对话（用 systemPrompt 的 value 作为标识）
+watch(() => chatHandler.systemPrompt.value, () => {
+  // 角色变化不需要保存到对话，因为它是全局设置
+});
+
+// 当前对话引用
+const activeConversation = computed(() => {
+  return conversations.value.find((c) => c.id === activeConversationId.value);
+});
+
 // ========== 对话操作 ==========
 
 function handleNewChat() {
@@ -243,6 +279,7 @@ function handleSelectConversation(id: string) {
   chatStore.selectConversation(id);
   const conversation = conversations.value.find((c) => c.id === id);
   if (conversation) {
+    // 恢复该对话使用的模型
     currentModel.value = conversation.model;
   }
 }
@@ -379,14 +416,12 @@ onMounted(async () => {
 
   // 加载自定义角色
   try {
-    const { loadCustomRoles } = await import('../utils/configUtils');
-    customRoles.value = await loadCustomRoles();
+    customRoles.value = await fetchCustomRoles();
   } catch {
     // 加载失败
   }
 
   // 加载快捷工具数据
-  const { useQuickToolsStore } = await import('../stores/quickToolsStore');
   const quickToolsStore = useQuickToolsStore();
   quickToolsStore.loadFromStorage();
 
@@ -410,21 +445,3 @@ onUnmounted(() => {
   chatHandler.cleanupListeners();
 });
 </script>
-
-<style scoped>
-.main-layout {
-  height: 100vh;
-}
-
-.tools-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.thinking-footer {
-  flex-shrink: 0;
-  border-top: 1px solid var(--n-border-color);
-  padding: 8px 12px;
-}
-</style>

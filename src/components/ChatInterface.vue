@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-interface">
+  <div style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; width: 100%;">
     <!-- 消息列表 -->
     <MessageList
       :messages="messages"
@@ -87,18 +87,3 @@ function handleSaveCodeSnippet() {
   emit('save-code-snippet', firstBlock.code, firstBlock.language);
 }
 </script>
-
-<style scoped>
-.chat-interface {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
-.chat-interface :deep(.input-area) {
-  width: 100%;
-}
-</style>

@@ -1,85 +1,97 @@
 <template>
-  <div class="totp-panel">
+  <NLayout style="height: 100%;">
     <!-- 头部 -->
-    <div class="totp-header">
-      <n-text strong>🔐 谷歌验证码</n-text>
-      <n-button @click="openAddDialog" circle size="small" type="primary" title="添加新密钥">+</n-button>
-    </div>
+    <NLayoutHeader bordered style="padding: 12px 16px;">
+      <NSpace justify="space-between" align="center">
+        <NText strong>🔐 谷歌验证码</NText>
+        <NButton @click="openAddDialog" circle size="small" type="primary" title="添加新密钥">+</NButton>
+      </NSpace>
+    </NLayoutHeader>
 
     <!-- 验证码列表 -->
-    <div class="totp-list">
-      <n-empty v-if="codes.length === 0" description="暂无验证码">
+    <NLayoutContent style="padding: 12px;">
+      <NEmpty v-if="codes.length === 0" description="暂无验证码">
         <template #icon>
           <span style="font-size: 48px">🔑</span>
         </template>
         <template #extra>
-          <n-text depth="3" style="font-size: 12px">点击右上角 + 添加</n-text>
+          <NText depth="3" style="font-size: 12px">点击右上角 + 添加</NText>
         </template>
-      </n-empty>
+      </NEmpty>
 
-      <n-card v-for="code in codes" :key="code.id" size="small" hoverable style="margin-bottom: 12px;">
-        <n-space justify="space-between" align="center">
-          <n-text strong>{{ code.name }}</n-text>
-          <n-space :size="4">
-            <n-button @click="copyCode(code.code)" quaternary circle size="tiny" title="复制">📋</n-button>
-            <n-button @click="handleDelete(code.id)" quaternary circle size="tiny" type="error" title="删除">×</n-button>
-          </n-space>
-        </n-space>
-        <n-text class="totp-code" @click="copyCode(code.code)">
+      <NCard v-for="code in codes" :key="code.id" size="small" hoverable style="margin-bottom: 12px;">
+        <NSpace justify="space-between" align="center">
+          <NText strong>{{ code.name }}</NText>
+          <NSpace :size="4">
+            <NButton @click="copyCode(code.code)" quaternary circle size="tiny" title="复制">📋</NButton>
+            <NButton @click="handleDelete(code.id)" quaternary circle size="tiny" type="error" title="删除">×</NButton>
+          </NSpace>
+        </NSpace>
+        <NText
+          style="font-size: 28px; font-weight: 700; text-align: center; display: block; user-select: all; cursor: pointer; margin: 12px 0; letter-spacing: 4px;"
+          @click="copyCode(code.code)"
+        >
           {{ code.code }}
-        </n-text>
-        <n-space align="center" :size="8">
-          <n-progress
-            type="line"
-            :percentage="(code.timeLeft / 30 * 100)"
-            :height="4"
-            :show-indicator="false"
-            :color="code.timeLeft <= 5 ? 'var(--n-error-color)' : 'var(--n-primary-color)'"
-            :rail-color="'var(--n-border-color)'"
-            style="flex: 1;"
-          />
-          <n-text depth="3" style="font-size: 12px; font-family: monospace; min-width: 35px; text-align: right;">
+        </NText>
+        <NProgress
+          type="line"
+          :percentage="(code.timeLeft / 30 * 100)"
+          :height="8"
+          :show-indicator="false"
+          :color="getProgressColor(code.timeLeft)"
+          :rail-color="'var(--n-border-color)'"
+          :border-radius="4"
+        />
+        <NSpace justify="center" align="center" :size="4" style="margin-top: 6px;">
+          <NText depth="3" style="font-size: 12px;">刷新倒计时</NText>
+          <NTag
+            :type="code.timeLeft <= 5 ? 'error' : code.timeLeft <= 10 ? 'warning' : 'success'"
+            size="small"
+            round
+            style="font-family: monospace; min-width: 40px; text-align: center;"
+          >
             {{ code.timeLeft }}s
-          </n-text>
-        </n-space>
-      </n-card>
-    </div>
+          </NTag>
+        </NSpace>
+      </NCard>
+    </NLayoutContent>
+  </NLayout>
 
-    <!-- 添加密钥对话框 -->
-    <n-modal v-model:show="showAddDialog" preset="card" title="添加验证码" style="max-width: 450px;">
-      <n-form label-placement="left" label-width="100" require-mark-placement="right-hanging">
-        <n-form-item label="名称" required>
-          <n-input v-model:value="newSecret.name" placeholder="例如: GitHub" clearable />
-        </n-form-item>
-        <n-form-item label="密钥 (Base32)" required>
-          <n-input-group>
-            <n-input v-model:value="newSecret.secret" placeholder="输入或生成密钥" clearable />
-            <n-button @click="generateNewSecret" type="primary" title="生成随机密钥">🎲</n-button>
-          </n-input-group>
-        </n-form-item>
-      </n-form>
+  <!-- 添加密钥对话框 -->
+  <NModal v-model:show="showAddDialog" preset="card" title="添加验证码" style="max-width: 450px;">
+    <NForm label-placement="left" label-width="100" require-mark-placement="right-hanging">
+      <NFormItem label="名称" required>
+        <NInput v-model:value="newSecret.name" placeholder="例如: GitHub" clearable />
+      </NFormItem>
+      <NFormItem label="密钥 (Base32)" required>
+        <NInputGroup>
+          <NInput v-model:value="newSecret.secret" placeholder="输入或生成密钥" clearable />
+          <NButton @click="generateNewSecret" type="primary" title="生成随机密钥">🎲</NButton>
+        </NInputGroup>
+      </NFormItem>
+    </NForm>
 
-      <n-alert v-if="qrCodeDataUrl" type="info" title="扫描二维码:" style="margin-top: 16px;">
-        <div style="text-align: center; margin-top: 12px;">
-          <img :src="qrCodeDataUrl" alt="QR Code" style="width: 200px; height: 200px; border-radius: 8px;" />
-        </div>
-      </n-alert>
+    <NAlert v-if="qrCodeDataUrl" type="info" title="扫描二维码:" style="margin-top: 16px;">
+      <div style="text-align: center; margin-top: 12px;">
+        <img :src="qrCodeDataUrl" alt="QR Code" style="width: 200px; height: 200px; border-radius: 8px;" />
+      </div>
+    </NAlert>
 
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="showAddDialog = false">取消</n-button>
-          <n-button @click="handleAdd" type="primary" :disabled="!isValid">确认</n-button>
-        </n-space>
-      </template>
-    </n-modal>
-  </div>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton @click="showAddDialog = false">取消</NButton>
+        <NButton @click="handleAdd" type="primary" :disabled="!isValid">确认</NButton>
+      </NSpace>
+    </template>
+  </NModal>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import {
+  NLayout, NLayoutHeader, NLayoutContent,
   NSpace, NText, NButton, NCard, NEmpty, NModal,
-  NForm, NFormItem, NInput, NInputGroup, NAlert, NProgress,
+  NForm, NFormItem, NInput, NInputGroup, NAlert, NProgress, NTag,
 } from 'naive-ui';
 import QRCode from 'qrcode';
 import { getAllCodes, addSecret, deleteSecret, generateSecret } from '../utils/totp';
@@ -118,13 +130,39 @@ const isValid = computed(() => {
   return newSecret.value.name.trim() && newSecret.value.secret.trim();
 });
 
-async function updateCodes() {
+// 根据剩余时间返回进度条颜色
+function getProgressColor(timeLeft: number): string {
+  if (timeLeft <= 5) return '#d03050';   // 红色
+  if (timeLeft <= 10) return '#f0a020';  // 橙色
+  return '#18a058';                       // 绿色
+}
+
+// 获取当前 TOTP 周期的剩余秒数
+function getTimeLeft(): number {
+  const epoch = Math.floor(Date.now() / 1000);
+  return 30 - (epoch % 30);
+}
+
+// 从后端加载密钥并生成验证码
+async function loadCodes() {
   try {
     const result = await getAllCodes();
     logInfo('TOTPPanel', `加载了 ${result.length} 个验证码`);
     codes.value = result;
   } catch (e) {
-    warn('TOTPPanel', '更新验证码失败:', e);
+    warn('TOTPPanel', '加载验证码失败:', e);
+  }
+}
+
+// 本地倒计时：每秒只更新 timeLeft，不调后端
+function tick() {
+  const timeLeft = getTimeLeft();
+  for (const code of codes.value) {
+    code.timeLeft = timeLeft;
+  }
+  // 当进入新周期（timeLeft == 30）时，重新生成验证码
+  if (timeLeft === 30) {
+    loadCodes();
   }
 }
 
@@ -146,7 +184,7 @@ async function handleAdd() {
     logInfo('TOTPPanel', `添加验证码: name=${name}, secret=${secret.substring(0, 4)}...`);
     await addSecret(name, secret);
     showAddDialog.value = false;
-    await updateCodes();
+    await loadCodes();
     showSuccess('验证码已添加');
   } catch (e) {
     logInfo('TOTPPanel', `添加失败: ${e}`);
@@ -158,7 +196,7 @@ async function handleDelete(id: string) {
   showConfirm('确认删除', '确定要删除这个验证码吗?', async () => {
     try {
       await deleteSecret(id);
-      await updateCodes();
+      await loadCodes();
     } catch (e) {
       showError('删除失败：' + e);
     }
@@ -174,46 +212,11 @@ function copyCode(code: string) {
 }
 
 onMounted(() => {
-  updateCodes();
-  timer = window.setInterval(updateCodes, 1000);
+  loadCodes();
+  timer = window.setInterval(tick, 1000);
 });
 
 onUnmounted(() => {
   if (timer) clearInterval(timer);
 });
 </script>
-
-<style scoped>
-.totp-panel {
-  display: flex;
-  flex-direction: column;
-  /* 不设 height: 100%，作为 flex 子项直接 flex: 1 撑满 */
-}
-
-.totp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--n-border-color);
-  flex-shrink: 0;
-}
-
-.totp-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  min-height: 0;
-}
-
-.totp-code {
-  font-size: 28px;
-  font-weight: 700;
-  text-align: center;
-  display: block;
-  user-select: all;
-  cursor: pointer;
-  margin: 12px 0;
-  letter-spacing: 4px;
-}
-</style>

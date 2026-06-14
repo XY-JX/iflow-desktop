@@ -1,41 +1,45 @@
 <template>
-  <div class="file-editor" v-if="file">
-    <div class="editor-header">
-      <div class="file-info">
-        <span class="file-icon">📄</span>
-        <span class="file-name">{{ file.name }}</span>
-        <span class="file-path">{{ file.path }}</span>
-      </div>
-      <div class="editor-actions">
-        <n-button
+  <NCard v-if="file" size="small" :bordered="false">
+    <template #header>
+      <NSpace align="center" :size="8">
+        <span style="font-size: 18px;">📄</span>
+        <NText strong>{{ file.name }}</NText>
+        <NText depth="3" style="font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          {{ file.path }}
+        </NText>
+      </NSpace>
+    </template>
+    <template #header-extra>
+      <NSpace :size="8">
+        <NButton
           type="primary"
           size="small"
           @click="saveFile"
           :disabled="!hasChanges"
         >
           💾 保存
-        </n-button>
-        <n-button size="small" quaternary @click="$emit('close')">✕ 关闭</n-button>
-      </div>
-    </div>
-    <div class="editor-content">
-      <n-input
-        v-model:value="content"
-        @update:value="hasChanges = true"
-        type="textarea"
-        placeholder="文件内容..."
-        :autosize="false"
-        spellcheck="false"
-        class="code-editor"
-      />
-    </div>
-  </div>
-  <n-empty v-else description="请从文件浏览器中选择一个文件进行编辑" />
+        </NButton>
+        <NButton size="small" quaternary @click="$emit('close')">✕ 关闭</NButton>
+      </NSpace>
+    </template>
+
+    <NInput
+      v-model:value="content"
+      @update:value="hasChanges = true"
+      type="textarea"
+      placeholder="文件内容..."
+      :autosize="false"
+      spellcheck="false"
+      style="height: calc(100vh - 200px);"
+      input-style="font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: 1.6;"
+    />
+  </NCard>
+  <NEmpty v-else description="请从文件浏览器中选择一个文件进行编辑" />
 </template>
 
 <script setup lang="ts">
   import { ref, watch } from 'vue';
-  import { NButton, NInput, NEmpty } from 'naive-ui';
+  import { NButton, NInput, NEmpty, NCard, NSpace, NText } from 'naive-ui';
   import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
   import { error as logError } from '../utils/logger';
   import type { FileItem } from '../types';
@@ -84,58 +88,3 @@
     { immediate: true },
   );
 </script>
-
-<style scoped>
-  .file-editor {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .editor-header {
-    padding: 12px 16px;
-  }
-
-  .file-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .file-icon {
-    font-size: 18px;
-  }
-
-  .file-name {
-    font-size: 14px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .file-path {
-    font-size: 12px;
-    color: var(--n-text-color-3);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .editor-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .editor-content {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .editor-content :deep(.n-input__textarea-el) {
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.6;
-    height: 100%;
-  }
-</style>

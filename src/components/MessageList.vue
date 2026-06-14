@@ -1,67 +1,61 @@
 <template>
-  <div class="messages-wrapper" ref="containerRef" @scroll="handleScroll">
-    <n-empty
+  <div ref="containerRef" style="flex: 1; overflow-y: auto; padding: 16px; position: relative;" @scroll="handleScroll">
+    <NEmpty
       v-if="messages.length === 0"
       description="开始新的对话"
       style="margin: auto;"
     />
 
-    <div v-else class="messages-list">
-      <div v-for="message in messages" :key="message.id" class="message-row">
-        <n-card
-          :class="['message-card', message.role]"
+    <NSpace v-else vertical :size="12">
+      <div v-for="message in messages" :key="message.id">
+        <NCard
           size="small"
           :bordered="false"
+          :style="{
+            maxWidth: '85%',
+            marginLeft: message.role === 'user' ? 'auto' : undefined,
+            marginRight: message.role === 'assistant' ? 'auto' : undefined,
+          }"
         >
-          <n-space align="flex-start" :wrap="false">
-            <n-avatar
-              :size="36"
-              round
-              :style="{
-                background: message.role === 'user' ? 'var(--n-primary-color)' : 'var(--n-action-color)'
-              }"
-            >
-              {{ message.role === 'user' ? '👤' : '🤖' }}
-            </n-avatar>
-
-            <div class="message-body">
-              <div
-                class="message-text"
-                v-html="renderMarkdown(message.content)"
-              />
-              <n-space justify="space-between" align="center" class="message-footer">
-                <n-text depth="3" style="font-size: 11px;">
-                  {{ formatTime(message.timestamp) }}
-                </n-text>
-                <n-button
-                  @click="$emit('reply-to-message', message)"
-                  size="tiny"
-                  quaternary
-                  title="回复"
-                  class="reply-btn"
-                >
-                  ↩️
-                </n-button>
-              </n-space>
+          <!-- 助手消息：头像在左 -->
+          <NSpace v-if="message.role === 'assistant'" align="flex-start" :wrap="false">
+            <NAvatar :size="36" round style="background: var(--n-action-color);">🤖</NAvatar>
+            <div style="flex: 1; min-width: 0;">
+              <div class="message-text" v-html="renderMarkdown(message.content)" />
+              <NSpace justify="space-between" align="center" style="margin-top: 6px;">
+                <NText depth="3" style="font-size: 11px;">{{ formatTime(message.timestamp) }}</NText>
+                <NButton @click="$emit('reply-to-message', message)" size="tiny" quaternary title="回复" class="reply-btn">↩️</NButton>
+              </NSpace>
             </div>
-          </n-space>
-        </n-card>
+          </NSpace>
+
+          <!-- 用户消息：头像在右 -->
+          <NSpace v-else align="flex-start" :wrap="false" justify="end">
+            <div style="flex: 1; min-width: 0; text-align: right;">
+              <div class="message-text" v-html="renderMarkdown(message.content)" />
+              <NSpace justify="end" align="center" style="margin-top: 6px;">
+                <NText depth="3" style="font-size: 11px;">{{ formatTime(message.timestamp) }}</NText>
+              </NSpace>
+            </div>
+            <NAvatar :size="36" round style="background: var(--n-primary-color);">👤</NAvatar>
+          </NSpace>
+        </NCard>
       </div>
-    </div>
+    </NSpace>
 
     <!-- 滚动到底部按钮 -->
     <Transition name="fade">
-      <n-button
+      <NButton
         v-if="showScrollButton"
-        class="scroll-to-bottom"
         circle
         secondary
         size="small"
         @click="scrollToBottom(true)"
         title="滚动到底部"
+        style="position: sticky; bottom: 16px; left: 50%; transform: translateX(-50%); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10;"
       >
         ⬇️
-      </n-button>
+      </NButton>
     </Transition>
   </div>
 </template>
@@ -167,71 +161,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.messages-wrapper {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  position: relative;
-}
-
-.messages-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.message-row {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.message-card {
-  max-width: 85%;
-}
-
-.message-card.user {
-  margin-left: auto;
-}
-
-.message-card.assistant {
-  margin-right: auto;
-}
-
-.message-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.message-text {
-  font-size: 14px;
-  line-height: 1.6;
-  word-wrap: break-word;
-}
-
-.message-footer {
-  margin-top: 6px;
-}
-
 .reply-btn {
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-.message-row:hover .reply-btn {
+div:hover > .n-card .reply-btn {
   opacity: 1;
-}
-
-.scroll-to-bottom {
-  position: sticky;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 10;
 }
 
 .fade-enter-active,

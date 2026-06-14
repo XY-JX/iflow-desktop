@@ -1,21 +1,21 @@
 <template>
-  <div class="input-area">
+  <div style="padding: 12px 16px; border-top: 1px solid var(--n-border-color); flex-shrink: 0;">
     <!-- 快捷操作栏 -->
-    <div class="action-bar">
-      <n-button @click="$emit('clear-conversation')" size="small" quaternary title="清空对话">🗑️</n-button>
-      <n-button @click="$emit('export-conversation')" size="small" quaternary title="导出 Markdown">📥</n-button>
-      <n-button @click="$emit('export-pdf')" size="small" quaternary title="导出 PDF">📄</n-button>
-      <n-button @click="$emit('copy-last-answer')" size="small" quaternary title="复制最后回答">📋</n-button>
-      <n-button @click="$emit('save-code-snippet')" size="small" quaternary title="收藏代码">💾</n-button>
-      <n-divider vertical />
-      <n-button @click="$emit('apply-template', 'explain')" size="small" quaternary title="解释代码">💡 解释</n-button>
-      <n-button @click="$emit('apply-template', 'optimize')" size="small" quaternary title="优化代码">⚡ 优化</n-button>
-      <n-button @click="$emit('apply-template', 'debug')" size="small" quaternary title="调试代码">🐛 调试</n-button>
+    <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--n-border-color); flex-wrap: wrap;">
+      <NButton @click="$emit('clear-conversation')" size="small" quaternary title="清空对话">🗑️</NButton>
+      <NButton @click="$emit('export-conversation')" size="small" quaternary title="导出 Markdown">📥</NButton>
+      <NButton @click="$emit('export-pdf')" size="small" quaternary title="导出 PDF">📄</NButton>
+      <NButton @click="$emit('copy-last-answer')" size="small" quaternary title="复制最后回答">📋</NButton>
+      <NButton @click="$emit('save-code-snippet')" size="small" quaternary title="收藏代码">💾</NButton>
+      <NDivider vertical />
+      <NButton @click="$emit('apply-template', 'explain')" size="small" quaternary title="解释代码">💡 解释</NButton>
+      <NButton @click="$emit('apply-template', 'optimize')" size="small" quaternary title="优化代码">⚡ 优化</NButton>
+      <NButton @click="$emit('apply-template', 'debug')" size="small" quaternary title="调试代码">🐛 调试</NButton>
     </div>
 
     <!-- 输入框 + 发送按钮 -->
-    <div class="input-row">
-      <n-input
+    <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
+      <NInput
         ref="inputRef"
         v-model:value="inputText"
         @keydown="handleKeyDown"
@@ -23,27 +23,28 @@
         placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
         :autosize="{ minRows: 2, maxRows: 8 }"
         :bordered="true"
+        style="flex: 1;"
       />
-      <n-button
+      <NButton
         @click="sendMessage"
         :disabled="!inputText.trim() || isGenerating"
         type="primary"
         size="large"
-        class="send-btn"
+        style="flex-shrink: 0; height: 40px; min-width: 80px;"
       >
         {{ isGenerating ? '⏳' : '📤 发送' }}
-      </n-button>
+      </NButton>
     </div>
 
     <!-- 状态提示 -->
-    <div class="input-footer">
+    <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; height: 20px;">
       <template v-if="isGenerating">
-        <n-badge dot color="var(--n-primary-color)" />
-        <n-text depth="3" style="font-size: 12px;">AI 正在回复...</n-text>
+        <NBadge dot color="var(--n-primary-color)" />
+        <NText depth="3" style="font-size: 12px;">AI 正在回复...</NText>
       </template>
-      <n-text v-else depth="3" style="font-size: 12px;">
+      <NText v-else depth="3" style="font-size: 12px;">
         Enter 发送 | Shift+Enter 换行
-      </n-text>
+      </NText>
     </div>
   </div>
 </template>
@@ -85,48 +86,3 @@ function handleKeyDown(event: KeyboardEvent) {
   }
 }
 </script>
-
-<style scoped>
-.input-area {
-  padding: 12px 16px;
-  background: var(--n-color);
-  border-top: 1px solid var(--n-border-color);
-  width: 100%;
-}
-
-.action-bar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--n-border-color);
-  flex-wrap: wrap;
-}
-
-.input-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-  width: 100%;
-}
-
-/* 让 n-input 撑满剩余空间 */
-.input-row :deep(.n-input) {
-  flex: 1;
-}
-
-.send-btn {
-  flex-shrink: 0;
-  height: 40px;
-  min-width: 80px;
-}
-
-.input-footer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  height: 20px;
-}
-</style>

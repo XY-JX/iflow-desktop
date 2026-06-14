@@ -3,7 +3,6 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import { ErrorHandler } from './utils/errorHandler';
 import { info } from './utils/logger';
-import './styles/components.css';
 
 const app = createApp(App);
 const pinia = createPinia();

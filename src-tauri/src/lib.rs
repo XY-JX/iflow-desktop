@@ -5,24 +5,14 @@ pub mod config;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化日志系统 (只初始化一次)
-    logging::init_logging();
-    
-    // 启动时自动清理 3 天前的日志
-    if let Err(e) = logging::clean_old_logs() {
-        tracing::warn!("清理旧日志失败: {}", e);
-    } else {
-        tracing::info!("已清理 3 天前的日志文件");
-    }
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(commands::zhipu::ZhipuState::new())
         .invoke_handler(tauri::generate_handler![
             // 智谱 AI 相关命令
             commands::zhipu::init_zhipu_client,
-            commands::zhipu::send_message_to_zhipu,
             commands::zhipu::send_message_to_zhipu_with_messages,
             commands::zhipu::send_message_to_zhipu_stream,
             commands::zhipu::send_message_to_zhipu_stream_with_context,

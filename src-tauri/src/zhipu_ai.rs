@@ -12,32 +12,16 @@ pub struct ZhipuAiClient {
 }
 
 /// 全局模型列表缓存
-static MODEL_CACHE: once_cell::sync::Lazy<Arc<Mutex<Vec<ModelInfo>>>> = 
+static MODEL_CACHE: once_cell::sync::Lazy<Arc<Mutex<Vec<ModelInfo>>>> =
     once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(get_default_models())));
 
 /// 默认模型列表（备用）
 fn get_default_models() -> Vec<ModelInfo> {
     vec![
-        ModelInfo {
-            id: "glm-4.6v".to_string(),
-            name: Some("GLM-4.6V".to_string()),
-            description: Some("最新视觉语言模型".to_string()),
-        },
-        ModelInfo {
-            id: "glm-4.5-air".to_string(),
-            name: Some("GLM-4.5-Air".to_string()),
-            description: Some("轻量级高效模型".to_string()),
-        },
-        ModelInfo {
-            id: "glm-4".to_string(),
-            name: Some("GLM-4".to_string()),
-            description: Some("通用对话模型".to_string()),
-        },
-        ModelInfo {
-            id: "glm-4-flash".to_string(),
-            name: Some("GLM-4-Flash".to_string()),
-            description: Some("快速响应模型".to_string()),
-        },
+        ModelInfo { id: "glm-4.6v".into(), name: Some("GLM-4.6V".into()), description: Some("最新视觉语言模型".into()) },
+        ModelInfo { id: "glm-4.5-air".into(), name: Some("GLM-4.5-Air".into()), description: Some("轻量级高效模型".into()) },
+        ModelInfo { id: "glm-4".into(), name: Some("GLM-4".into()), description: Some("通用对话模型".into()) },
+        ModelInfo { id: "glm-4-flash".into(), name: Some("GLM-4-Flash".into()), description: Some("快速响应模型".into()) },
     ]
 }
 
@@ -125,27 +109,65 @@ pub struct ModelsResponse {
     pub data: Vec<ModelInfo>,
 }
 
+/// 解析 SSE 数据行，返回提取的内容
+fn parse_sse_line(line: &str) -> Option<String> {
+    let line = line.trim();
+    if line.is_empty() {
+        return None;
+    }
+
+    // 提取 data: 前缀
+    let data = line.strip_prefix("data: ")
+        .or_else(|| line.strip_prefix("data:"))?;
+
+    let data = data.trim();
+    if data == "[DONE]" {
+        return None;
+    }
+
+    // 解析 JSON
+    let chunk: StreamChunk = match serde_json::from_str(data) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("解析 chunk 失败: {}, data: {}", e, data);
+            return None;
+        }
+    };
+
+    let choice = chunk.choices.first()?;
+
+    // 优先使用 reasoning_content (思考过程)，否则使用 content
+    if let Some(reasoning) = &choice.delta.reasoning_content {
+        if !reasoning.is_empty() {
+            return Some(reasoning.clone());
+        }
+    }
+
+    if let Some(content) = &choice.delta.content {
+        if !content.is_empty() {
+            return Some(content.clone());
+        }
+    }
+
+    None
+}
+
 impl ZhipuAiClient {
     /// 创建新的客户端实例
     pub fn new(api_key: String) -> Self {
-        let client = Client::new();
-        let base_url = "https://open.bigmodel.cn/api/paas/v4".to_string();
-        
         info!("智谱 AI 客户端已初始化");
-        
         Self {
-            client,
+            client: Client::new(),
             api_key,
-            base_url,
+            base_url: "https://open.bigmodel.cn/api/paas/v4".into(),
         }
     }
 
     /// 发送聊天请求 (非流式)
     pub async fn chat(&self, request: &ChatCompletionRequest) -> Result<ChatCompletionResponse, String> {
         let url = format!("{}/chat/completions", self.base_url);
-        
         info!("发送聊天请求到模型：{}", request.model);
-        
+
         let response = self.client
             .post(&url)
             .header("Content-Type", "application/json")
@@ -171,7 +193,6 @@ impl ZhipuAiClient {
         })?;
 
         info!("聊天完成，使用 tokens: {}", result.usage.total_tokens);
-        
         Ok(result)
     }
 
@@ -181,16 +202,13 @@ impl ZhipuAiClient {
         request: &ChatCompletionRequest,
     ) -> Result<impl futures_core::stream::Stream<Item = Result<String, String>>, String> {
         let url = format!("{}/chat/completions", self.base_url);
-        
         info!("发送流式聊天请求到模型：{}", request.model);
-        
-        let request_builder = self.client
+
+        let response = self.client
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", self.api_key))
-            .json(request);
-
-        let response = request_builder
+            .json(request)
             .send()
             .await
             .map_err(|e| {
@@ -206,10 +224,9 @@ impl ZhipuAiClient {
         }
 
         use tokio_stream::StreamExt;
-        
-        // 使用 Arc<Mutex> 来共享 buffer
-        let buffer = std::sync::Arc::new(tokio::sync::Mutex::new(String::new()));
-        
+
+        let buffer = Arc::new(Mutex::new(String::new()));
+
         let stream = response.bytes_stream().then({
             let buffer = buffer.clone();
             move |chunk| {
@@ -220,70 +237,29 @@ impl ZhipuAiClient {
                             let text = String::from_utf8_lossy(&bytes);
                             let mut buf = buffer.lock().await;
                             buf.push_str(&text);
-                            
-                            // 处理可能的多行数据
-                            let mut results = Vec::new();
+
                             let current_buf = buf.clone();
-                            
-                            // 按行处理
                             let lines: Vec<&str> = current_buf.split('\n').collect();
                             let line_count = lines.len();
-                            
+
+                            let mut results = Vec::new();
+
                             for (i, line) in lines.iter().enumerate() {
-                                let line = line.trim();
-                                if line.is_empty() {
-                                    continue;
-                                }
-                                
                                 // 最后一行可能是不完整的，保留到 buffer
                                 if i == line_count - 1 && !current_buf.ends_with('\n') {
                                     *buf = line.to_string();
-                                    break; // 跳出循环，不再处理
+                                    break;
                                 }
-                                
-                                // SSE 格式：data: {...} 或 data:{...}
-                                let data = if let Some(d) = line.strip_prefix("data: ") {
-                                    d
-                                } else if let Some(d) = line.strip_prefix("data:") {
-                                    d
-                                } else {
-                                    continue;
-                                };
-                                
-                                let data = data.trim();
-                                if data == "[DONE]" {
-                                    continue;
-                                }
-                                
-                                match serde_json::from_str::<StreamChunk>(data) {
-                                    Ok(chunk) => {
-                                        if let Some(choice) = chunk.choices.first() {
-                                            // 优先使用 reasoning_content (思考过程)
-                                            if let Some(reasoning) = &choice.delta.reasoning_content {
-                                                if !reasoning.is_empty() {
-                                                    results.push(reasoning.clone());
-                                                }
-                                            } else if let Some(content) = &choice.delta.content {
-                                                // 没有思考过程时使用 content
-                                                if !content.is_empty() {
-                                                    results.push(content.clone());
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        // 记录解析错误，但不中断流程
-                                        warn!("解析 chunk 失败: {}, data: {}", e, data);
-                                    }
+
+                                if let Some(content) = parse_sse_line(line) {
+                                    results.push(content);
                                 }
                             }
-                            
-                            // 如果所有行都处理完了，清空 buffer
+
                             if current_buf.ends_with('\n') {
                                 buf.clear();
                             }
-                            
-                            // 返回所有解析出的内容
+
                             Ok(results.join(""))
                         }
                         Err(e) => {
@@ -296,16 +272,14 @@ impl ZhipuAiClient {
         });
 
         info!("流式响应已开始");
-        
         Ok(stream)
     }
 
     /// 获取模型列表（动态从 API 获取）
     pub async fn fetch_models(&self) -> Result<Vec<ModelInfo>, String> {
         let url = format!("{}/models", self.base_url);
-        
         info!("正在获取智谱 AI 模型列表...");
-        
+
         let response = self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
@@ -329,57 +303,44 @@ impl ZhipuAiClient {
         })?;
 
         info!("成功获取 {} 个模型", models_response.data.len());
-        
+
         // 补充缺失的名称和描述
-        let mut enriched_models: Vec<ModelInfo> = models_response.data.iter().map(|model| {
-            let name = model.name.clone().or_else(|| {
-                // 根据 ID 生成友好的名称
-                match model.id.as_str() {
-                    "glm-4.5" => Some("GLM-4.5".to_string()),
-                    "glm-4.5-air" => Some("GLM-4.5 Air".to_string()),
-                    "glm-4.6" => Some("GLM-4.6".to_string()),
-                    "glm-4.7" => Some("GLM-4.7".to_string()),
-                    "glm-5" => Some("GLM-5".to_string()),
-                    "glm-5-turbo" => Some("GLM-5 Turbo".to_string()),
-                    "glm-5.1" => Some("GLM-5.1".to_string()),
-                    "glm-4.6v" => Some("GLM-4.6V".to_string()),
-                    "glm-4" => Some("GLM-4".to_string()),
-                    "glm-4-flash" => Some("GLM-4 Flash".to_string()),
-                    _ => None,
-                }
+        let enriched_models: Vec<ModelInfo> = models_response.data.iter().map(|model| {
+            let name = model.name.clone().or_else(|| match model.id.as_str() {
+                "glm-4.5" => Some("GLM-4.5".into()),
+                "glm-4.5-air" => Some("GLM-4.5 Air".into()),
+                "glm-4.6" => Some("GLM-4.6".into()),
+                "glm-4.7" => Some("GLM-4.7".into()),
+                "glm-5" => Some("GLM-5".into()),
+                "glm-5-turbo" => Some("GLM-5 Turbo".into()),
+                "glm-5.1" => Some("GLM-5.1".into()),
+                "glm-4.6v" => Some("GLM-4.6V".into()),
+                "glm-4" => Some("GLM-4".into()),
+                "glm-4-flash" => Some("GLM-4 Flash".into()),
+                _ => None,
             });
-            
-            let description = model.description.clone().or_else(|| {
-                // 根据 ID 生成描述
-                match model.id.as_str() {
-                    "glm-4.5" => Some("高性能通用模型".to_string()),
-                    "glm-4.5-air" => Some("轻量级高效模型".to_string()),
-                    "glm-4.6" => Some("最新通用模型".to_string()),
-                    "glm-4.7" => Some("增强版模型".to_string()),
-                    "glm-5" => Some("下一代旗舰模型".to_string()),
-                    "glm-5-turbo" => Some("快速响应版本".to_string()),
-                    "glm-5.1" => Some("优化版模型".to_string()),
-                    "glm-4.6v" => Some("视觉语言模型".to_string()),
-                    "glm-4" => Some("经典通用模型".to_string()),
-                    "glm-4-flash" => Some("极速响应模型".to_string()),
-                    _ => Some("智谱 AI 模型".to_string()),
-                }
+
+            let description = model.description.clone().or_else(|| match model.id.as_str() {
+                "glm-4.5" => Some("高性能通用模型".into()),
+                "glm-4.5-air" => Some("轻量级高效模型".into()),
+                "glm-4.6" => Some("最新通用模型".into()),
+                "glm-4.7" => Some("增强版模型".into()),
+                "glm-5" => Some("下一代旗舰模型".into()),
+                "glm-5-turbo" => Some("快速响应版本".into()),
+                "glm-5.1" => Some("优化版模型".into()),
+                "glm-4.6v" => Some("视觉语言模型".into()),
+                "glm-4" => Some("经典通用模型".into()),
+                "glm-4-flash" => Some("极速响应模型".into()),
+                _ => Some("智谱 AI 模型".into()),
             });
-            
-            ModelInfo {
-                id: model.id.clone(),
-                name,
-                description,
-            }
+
+            ModelInfo { id: model.id.clone(), name, description }
         }).collect();
-        
-        // 按 ID 排序，保持稳定性
-        enriched_models.sort_by(|a, b| a.id.cmp(&b.id));
-        
+
         // 更新全局缓存
         let mut cache = MODEL_CACHE.lock().await;
         *cache = enriched_models.clone();
-        
+
         Ok(enriched_models)
     }
 
