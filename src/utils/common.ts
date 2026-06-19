@@ -2,6 +2,9 @@
  * 通用工具函数
  */
 
+// 计数器用于确保同毫秒内的 ID 唯一性
+let idCounter = 0;
+
 /**
  * 格式化时间戳为友好显示
  */
@@ -32,7 +35,12 @@ export function formatTime(timestamp: number, detailed: boolean = false): string
 
 /**
  * 生成唯一ID
+ * 使用时间戳 + 计数器 + 随机数确保唯一性
  */
 export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  idCounter = (idCounter + 1) % 10000;
+  const timestamp = Date.now().toString(36);
+  const counter = idCounter.toString(36).padStart(4, '0');
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${counter}-${random}`;
 }

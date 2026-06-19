@@ -3,7 +3,7 @@
  * 处理消息发送、流式响应监听、事件清理
  */
 
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { storeToRefs } from 'pinia';
@@ -33,13 +33,18 @@ export function useChatHandler() {
   // 事件监听清理函数
   let activeUnlisteners: Array<() => void> = [];
 
+  // 获取当前活动对话
+  function getActiveConversation() {
+    return conversations.value.find((c) => c.id === activeConversationId.value);
+  }
+
   // 更新消息内容
   function updateMessageContent(
     messageId: string,
     content: string,
     executionInfo?: Message['executionInfo'],
   ) {
-    const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
+    const conversation = getActiveConversation();
     if (conversation) {
       const message = conversation.messages.find((m) => m.id === messageId);
       if (message) {
@@ -94,7 +99,7 @@ export function useChatHandler() {
       addMessage(assistantMessage);
 
       // 构建对话历史
-      const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
+      const conversation = getActiveConversation();
       const allMessages =
         conversation?.messages.map((m) => ({
           role: m.role,
@@ -118,7 +123,7 @@ export function useChatHandler() {
         }
 
         if (data.full_content) {
-          const conv = conversations.value.find((c) => c.id === activeConversationId.value);
+          const conv = getActiveConversation();
           if (conv) {
             const msg = conv.messages.find((m) => m.id === assistantMessageId);
             if (msg) {

@@ -21,7 +21,7 @@
           <NSpace v-if="message.role === 'assistant'" align="flex-start" :wrap="false">
             <NAvatar :size="36" round style="background: var(--n-action-color);">🤖</NAvatar>
             <div style="flex: 1; min-width: 0;">
-              <div class="message-text" v-html="renderMarkdown(message.content)" />
+              <div class="message-text" v-html="getCachedMarkdown(message.content)" />
               <NSpace justify="space-between" align="center" style="margin-top: 6px;">
                 <NText depth="3" style="font-size: 11px;">{{ formatTime(message.timestamp) }}</NText>
                 <NButton @click="$emit('reply-to-message', message)" size="tiny" quaternary title="回复" class="reply-btn">↩️</NButton>
@@ -32,7 +32,7 @@
           <!-- 用户消息：头像在右 -->
           <NSpace v-else align="flex-start" :wrap="false" justify="end">
             <div style="flex: 1; min-width: 0; text-align: right;">
-              <div class="message-text" v-html="renderMarkdown(message.content)" />
+              <div class="message-text" v-html="getCachedMarkdown(message.content)" />
               <NSpace justify="end" align="center" style="margin-top: 6px;">
                 <NText depth="3" style="font-size: 11px;">{{ formatTime(message.timestamp) }}</NText>
               </NSpace>
@@ -61,13 +61,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { NCard, NSpace, NAvatar, NButton, NText, NEmpty } from 'naive-ui';
 import { formatTime } from '../utils/common';
 import { useMarkdown, setupCodeCopyDelegation } from '../composables';
 import type { Message } from '../types';
 
 const { renderMarkdown } = useMarkdown();
+
+// 缓存已渲染的 Markdown，避免重复解析
+const markdownCache = new Map<string, string>();
+
+function getCachedMarkdown(content: string): string {
+  const cached = markdownCache.get(content);
+  if (cached) return cached;
+  const rendered = renderMarkdown(content);
+  markdownCache.set(content, rendered);
+  // 限制缓存大小，防止内存泄漏
+  if (markdownCache.size > 200) {
+    const firstKey = markdownCache.keys().next().value;
+    if (firstKey !== undefined) {
+      markdownCache.delete(firstKey);
+    }
+  }
+  return rendered;
+}
 
 interface Props {
   messages: Message[];

@@ -3,6 +3,16 @@ pub mod commands;
 pub mod zhipu_ai;
 pub mod config;
 
+/// 打开开发者工具
+#[tauri::command]
+fn open_devtools(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let window = app.get_webview_window("main")
+        .ok_or("未找到主窗口")?;
+    window.open_devtools();
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -35,6 +45,8 @@ pub fn run() {
             commands::totp::save_totp_secrets,
             commands::totp::load_totp_secrets,
             commands::totp::delete_totp_secrets,
+            // 调试工具
+            open_devtools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

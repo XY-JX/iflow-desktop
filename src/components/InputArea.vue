@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { NButton, NInput, NDivider, NText, NBadge } from 'naive-ui';
 
 interface Props {
@@ -85,4 +85,20 @@ function handleKeyDown(event: KeyboardEvent) {
     sendMessage();
   }
 }
+
+// 监听模板应用事件
+function handleApplyTemplate(event: Event) {
+  const customEvent = event as CustomEvent<string>;
+  if (customEvent.detail) {
+    inputText.value = customEvent.detail;
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('apply-prompt-template', handleApplyTemplate);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('apply-prompt-template', handleApplyTemplate);
+});
 </script>

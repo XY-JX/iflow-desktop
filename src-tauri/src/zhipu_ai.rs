@@ -238,26 +238,23 @@ impl ZhipuAiClient {
                             let mut buf = buffer.lock().await;
                             buf.push_str(&text);
 
-                            let current_buf = buf.clone();
-                            let lines: Vec<&str> = current_buf.split('\n').collect();
-                            let line_count = lines.len();
-
+                            // 提取完整行处理，保留最后一个不完整行在 buffer 中
                             let mut results = Vec::new();
+                            let mut last_newline_pos = 0;
 
-                            for (i, line) in lines.iter().enumerate() {
-                                // 最后一行可能是不完整的，保留到 buffer
-                                if i == line_count - 1 && !current_buf.ends_with('\n') {
-                                    *buf = line.to_string();
-                                    break;
-                                }
-
-                                if let Some(content) = parse_sse_line(line) {
-                                    results.push(content);
+                            for (i, ch) in buf.char_indices() {
+                                if ch == '\n' {
+                                    let line = &buf[last_newline_pos..i];
+                                    if let Some(content) = parse_sse_line(line) {
+                                        results.push(content);
+                                    }
+                                    last_newline_pos = i + 1;
                                 }
                             }
 
-                            if current_buf.ends_with('\n') {
-                                buf.clear();
+                            // 保留剩余未处理的部分（不完整行）
+                            if last_newline_pos > 0 {
+                                *buf = buf[last_newline_pos..].to_string();
                             }
 
                             Ok(results.join(""))
@@ -304,35 +301,31 @@ impl ZhipuAiClient {
 
         info!("成功获取 {} 个模型", models_response.data.len());
 
+        // 模型元数据映射表，减少重复匹配
+        let model_meta: std::collections::HashMap<&str, (&str, &str)> = [
+            ("glm-4.5", ("GLM-4.5", "高性能通用模型")),
+            ("glm-4.5-air", ("GLM-4.5 Air", "轻量级高效模型")),
+            ("glm-4.6", ("GLM-4.6", "最新通用模型")),
+            ("glm-4.7", ("GLM-4.7", "增强版模型")),
+            ("glm-5", ("GLM-5", "下一代旗舰模型")),
+            ("glm-5-turbo", ("GLM-5 Turbo", "快速响应版本")),
+            ("glm-5.1", ("GLM-5.1", "优化版模型")),
+            ("glm-4.6v", ("GLM-4.6V", "视觉语言模型")),
+            ("glm-4", ("GLM-4", "经典通用模型")),
+            ("glm-4-flash", ("GLM-4 Flash", "极速响应模型")),
+        ].iter().cloned().collect();
+
         // 补充缺失的名称和描述
         let enriched_models: Vec<ModelInfo> = models_response.data.iter().map(|model| {
-            let name = model.name.clone().or_else(|| match model.id.as_str() {
-                "glm-4.5" => Some("GLM-4.5".into()),
-                "glm-4.5-air" => Some("GLM-4.5 Air".into()),
-                "glm-4.6" => Some("GLM-4.6".into()),
-                "glm-4.7" => Some("GLM-4.7".into()),
-                "glm-5" => Some("GLM-5".into()),
-                "glm-5-turbo" => Some("GLM-5 Turbo".into()),
-                "glm-5.1" => Some("GLM-5.1".into()),
-                "glm-4.6v" => Some("GLM-4.6V".into()),
-                "glm-4" => Some("GLM-4".into()),
-                "glm-4-flash" => Some("GLM-4 Flash".into()),
-                _ => None,
+            let meta = model_meta.get(model.id.as_str());
+
+            let name = model.name.clone().or_else(|| {
+                meta.map(|(n, _)| (*n).to_string())
             });
 
-            let description = model.description.clone().or_else(|| match model.id.as_str() {
-                "glm-4.5" => Some("高性能通用模型".into()),
-                "glm-4.5-air" => Some("轻量级高效模型".into()),
-                "glm-4.6" => Some("最新通用模型".into()),
-                "glm-4.7" => Some("增强版模型".into()),
-                "glm-5" => Some("下一代旗舰模型".into()),
-                "glm-5-turbo" => Some("快速响应版本".into()),
-                "glm-5.1" => Some("优化版模型".into()),
-                "glm-4.6v" => Some("视觉语言模型".into()),
-                "glm-4" => Some("经典通用模型".into()),
-                "glm-4-flash" => Some("极速响应模型".into()),
-                _ => Some("智谱 AI 模型".into()),
-            });
+            let description = model.description.clone().or_else(|| {
+                meta.map(|(_, d)| (*d).to_string())
+            }).or_else(|| Some("智谱 AI 模型".into()));
 
             ModelInfo { id: model.id.clone(), name, description }
         }).collect();

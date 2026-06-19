@@ -13,8 +13,8 @@ export const useChatStore = defineStore('chat', () => {
   const isGenerating = ref(false);
   const latestThinking = ref<string>('');
   const isLoading = ref(false); // 加载状态
-  const lastSaveTime = ref<number>(0); // 上次保存时间
-  const SAVE_THROTTLE = 1000; // 保存节流: 1秒
+  let saveTimer: ReturnType<typeof setTimeout> | null = null; // 防抖定时器
+  const SAVE_DEBOUNCE = 500; // 保存防抖: 500ms
 
   // 从 Rust 后端加载对话
   async function loadFromStorage() {
@@ -30,21 +30,35 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  // 保存到 Rust 后端 (带节流)
-  async function saveToStorage() {
-    const now = Date.now();
-    // 节流: 如果距离上次保存不足 1 秒,跳过
-    if (now - lastSaveTime.value < SAVE_THROTTLE) {
-      return;
-    }
-
+  // 实际执行保存
+  async function doSave() {
     try {
-      await conversationApi.saveConversations(conversations.value);
-      lastSaveTime.value = now;
-      info('chatStore', `已保存 ${conversations.value.length} 个对话`);
+      const data = JSON.parse(JSON.stringify(conversations.value)); // 深拷贝
+      await conversationApi.saveConversations(data);
+      info('chatStore', `保存成功: ${data.length} 个对话`);
     } catch (error) {
       logError('chatStore', '保存对话历史失败:', error);
     }
+  }
+
+  // 保存到 Rust 后端 (带防抖)
+  function saveToStorage() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+    }
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      doSave();
+    }, SAVE_DEBOUNCE);
+  }
+
+  // 立即保存（用于页面卸载等场景）
+  async function saveToStorageImmediate() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    await doSave();
   }
 
   // 计算属性
@@ -71,8 +85,8 @@ export const useChatStore = defineStore('chat', () => {
     conversations.value.unshift(newConversation);
     activeConversationId.value = newConversation.id;
 
-    // 自动保存
-    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
+    // 自动保存（防抖）
+    saveToStorage();
     return newConversation;
   }
 
@@ -81,13 +95,16 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function deleteConversation(id: string) {
+    info('chatStore', `删除对话: ${id}`);
     conversations.value = conversations.value.filter((c) => c.id !== id);
     if (activeConversationId.value === id) {
       activeConversationId.value = undefined;
     }
 
-    // 自动保存
-    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
+    // 立即保存（删除操作不能用防抖，否则刷新会丢失）
+    saveToStorageImmediate().catch(err => {
+      logError('chatStore', '删除后保存失败:', err);
+    });
   }
 
   function addMessage(message: Message) {
@@ -103,8 +120,8 @@ export const useChatStore = defineStore('chat', () => {
         message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '');
     }
 
-    // 自动保存
-    saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
+    // 自动保存（防抖）
+    saveToStorage();
   }
 
   function updateConversationTitle(title: string) {
@@ -112,7 +129,7 @@ export const useChatStore = defineStore('chat', () => {
     if (conversation) {
       conversation.title = title;
       conversation.updatedAt = Date.now();
-      saveToStorage().catch(err => logError('chatStore', '自动保存失败:', err));
+      saveToStorage();
     }
   }
 
@@ -149,5 +166,6 @@ export const useChatStore = defineStore('chat', () => {
     clearThinking,
     loadFromStorage,
     saveToStorage,
+    saveToStorageImmediate,
   };
 });

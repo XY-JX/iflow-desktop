@@ -1,5 +1,5 @@
 use tokio::fs;
-use tracing::{info, debug, instrument};
+use tracing::{info, instrument};
 use crate::config::get_data_dir;
 
 /// 加载对话历史
@@ -31,8 +31,14 @@ pub async fn load_conversations() -> Result<Vec<serde_json::Value>, String> {
 #[tauri::command]
 #[instrument(skip(conversations))]
 pub async fn save_conversations(conversations: Vec<serde_json::Value>) -> Result<(), String> {
-    info!("保存对话历史");
-    debug!("对话数量：{}", conversations.len());
+    info!("=== Rust: 保存对话历史 ===");
+    info!("对话数量：{}", conversations.len());
+    // 打印每个对话的ID
+    for (i, conv) in conversations.iter().enumerate() {
+        if let Some(id) = conv.get("id").and_then(|v| v.as_str()) {
+            info!("对话 {}: id={}", i, id);
+        }
+    }
 
     let data_dir = get_data_dir().await?;
 

@@ -2,25 +2,15 @@
   <NMessageProvider>
     <NDialogProvider>
       <NNotificationProvider>
-        <MainLayout />
+        <AppInit />
       </NNotificationProvider>
     </NDialogProvider>
   </NMessageProvider>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { NMessageProvider, NDialogProvider, NNotificationProvider, useMessage, useDialog, useNotification } from 'naive-ui';
-import MainLayout from './components/MainLayout.vue';
-import { initMessageAPI } from './utils/message';
-
-onMounted(() => {
-  // 初始化全局消息 API（需要在 Provider 内部调用 useXxx）
-  const message = useMessage();
-  const dialog = useDialog();
-  const notification = useNotification();
-  initMessageAPI(message, dialog, notification);
-});
+import { NMessageProvider, NDialogProvider, NNotificationProvider } from 'naive-ui';
+import AppInit from './components/AppInit.vue';
 </script>
 
 <style>

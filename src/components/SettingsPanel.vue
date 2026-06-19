@@ -245,13 +245,11 @@ function handleResetDefaults() {
 // 打开调试工具
 async function openDevTools() {
   try {
-    const { getCurrentWebview } = await import('@tauri-apps/api/webview');
-    const webview = getCurrentWebview();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((webview as any).openDevTools) {
-      await (webview as any).openDevTools();
-    }
-  } catch {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('open_devtools');
+    showSuccess('调试工具已打开');
+  } catch (error) {
+    console.error('打开调试工具失败:', error);
     showError('调试工具不可用');
   }
 }
@@ -312,15 +310,19 @@ async function handleDeleteRole(index: number) {
   const role = customRoles.value[index];
   if (!role) return;
 
-  if (!window.confirm(`确定要删除角色 "${role.icon} ${role.label}" 吗？`)) return;
-
-  try {
-    await deleteCustomRoleUtil(index);
-    await loadRoles();
-    showSuccess('角色已删除');
-  } catch (error) {
-    showError('删除角色失败：' + error);
-  }
+  showConfirm(
+    '删除角色',
+    `确定要删除角色 "${role.icon} ${role.label}" 吗？`,
+    async () => {
+      try {
+        await deleteCustomRoleUtil(index);
+        await loadRoles();
+        showSuccess('角色已删除');
+      } catch (error) {
+        showError('删除角色失败：' + error);
+      }
+    }
+  );
 }
 
 onMounted(() => {

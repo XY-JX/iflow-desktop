@@ -167,7 +167,7 @@ import { useFileStore } from '../stores/fileStore';
 import { loadCustomRoles as fetchCustomRoles } from '../utils/configUtils';
 import { useKeyboardShortcuts, useApiKey, useConversationExport, useChatHandler, useQuickTools } from '../composables';
 import { useQuickToolsStore } from '../stores/quickToolsStore';
-import { showSuccess, showError, showConfirm, showWarning } from '../utils/message';
+import { showSuccess, showConfirm, showWarning } from '../utils/message';
 import ChatHistory from './ChatHistory.vue';
 import ChatInterface from './ChatInterface.vue';
 import FileEditor from './FileEditor.vue';
@@ -186,7 +186,7 @@ const QuickToolsPanel = defineAsyncComponent(() => import('./QuickToolsPanel.vue
 // Stores
 const chatStore = useChatStore();
 const fileStore = useFileStore();
-const { conversations, activeConversationId, currentMessages } = storeToRefs(chatStore);
+const { conversations, activeConversationId, currentMessages, activeConversation } = storeToRefs(chatStore);
 const { selectedFile } = storeToRefs(fileStore);
 const { clearSelection } = fileStore;
 
@@ -264,11 +264,6 @@ watch(() => chatHandler.systemPrompt.value, () => {
   // 角色变化不需要保存到对话，因为它是全局设置
 });
 
-// 当前对话引用
-const activeConversation = computed(() => {
-  return conversations.value.find((c) => c.id === activeConversationId.value);
-});
-
 // ========== 对话操作 ==========
 
 function handleNewChat() {
@@ -298,6 +293,7 @@ function handleClearConversation() {
     const conversation = conversations.value.find((c) => c.id === activeConversationId.value);
     if (conversation) {
       conversation.messages = [];
+      chatStore.saveToStorageImmediate();
       showSuccess('对话已清空');
     }
   });
@@ -320,7 +316,10 @@ async function openApiKeyDialog() {
 }
 
 async function handleClearKey() {
-  await apiKeyManager.clearApiKey();
+  showConfirm('清除配置', '确定要清除当前 API Key 配置吗？', async () => {
+    await apiKeyManager.clearApiKey();
+    showApiKeyDialog.value = false;
+  });
 }
 
 async function handleSaveKey(apiKey: string) {

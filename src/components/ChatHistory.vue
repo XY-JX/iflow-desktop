@@ -81,6 +81,7 @@ import {
   NThing, NTag, NEmpty
 } from 'naive-ui';
 import { formatTime } from '../utils/common';
+import { showDeleteConfirm } from '../utils/message';
 import type { Conversation } from '../types';
 
 const props = defineProps<{
@@ -97,9 +98,9 @@ const emit = defineEmits<{
 const searchKeyword = ref('');
 
 function handleDeleteConversation(id: string, title: string) {
-  if (window.confirm(`确定要删除 "${title}" 吗？此操作不可恢复！`)) {
+  showDeleteConfirm(title, () => {
     emit('delete-conversation', id);
-  }
+  });
 }
 
 const filteredConversations = computed(() => {

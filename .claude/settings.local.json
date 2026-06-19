@@ -10,7 +10,12 @@
       "Bash(git -C \"D:\\\\phpEnv\\\\www\\\\AI\\\\iflow-desktop\" log --oneline -10)",
       "Bash(cargo check *)",
       "Bash(taskkill //F //IM \"iflow-desktop.exe\")",
-      "Bash(taskkill //F //IM \"cargo.exe\")"
+      "Bash(taskkill //F //IM \"cargo.exe\")",
+      "Bash(npm test *)",
+      "Bash(start \"\" \"src-tauri/target/release/iflow-desktop.exe\")",
+      "Bash(taskkill //F //IM iflow-desktop.exe)",
+      "Bash(start *)",
+      "Bash(cargo clean *)"
     ]
   }
 }
