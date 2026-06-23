@@ -1,12 +1,42 @@
 use tokio::fs;
 use tracing::{info, instrument};
+use serde::{Deserialize, Serialize};
 use crate::config::get_data_dir;
 
+/// 消息结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationMessage {
+    pub id: String,
+    pub role: String,
+    pub content: String,
+    pub timestamp: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_info: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_to: Option<String>,
+}
+
+/// 对话结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Conversation {
+    pub id: String,
+    pub title: String,
+    pub messages: Vec<ConversationMessage>,
+    pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
 /// 加载对话历史
-/// 使用 serde_json::Value 保持与前端数据格式的完全兼容
 #[tauri::command]
 #[instrument(skip())]
-pub async fn load_conversations() -> Result<Vec<serde_json::Value>, String> {
+pub async fn load_conversations() -> Result<Vec<Conversation>, String> {
     info!("加载对话历史");
 
     let data_dir = get_data_dir().await?;
@@ -20,7 +50,7 @@ pub async fn load_conversations() -> Result<Vec<serde_json::Value>, String> {
     let content = fs::read_to_string(&conversations_file).await
         .map_err(|e| format!("读取对话历史失败：{}", e))?;
 
-    let conversations: Vec<serde_json::Value> = serde_json::from_str(&content)
+    let conversations: Vec<Conversation> = serde_json::from_str(&content)
         .map_err(|e| format!("解析对话历史失败：{}", e))?;
 
     info!("成功加载 {} 个对话", conversations.len());
@@ -30,15 +60,8 @@ pub async fn load_conversations() -> Result<Vec<serde_json::Value>, String> {
 /// 保存对话历史
 #[tauri::command]
 #[instrument(skip(conversations))]
-pub async fn save_conversations(conversations: Vec<serde_json::Value>) -> Result<(), String> {
-    info!("=== Rust: 保存对话历史 ===");
-    info!("对话数量：{}", conversations.len());
-    // 打印每个对话的ID
-    for (i, conv) in conversations.iter().enumerate() {
-        if let Some(id) = conv.get("id").and_then(|v| v.as_str()) {
-            info!("对话 {}: id={}", i, id);
-        }
-    }
+pub async fn save_conversations(conversations: Vec<Conversation>) -> Result<(), String> {
+    info!("保存对话历史，数量：{}", conversations.len());
 
     let data_dir = get_data_dir().await?;
 

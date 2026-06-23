@@ -50,14 +50,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, watch } from 'vue';
 import { NButton, NInput, NDivider, NText, NBadge } from 'naive-ui';
 
 interface Props {
   isGenerating: boolean;
+  templateText?: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const inputText = ref('');
 const inputRef = ref<HTMLTextAreaElement>();
@@ -86,19 +87,10 @@ function handleKeyDown(event: KeyboardEvent) {
   }
 }
 
-// 监听模板应用事件
-function handleApplyTemplate(event: Event) {
-  const customEvent = event as CustomEvent<string>;
-  if (customEvent.detail) {
-    inputText.value = customEvent.detail;
+// 通过 prop 接收模板文本，替代 window CustomEvent
+watch(() => props.templateText, (newText) => {
+  if (newText) {
+    inputText.value = newText;
   }
-}
-
-onMounted(() => {
-  window.addEventListener('apply-prompt-template', handleApplyTemplate);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('apply-prompt-template', handleApplyTemplate);
 });
 </script>

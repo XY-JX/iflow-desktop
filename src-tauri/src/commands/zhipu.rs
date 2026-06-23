@@ -259,49 +259,31 @@ pub async fn send_message_to_zhipu_stream_with_context(
     }
 }
 
-/// 发送流式消息到智谱 AI
+/// 发送流式消息到智谱 AI（简化版，单条消息）
 #[tauri::command]
 pub async fn send_message_to_zhipu_stream(
     message: String,
     model: Option<String>,
+    temperature: Option<f32>,
+    max_tokens: Option<i32>,
+    system_prompt: Option<String>,
     window: tauri::Window,
     state: tauri::State<'_, ZhipuState>,
 ) -> Result<(), String> {
-    info!("发送流式消息到智谱 AI，模型：{:?}", model);
+    // 复用带上下文版本的逻辑
+    let messages = vec![ChatMessageData {
+        role: "user".into(),
+        content: message,
+    }];
 
-    let start_time = std::time::Instant::now();
-
-    let client_guard = state.client.lock().await;
-    let client = client_guard.as_ref().ok_or_else(|| {
-        "智谱 AI 客户端未初始化，请先调用 init_zhipu_client".to_string()
-    })?;
-
-    let messages = vec![
-        ChatMessage { role: "system".into(), content: "你是一个有用的 AI 编程助手。".into() },
-        ChatMessage { role: "user".into(), content: message },
-    ];
-
-    let selected_model = model.unwrap_or_else(|| models::GLM_4.to_string());
-
-    let request = ChatCompletionRequest {
-        model: selected_model.clone(),
+    send_message_to_zhipu_stream_with_context(
         messages,
-        temperature: Some(0.7),
-        max_tokens: Some(2048),
-        stream: Some(true),
-        top_p: Some(0.7),
-    };
-
-    match client.chat_stream(&request).await {
-        Ok(stream) => {
-            handle_stream_response(Box::pin(stream), window, selected_model, start_time).await
-        }
-        Err(e) => {
-            error!("智谱 AI 流式调用失败：{}", e);
-            let _ = window.emit("ai-error", serde_json::json!({
-                "error": format!("AI 调用失败：{}", e)
-            }));
-            Err(format!("AI 调用失败：{}", e))
-        }
-    }
+        model,
+        temperature,
+        max_tokens,
+        system_prompt,
+        window,
+        state,
+    )
+    .await
 }

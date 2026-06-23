@@ -39,6 +39,7 @@
         <ChatInterface
           :messages="currentMessages"
           :is-generating="chatHandler.isGenerating.value"
+          :template-text="pendingTemplate"
           @send-message="handleSendMessage"
           @clear-conversation="handleClearConversation"
           @export-conversation="exportHandler.exportAsMarkdown"
@@ -156,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, defineAsyncComponent, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent, watch, nextTick } from 'vue';
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent,
   NCard, NSkeleton, NText, NDrawer, NDrawerContent, NScrollbar,
@@ -229,6 +230,7 @@ const showApiKeyDialog = ref(false);
 const showKeyboardHelp = ref(false);
 const apiKeyDialogRef = ref<InstanceType<typeof ApiKeyDialog>>();
 const activeToolTab = ref('totp');
+const pendingTemplate = ref<string>();
 
 // 工具标签页
 const toolTabs = [
@@ -257,11 +259,6 @@ watch(currentModel, (newModel) => {
     conv.model = newModel;
     chatStore.saveToStorage();
   }
-});
-
-// 切换角色时同步到当前对话（用 systemPrompt 的 value 作为标识）
-watch(() => chatHandler.systemPrompt.value, () => {
-  // 角色变化不需要保存到对话，因为它是全局设置
 });
 
 // ========== 对话操作 ==========
@@ -374,8 +371,12 @@ function applyPromptTemplate(type: string) {
   const template = templates[type];
   if (!template) return;
 
-  const event = new CustomEvent('apply-prompt-template', { detail: template });
-  window.dispatchEvent(event);
+  // 通过 prop 传递模板文本，替代 window CustomEvent
+  pendingTemplate.value = template;
+  // 重置，以便下次相同模板也能触发
+  nextTick(() => {
+    pendingTemplate.value = undefined;
+  });
 }
 
 // 收藏代码片段

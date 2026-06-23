@@ -4,7 +4,6 @@
  */
 
 import { ref } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '../stores/chatStore';
@@ -13,14 +12,16 @@ import { estimateTokenCount, truncateConversation } from '../utils/tokenUtils';
 import { APP_CONSTANTS, RESERVED_TOKENS, DEFAULTS } from '../constants';
 import { info, error as logError } from '../utils/logger';
 import { isTauri } from '../utils/api/tauri';
+import zhipuApi from '../utils/api/zhipu';
 import type { Message, AiChunkPayload, AiCompletePayload, AiErrorPayload } from '../types';
 
 export function useChatHandler() {
   const chatStore = useChatStore();
-  const { conversations, activeConversationId, currentMessages, isGenerating } = storeToRefs(chatStore);
+  const { conversations, activeConversationId, currentMessages, isGenerating, latestThinking: storeThinking } = storeToRefs(chatStore);
   const { addMessage, setGenerating, setThinking, clearThinking, saveToStorage } = chatStore;
 
-  const latestThinking = ref('');
+  // 使用 store 中的 latestThinking，不再重复创建
+  const latestThinking = storeThinking;
 
   // 当前模型
   const currentModel = ref('glm-4.6v');
@@ -167,14 +168,14 @@ export function useChatHandler() {
 
       activeUnlisteners = [unlistenChunk, unlistenComplete, unlistenError];
 
-      // 调用流式 API
-      await invoke('send_message_to_zhipu_stream_with_context', {
-        messages: messagesForApi,
-        model: currentModel.value,
-        temperature: temperature.value,
-        max_tokens: maxTokens.value,
-        system_prompt: systemPrompt.value,
-      });
+      // 调用流式 API（通过 utils/api 封装层，符合分层架构）
+      await zhipuApi.sendStreamMessageWithContext(
+        '', // apiKey 由后端 ZhipuState 管理
+        messagesForApi,
+        currentModel.value,
+        temperature.value,
+        maxTokens.value,
+      );
 
       return true;
     } catch (error) {

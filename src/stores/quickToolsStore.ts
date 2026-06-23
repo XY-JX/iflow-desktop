@@ -9,8 +9,8 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
   const codeSnippets = ref<CodeSnippet[]>([]);
   const quickLinks = ref<QuickLink[]>([]);
   const quickNotes = ref<QuickNote[]>([]);
-  const lastSaveTime = ref<number>(0); // 上次保存时间
-  const SAVE_THROTTLE = 1000; // 保存节流: 1秒
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  const SAVE_DEBOUNCE = 500; // 保存防抖: 500ms
 
   // 从 localStorage 加载(仅用于迁移)
   function loadFromStorage() {
@@ -40,22 +40,35 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
     }
   }
 
-  // 保存到 localStorage(临时方案,后续迁移到 Rust 后端)
-  function saveToStorage() {
-    const now = Date.now();
-    // 节流: 如果距离上次保存不足 1 秒,跳过
-    if (now - lastSaveTime.value < SAVE_THROTTLE) {
-      return;
-    }
-
+  // 实际执行保存
+  function doSave() {
     try {
       localStorage.setItem(STORAGE_KEYS.CODE_SNIPPETS, JSON.stringify(codeSnippets.value));
       localStorage.setItem(STORAGE_KEYS.QUICK_LINKS, JSON.stringify(quickLinks.value));
       localStorage.setItem(STORAGE_KEYS.QUICK_NOTES, JSON.stringify(quickNotes.value));
-      lastSaveTime.value = now;
     } catch (error) {
       logError('quickToolsStore', '保存快捷工具数据失败:', error);
     }
+  }
+
+  // 保存到 localStorage (带防抖，确保最后一次保存被执行)
+  function saveToStorage() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+    }
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      doSave();
+    }, SAVE_DEBOUNCE);
+  }
+
+  // 立即保存（用于页面卸载等场景）
+  function saveToStorageImmediate() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    doSave();
   }
 
   // 代码片段操作
@@ -102,6 +115,7 @@ export const useQuickToolsStore = defineStore('quickTools', () => {
     // 方法
     loadFromStorage,
     saveToStorage,
+    saveToStorageImmediate,
     addSnippet,
     deleteSnippet,
     addLink,

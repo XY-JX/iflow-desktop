@@ -88,23 +88,23 @@ export async function sendStreamMessage(
  * 流式发送消息(带上下文压缩)
  */
 export async function sendStreamMessageWithContext(
-  apiKey: string,
+  _apiKey: string,
   messages: Array<{ role: string; content: string }>,
   model?: string,
   temperature?: number,
   maxTokens?: number,
-  contextConfig?: ContextConfig
+  systemPrompt?: string,
+  _contextConfig?: ContextConfig
 ): Promise<void> {
   if (!isTauri()) {
     throw new Error('非 Tauri 环境，无法调用智谱 AI');
   }
   return invoke('send_message_to_zhipu_stream_with_context', {
-    apiKey,
     messages,
     model,
     temperature,
     maxTokens,
-    contextConfig,
+    systemPrompt,
   });
 }
 

@@ -176,6 +176,7 @@ import {
 } from '../utils/configUtils';
 import { DEFAULTS, DEFAULT_ROLES, APP_CONSTANTS } from '../constants';
 import { showError, showSuccess, showConfirm } from '../utils/message';
+import { error as logError } from '../utils/logger';
 
 interface SettingsPanelProps {
   systemPrompt?: string;
@@ -249,7 +250,7 @@ async function openDevTools() {
     await invoke('open_devtools');
     showSuccess('调试工具已打开');
   } catch (error) {
-    console.error('打开调试工具失败:', error);
+    logError('SettingsPanel', '打开调试工具失败:', error);
     showError('调试工具不可用');
   }
 }

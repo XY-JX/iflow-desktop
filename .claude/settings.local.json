@@ -15,7 +15,11 @@
       "Bash(start \"\" \"src-tauri/target/release/iflow-desktop.exe\")",
       "Bash(taskkill //F //IM iflow-desktop.exe)",
       "Bash(start *)",
-      "Bash(cargo clean *)"
+      "Bash(cargo clean *)",
+      "Bash(curl -s http://localhost:1420)",
+      "Bash(tasklist)",
+      "Bash(findstr \"iflow\")",
+      "Bash(rustc --version)"
     ]
   }
 }

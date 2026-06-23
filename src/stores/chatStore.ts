@@ -33,7 +33,11 @@ export const useChatStore = defineStore('chat', () => {
   // 实际执行保存
   async function doSave() {
     try {
-      const data = JSON.parse(JSON.stringify(conversations.value)); // 深拷贝
+      // 使用 Pinia 的 $state 获取响应式数据的快照，避免昂贵的深拷贝
+      const data = conversations.value.map(conv => ({
+        ...conv,
+        messages: [...conv.messages],
+      }));
       await conversationApi.saveConversations(data);
       info('chatStore', `保存成功: ${data.length} 个对话`);
     } catch (error) {

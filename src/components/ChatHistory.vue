@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   NLayout, NLayoutHeader, NLayoutContent,
   NSpace, NText, NInput, NButton, NList, NListItem,
@@ -96,6 +96,19 @@ const emit = defineEmits<{
 }>();
 
 const searchKeyword = ref('');
+const debouncedKeyword = ref('');
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+// 防抖处理搜索关键词
+watch(searchKeyword, (newVal) => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+  debounceTimer = setTimeout(() => {
+    debouncedKeyword.value = newVal;
+    debounceTimer = null;
+  }, 200);
+});
 
 function handleDeleteConversation(id: string, title: string) {
   showDeleteConfirm(title, () => {
@@ -104,11 +117,11 @@ function handleDeleteConversation(id: string, title: string) {
 }
 
 const filteredConversations = computed(() => {
-  if (!searchKeyword.value.trim()) {
+  if (!debouncedKeyword.value.trim()) {
     return props.conversations;
   }
 
-  const keyword = searchKeyword.value.toLowerCase().trim();
+  const keyword = debouncedKeyword.value.toLowerCase().trim();
   return props.conversations.filter((conv) => {
     const titleMatch = conv.title.toLowerCase().includes(keyword);
     const modelMatch = conv.model.toLowerCase().includes(keyword);

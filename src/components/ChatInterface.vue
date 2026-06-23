@@ -10,6 +10,7 @@
     <!-- 输入区域 -->
     <InputArea
       :is-generating="isGenerating"
+      :template-text="templateText"
       @send-message="handleSendMessage"
       @clear-conversation="$emit('clear-conversation')"
       @export-conversation="$emit('export-conversation')"
@@ -22,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import { showWarning } from '../utils/message';
 import MessageList from './MessageList.vue';
 import InputArea from './InputArea.vue';
@@ -30,9 +32,17 @@ import type { Message } from '../types';
 interface Props {
   messages: Message[];
   isGenerating: boolean;
+  templateText?: string;
 }
 
 const props = defineProps<Props>();
+
+// 模板文本（用于传递给 InputArea）
+const templateText = ref(props.templateText);
+
+watch(() => props.templateText, (newText) => {
+  templateText.value = newText;
+});
 
 const emit = defineEmits<{
   'send-message': [content: string];
